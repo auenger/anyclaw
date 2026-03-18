@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-18T16:00:00"
-  version: 6
+  last_updated: "2026-03-18T17:30:00"
+  version: 7
 
 # 父需求（用于分组追踪)
 parents:
@@ -25,17 +25,6 @@ active: []
 
 # 等待中的需求（按优先级排序）
 pending:
-  - id: feat-tool-calling
-    name: Tool Calling 核心框架
-    priority: 95
-    size: M
-    created_at: "2026-03-18T14:30:00"
-    dependencies: []
-    value_points:
-      - SKILL.md 解析器
-      - Tool Definition 生成
-      - Tool Calling 执行
-
   - id: feat-zai-provider
     name: ZAI/GLM CodePlan Provider
     priority: 90
@@ -129,6 +118,13 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-tool-calling
+    name: Tool Calling 核心框架
+    priority: 95
+    size: M
+    completed_at: "2026-03-18T17:30:00"
+    archive_path: features/archive/done-feat-tool-calling
+
   - id: feat-mvp-init
     name: 项目初始化和配置系统
     priority: 90
