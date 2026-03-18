@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-18T13:00:00"
-  version: 11
+  last_updated: "2026-03-18T13:15:00"
+  version: 12
 
 # 父需求（用于分组追踪)
 parents:
@@ -47,26 +47,18 @@ pending:
       - 每日记忆日志
       - 记忆自动化
 
-  - id: feat-bundled-skills
-    name: 内置 Skills 移植与扩展
-    priority: 75
-    size: M
-    created_at: "2026-03-18T14:30:00"
-    dependencies: []
-    value_points:
-      - 基础工具 Skills (weather, time, echo)
-      - 开发工具 Skills (github, gh-issues)
-      - 文件操作 Skills (file_ops)
-      - 代码执行 Skills (code_exec)
-      - 网络搜索 Skills (web_search)
-      - 数据处理 Skills (data_process)
-      - Skills 管理命令
-
 # 阻塞中的需求
 blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-bundled-skills
+    name: 内置 Skills 移植与扩展
+    priority: 75
+    size: M
+    completed_at: "2026-03-18T13:15:00"
+    archive_path: features/archive/done-feat-bundled-skills
+
   - id: feat-agent-persona
     name: 智能体人设系统
     priority: 82
