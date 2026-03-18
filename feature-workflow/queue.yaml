@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-18T14:00:00"
-  version: 13
+  last_updated: "2026-03-18T20:00:00"
+  version: 14
 
 # 父需求（用于分组追踪)
 parents:
@@ -24,23 +24,24 @@ parents:
 active: []
 
 # 等待中的需求（按优先级排序）
-pending:
-  - id: feat-memory-system
-    name: 记忆系统
-    priority: 78
-    size: M
-    created_at: "2026-03-18T16:00:00"
-    dependencies: []
-    value_points:
-      - 长期记忆
-      - 每日记忆日志
-      - 记忆自动化
+pending: []
 
 # 阻塞中的需求
 blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-memory-system
+    name: 记忆系统
+    priority: 78
+    size: M
+    completed_at: "2026-03-18T20:00:00"
+    archive_path: features/archive/done-feat-memory-system
+    value_points:
+      - 长期记忆
+      - 每日记忆日志
+      - 记忆自动化
+
   - id: feat-context-compression
     name: 智能上下文压缩
     priority: 80
