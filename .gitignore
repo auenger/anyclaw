@@ -42,6 +42,7 @@ coverage.xml
 
 # Environments
 .env
+.env.*
 .venv
 env/
 venv/
@@ -58,16 +59,32 @@ venv.bak/
 
 # OS
 .DS_Store
+.DS_Store?
 Thumbs.db
-
-# Project specific
-workspace/
-MEMORY.md
-HISTORY.md
-.dev-progress.yaml
 
 # Poetry
 poetry.lock
 
+# Project specific
+workspace/
+*.log
+*.tmp
+
+# Claude / AI tools
+.neuro/
+.claude/
+
 # Reference projects (not part of the codebase)
 reference/
+
+# Development artifacts (临时文档)
+FINAL_REVIEW_REPORT.md
+IMPLEMENTATION_PLAN.md
+MVP_IMPLEMENTATION_PLAN.md
+TEST_REPORT.md
+Thinking.md
+
+# Memory files (user-specific)
+MEMORY.md
+HISTORY.md
+.dev-progress.yaml
