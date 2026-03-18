@@ -138,6 +138,17 @@ class Settings(BaseSettings):
         description="是否启用 token 警告"
     )
 
+    # Persona 人设配置
+    persona_enabled: bool = Field(
+        default=True,
+        description="是否启用人设系统"
+    )
+    persona_max_chars: int = Field(
+        default=10000,
+        ge=1000,
+        description="单个人设文件最大字符数"
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -83,3 +83,58 @@ USER_TEMPLATE = """# 用户档案
 
 -
 """
+
+IDENTITY_TEMPLATE = """# 身份标识
+
+定义 AnyClaw 的基本身份信息。
+
+## 基本信息
+
+- 名称: AnyClaw
+- Emoji: 🐾
+- 版本: 1.0.0
+
+## 风格
+
+- 友好且专业
+- 简洁但完整
+- 技术准确
+
+---
+
+*此文件在引导仪式期间创建/更新。*
+"""
+
+TOOLS_TEMPLATE = """# 工具说明
+
+关于你的本地工具和约定的说明。此文件不控制工具可用性，仅提供指导。
+
+## 开发环境
+
+- 语言: Python 3.11+
+- 包管理: Poetry
+- 测试框架: pytest
+
+## 常用命令
+
+```bash
+# 运行测试
+poetry run pytest tests/
+
+# 格式化代码
+poetry run black anyclaw/
+
+# 启动 CLI
+poetry run python -m anyclaw chat
+```
+
+## 约定
+
+- 异步优先
+- 类型注解必需
+- 测试覆盖率 > 80%
+
+---
+
+*根据你的项目需要更新此文件。*
+"""

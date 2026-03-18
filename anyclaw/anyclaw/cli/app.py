@@ -14,10 +14,12 @@ console = Console()
 from .onboard import create_onboard_app
 from .workspace import create_workspace_app
 from .token import create_token_app
+from .persona import create_persona_app
 
 app.add_typer(create_onboard_app(), name="onboard")
 app.add_typer(create_workspace_app(), name="workspace")
 app.add_typer(create_token_app(), name="token")
+app.add_typer(create_persona_app(), name="persona")
 
 
 @app.command()
