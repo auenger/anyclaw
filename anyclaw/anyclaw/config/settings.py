@@ -1,0 +1,86 @@
+"""AnyClaw 配置系统"""
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """AnyClaw 配置"""
+
+    # Agent 配置
+    agent_name: str = Field(
+        default="AnyClaw",
+        description="Agent 显示名称"
+    )
+    agent_role: str = Field(
+        default="You are a helpful AI assistant named {name}.",
+        description="Agent 系统提示词"
+    )
+
+    # LLM 配置
+    llm_provider: str = Field(
+        default="openai",
+        description="LLM 提供商"
+    )
+    llm_model: str = Field(
+        default="gpt-4o-mini",
+        description="LLM 模型"
+    )
+    llm_temperature: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=2.0,
+        description="LLM 温度参数"
+    )
+    llm_max_tokens: int = Field(
+        default=2000,
+        ge=1,
+        description="LLM 最大生成分数"
+    )
+    llm_timeout: int = Field(
+        default=60,
+        ge=1,
+        description="LLM 请求超时时间（秒）"
+    )
+
+    # API Keys
+    openai_api_key: str = Field(
+        default="",
+        description="OpenAI API Key"
+    )
+    anthropic_api_key: str = Field(
+        default="",
+        description="Anthropic API Key"
+    )
+
+    # CLI 配置
+    cli_prompt: str = Field(
+        default="You: ",
+        description="CLI 输入提示符"
+    )
+
+    # 技能配置
+    skills_dir: str = Field(
+        default="anyclaw/skills/builtin",
+        description="技能目录"
+    )
+
+    # 工作空间
+    workspace_dir: str = Field(
+        default="workspace",
+        description="工作空间目录"
+    )
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow"
+    )
+
+    def get_system_prompt(self) -> str:
+        """获取系统提示词"""
+        return self.agent_role.format(name=self.agent_name)
+
+
+# 全局配置实例
+settings = Settings()

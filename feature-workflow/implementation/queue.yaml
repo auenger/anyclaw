@@ -1,0 +1,23 @@
+# Feature 调度队列
+# 此文件由 workflow 自动维护，请勿手动修改
+
+#
+
+meta:
+  last_updated: 2026-03-03T10:00:00
+  version: 2
+
+# 正在开发的需求
+active: []
+
+  # 每个需求包含：
+  # - size: S|M|L (S=Small, M = medium, L = large)
+  # priority (1-100, 默认 50)
+      # dependencies: [] # 其他 feature ID (optional)
+      # parent: null            # 父 feature ID，如果是子 feature (如有)
+      # children: [] # 子 feature ID列表 (split 时)
+      # split: false                # 标记为非独立需求头
+ 用于分组显示
+
+      # created: {timestamp}
+

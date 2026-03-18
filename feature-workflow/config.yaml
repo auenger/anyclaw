@@ -1,0 +1,73 @@
+# Feature Workflow 配置
+
+# 项目信息
+project:
+  name: AnyClaw
+  main_branch: main              # 默认合并目标分支
+  repo_path: .                   # Git 仓库路径 (当前目录)
+
+  tech_stack: python-311
+
+  test_framework: pytest
+
+# 并行控制
+parallelism:
+  max_concurrent: 3                    # 最大并行开发数
+
+# Git 设置
+git:
+  remote: origin                       # 远程仓库名称
+  auto_push: false                     # 合并后自动推送 main
+  merge_strategy: "--no-ff"            # 合并策略
+  push_tags: true                      # 是否自动推送 tag
+
+# 分支策略
+branch_prefix: feature
+worktree_prefix: AnyClaw
+worktree_base: ..
+
+# 工作流设置
+workflow:
+  auto_start: false
+  auto_start_next: true            # 并行开发完成后自动启动下一个 pending feature
+  require_checklist: true
+
+  # 需求切分
+  splitting:
+    enabled: true
+    threshold: 3              # 超过3个价值点自动拆分
+
+  # 测试配置
+  testing:
+    pytest_enabled: true               # 启用 pytest 测试
+    test_dir: tests                    # 测试目录
+    coverage_enabled: true             # 启用覆盖率统计
+    coverage_target: 80                # 目标覆盖率
+
+# 归档配置
+completion:
+  archive:
+    create_tag: true                   # 创建归档 tag
+    tag_format: "{id}-{date}"          # tag 格式: feat-auth-20260302
+    tag_date_format: "%Y%m%d"          # 日期格式
+
+  cleanup:
+    delete_worktree: true              # 删除 worktree
+    delete_branch: true                # 删除分支 (可从 tag 恢复)
+
+  record:
+    update_spec: true                  # 更新 spec.md
+    update_archive_log: true           # 更新 archive-log.yaml
+
+# 命名规则
+naming:
+  feature_prefix: feat                 # feat-xxx
+  branch_prefix: feature               # feature/xxx
+  worktree_prefix: AnyClaw             # ../AnyClaw-feat-xxx
+
+# 路径配置
+paths:
+  features_dir: features               # 需求目录
+  archive_dir: features/archive        # 归档目录
+  worktree_base: ..                    # worktree 父目录
+  repo_path: .                         # Git 仓库相对路径

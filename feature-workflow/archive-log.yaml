@@ -1,0 +1,49 @@
+# Feature 归档日志
+# 记录所有已完成的特性
+
+meta:
+  last_updated: "2026-03-18T10:15:00"
+  version: 1
+  total_completed: 5
+
+# 已完成的特性
+records:
+  - id: feat-mvp-init
+    name: 项目初始化和配置系统
+    completed_at: "2026-03-18T10:15:00"
+    archive_path: features/archive/done-feat-mvp-init
+    summary: |
+      创建 AnyClaw 项目基础架构，包括 Poetry 依赖管理、
+      Pydantic Settings 配置系统、Black/Ruff 代码质量工具。
+
+  - id: feat-mvp-agent
+    name: Agent 引擎核心
+    completed_at: "2026-03-18T10:15:00"
+    archive_path: features/archive/done-feat-mvp-agent
+    summary: |
+      实现 Agent 核心引擎，包括 AgentLoop 主处理循环、
+      ConversationHistory 对话历史管理、ContextBuilder 上下文构建。
+
+  - id: feat-mvp-cli
+    name: CLI 交互频道
+    completed_at: "2026-03-18T10:15:00"
+    archive_path: features/archive/done-feat-mvp-cli
+    summary: |
+      实现 CLI 交互界面，包括 CLIChannel 频道、Typer 命令行应用
+      (chat, config, version 命令)，Rich 美化输出。
+
+  - id: feat-mvp-skills
+    name: 技能系统
+    completed_at: "2026-03-18T10:15:00"
+    archive_path: features/archive/done-feat-mvp-skills
+    summary: |
+      实现技能系统，包括 Skill 抽象基类、SkillLoader 动态加载器、
+      两个内置示例技能 (EchoSkill, TimeSkill)。
+
+  - id: feat-mvp-integration
+    name: 应用集成和测试
+    completed_at: "2026-03-18T10:15:00"
+    archive_path: features/archive/done-feat-mvp-integration
+    summary: |
+      集成测试，包括 test_config.py、test_agent.py、test_skills.py
+      三个测试文件，共 11 个测试用例。

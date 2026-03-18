@@ -1,0 +1,54 @@
+# Feature Workflow 配置
+
+project:
+  name: OA_Tool
+  main_branch: main
+  repo_path: oa-tool              # Git 仓库子目录
+
+parallelism:
+  max_concurrent: 2                    # 最大并行开发数
+
+workflow:
+  auto_start: true                     # 完成一个后自动启动下一个
+  require_checklist: true              # 完成前检查 checklist
+
+  # 需求切分配置
+  splitting:
+    enabled: true                    # 启用需求切分功能
+    threshold: 3                    # 3个以上用户价值点触发切分
+    auto_dependencies: true         # 自动设置子需求依赖关系
+    force_split: false            # 是否强制切分（默认 false）
+    suggest_split: true           # 是否建议切分（默认true）
+
+completion:
+  # 归档策略
+  archive:
+    create_tag: true                   # 创建归档 tag
+    tag_format: "{id}-{date}"          # tag 格式: feat-auth-20260302
+    tag_date_format: "%Y%m%d"          # 日期格式
+
+  # 清理策略
+  cleanup:
+    delete_worktree: true              # 删除 worktree（释放空间）
+    delete_branch: true                # 删除分支（已通过 tag 归档，可恢复）
+
+  # 记录策略
+  record:
+    update_spec: true                  # 更新 spec.md 添加合并记录
+    update_archive_log: true           # 更新 archive-log.yaml
+
+naming:
+  feature_prefix: feat                 # feat-xxx
+  branch_prefix: feature               # feature/xxx
+  worktree_prefix: OA_Tool             # ../OA_Tool-feat-xxx
+
+paths:
+  features_dir: features               # 需求目录
+  archive_dir: features/archive        # 归档目录
+  worktree_base: ..                    # worktree 父目录
+  repo_path: oa-tool                   # Git 仓库相对路径
+
+git:
+  auto_push: false                     # 是否自动推送 main
+  merge_strategy: "--no-ff"            # 合并策略
+  push_tags: false                     # 是否自动推送 tag

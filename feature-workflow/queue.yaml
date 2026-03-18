@@ -1,0 +1,170 @@
+# Feature 调度队列
+# 此文件由 workflow 自动维护
+
+meta:
+  last_updated: "2026-03-18T16:00:00"
+  version: 6
+
+# 父需求（用于分组追踪)
+parents:
+  - id: feat-mvp
+    name: AnyClaw MVP
+    description: MVP 实施方案 - 完整的 AI 智能体系统
+    priority: 95
+    size: L
+    status: completed
+    children:
+      - feat-mvp-init
+      - feat-mvp-agent
+      - feat-mvp-cli
+      - feat-mvp-skills
+      - feat-mvp-integration
+
+# 正在开发的需求
+active: []
+
+# 等待中的需求（按优先级排序）
+pending:
+  - id: feat-tool-calling
+    name: Tool Calling 核心框架
+    priority: 95
+    size: M
+    created_at: "2026-03-18T14:30:00"
+    dependencies: []
+    value_points:
+      - SKILL.md 解析器
+      - Tool Definition 生成
+      - Tool Calling 执行
+
+  - id: feat-zai-provider
+    name: ZAI/GLM CodePlan Provider
+    priority: 90
+    size: M
+    created_at: "2026-03-18T15:00:00"
+    dependencies:
+      - feat-mvp-agent
+    value_points:
+      - ZAI Provider 配置
+      - 自动 Endpoint 检测
+      - CLI Onboard 集成
+
+  - id: feat-workspace-init
+    name: Workspace 初始化和引导
+    priority: 88
+    size: M
+    created_at: "2026-03-18T16:00:00"
+    dependencies:
+      - feat-mvp-agent
+      - feat-mvp-cli
+    value_points:
+      - Workspace 目录管理
+      - 引导文件系统
+
+  - id: feat-token-counter
+    name: Token 计数与限制
+    priority: 85
+    size: S
+    created_at: "2026-03-18T15:30:00"
+    dependencies:
+      - feat-mvp-agent
+    value_points:
+      - Token 计数器
+      - Token 限制与警告
+
+  - id: feat-agent-persona
+    name: 智能体人设系统
+    priority: 82
+    size: M
+    created_at: "2026-03-18T16:00:00"
+    dependencies:
+      - feat-workspace-init
+    value_points:
+      - 人设和身份系统
+      - 用户档案系统
+      - 工具说明系统
+
+  - id: feat-context-compression
+    name: 智能上下文压缩
+    priority: 80
+    size: M
+    created_at: "2026-03-18T15:30:00"
+    dependencies:
+      - feat-token-counter
+    value_points:
+      - 对话摘要压缩
+      - 滑动窗口策略
+      - 长对话处理
+
+  - id: feat-memory-system
+    name: 记忆系统
+    priority: 78
+    size: M
+    created_at: "2026-03-18T16:00:00"
+    dependencies:
+      - feat-workspace-init
+      - feat-agent-persona
+    value_points:
+      - 长期记忆
+      - 每日记忆日志
+      - 记忆自动化
+
+  - id: feat-bundled-skills
+    name: 内置 Skills 移植与扩展
+    priority: 75
+    size: M
+    created_at: "2026-03-18T14:30:00"
+    dependencies:
+      - feat-tool-calling
+    value_points:
+      - 基础工具 Skills (weather, time, echo)
+      - 开发工具 Skills (github, gh-issues)
+      - 文件操作 Skills (file_ops)
+      - 代码执行 Skills (code_exec)
+      - 网络搜索 Skills (web_search)
+      - 数据处理 Skills (data_process)
+      - Skills 管理命令
+
+# 阻塞中的需求
+blocked: []
+
+# 已完成的需求
+completed:
+  - id: feat-mvp-init
+    name: 项目初始化和配置系统
+    priority: 90
+    size: M
+    parent: feat-mvp
+    completed_at: "2026-03-18T10:15:00"
+    archive_path: features/archive/done-feat-mvp-init
+
+  - id: feat-mvp-agent
+    name: Agent 引擎核心
+    priority: 95
+    size: M
+    parent: feat-mvp
+    completed_at: "2026-03-18T10:15:00"
+    archive_path: features/archive/done-feat-mvp-agent
+
+  - id: feat-mvp-cli
+    name: CLI 交互频道
+    priority: 90
+    size: M
+    parent: feat-mvp
+    completed_at: "2026-03-18T10:15:00"
+    archive_path: features/archive/done-feat-mvp-cli
+
+  - id: feat-mvp-skills
+    name: 技能系统
+    priority: 85
+    size: M
+    parent: feat-mvp
+    completed_at: "2026-03-18T10:15:00"
+    archive_path: features/archive/done-feat-mvp-skills
+
+  - id: feat-mvp-integration
+    name: 应用集成和测试
+    priority: 80
+    size: M
+    parent: feat-mvp
+    completed_at: "2026-03-18T10:15:00"
+    archive_path: features/archive/done-feat-mvp-integration
