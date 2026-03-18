@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-18T12:30:00"
-  version: 9
+  last_updated: "2026-03-18T12:45:00"
+  version: 10
 
 # 父需求（用于分组追踪)
 parents:
@@ -25,17 +25,6 @@ active: []
 
 # 等待中的需求（按优先级排序）
 pending:
-  - id: feat-token-counter
-    name: Token 计数与限制
-    priority: 85
-    size: S
-    created_at: "2026-03-18T15:30:00"
-    dependencies:
-      - feat-mvp-agent
-    value_points:
-      - Token 计数器
-      - Token 限制与警告
-
   - id: feat-agent-persona
     name: 智能体人设系统
     priority: 82
@@ -52,8 +41,7 @@ pending:
     priority: 80
     size: M
     created_at: "2026-03-18T15:30:00"
-    dependencies:
-      - feat-token-counter
+    dependencies: []
     value_points:
       - 对话摘要压缩
       - 滑动窗口策略
@@ -76,8 +64,7 @@ pending:
     priority: 75
     size: M
     created_at: "2026-03-18T14:30:00"
-    dependencies:
-      - feat-tool-calling
+    dependencies: []
     value_points:
       - 基础工具 Skills (weather, time, echo)
       - 开发工具 Skills (github, gh-issues)
@@ -92,6 +79,13 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-token-counter
+    name: Token 计数与限制
+    priority: 85
+    size: S
+    completed_at: "2026-03-18T12:45:00"
+    archive_path: features/archive/done-feat-token-counter
+
   - id: feat-workspace-init
     name: Workspace 初始化和引导
     priority: 88
