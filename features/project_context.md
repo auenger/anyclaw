@@ -1,0 +1,328 @@
+---
+last_updated: '2026-03-18'
+version: 3
+features_completed: 15
+tests_passing: 280
+---
+
+# Project Context: AnyClaw
+
+> This file contains critical rules and patterns that AI agents must follow when implementing code. Keep it concise and focused on non-obvious details.
+
+---
+
+## Technology Stack
+
+| Category | Technology | Version | Notes |
+|----------|-----------|---------|-------|
+| Language | Python | 3.11+ | Type hints required |
+| Package Manager | Poetry | 2.x | pyproject.toml |
+| Config | Pydantic Settings | 2.x | .env file |
+| CLI | Typer + Rich | 0.20+ / 14+ | Beautiful terminal |
+| LLM | litellm | 1.82+ | Multi-provider |
+| Testing | pytest + pytest-asyncio | 8.x / 0.23+ | Async tests |
+| Code Style | Black + Ruff | - | line-length=100 |
+
+## Directory Structure
+
+```
+anyclaw/
+├── anyclaw/                   # Main package
+│   ├── agent/                 # Agent engine
+│   │   ├── loop.py            # Main processing loop (sync + stream)
+│   │   ├── context.py         # Context builder
+│   │   ├── history.py         # Conversation history
+│   │   ├── tool_loop.py       # Tool calling loop
+│   │   └── persona.py         # Persona system
+│   ├── channels/              # Channel plugins
+│   │   └── cli.py             # CLI channel (sync + stream)
+│   ├── skills/                # Skill system
+│   │   ├── base.py            # Skill base class
+│   │   ├── loader.py          # Skill loader
+│   │   ├── models.py          # Data models
+│   │   ├── parser.py          # Markdown parser
+│   │   ├── converter.py       # Tool converter
+│   │   ├── executor.py        # Tool executor
+│   │   └── builtin/           # Built-in skills (11 skills)
+│   │       ├── echo/          # Echo skill
+│   │       ├── time/          # Time skill
+│   │       ├── calc/          # Calculator skill
+│   │       ├── file/          # File operations
+│   │       ├── http/          # HTTP requests
+│   │       ├── weather/       # Weather query
+│   │       ├── code_exec/     # Code execution
+│   │       ├── process/       # Process management
+│   │       ├── text/          # Text processing
+│   │       ├── system/        # System information
+│   │       └── data/          # Data processing
+│   ├── providers/             # Provider system
+│   │   ├── base.py            # Provider base class
+│   │   ├── zai.py             # ZAI Provider
+│   │   └── zai_detect.py      # Endpoint detection
+│   ├── memory/                # Memory system
+│   │   ├── manager.py         # Memory manager
+│   │   └── automation.py      # Memory automation
+│   ├── workspace/             # Workspace system
+│   │   ├── manager.py         # Workspace manager
+│   │   └── bootstrap.py       # Bootstrap loader
+│   ├── config/                # Configuration
+│   │   └── settings.py        # Pydantic Settings (25+ fields)
+│   └── cli/                   # CLI application
+│       ├── app.py             # Typer app
+│       ├── onboard.py         # Onboard command
+│       ├── workspace.py       # Workspace commands
+│       ├── token.py           # Token commands
+│       ├── persona.py         # Persona commands
+│       ├── compress.py        # Compress commands
+│       └── memory.py          # Memory commands
+├── tests/                     # Test files (280 tests)
+├── pyproject.toml             # Project config
+└── .env                       # Environment vars
+```
+
+## Critical Rules
+
+### Must Follow
+
+- Rule 1: **Async First** - All agent processing, LLM calls, skill execution must use async/await
+- Rule 2: **Type Hints Required** - All functions must have complete type annotations
+- Rule 3: **Pydantic for Data** - Use Pydantic models for all data validation
+- Rule 4: **Settings from Env** - Configuration via Pydantic Settings, env vars take precedence
+- Rule 5: **Model Prefix Routing** - Use provider prefix for model selection (zai/glm-5, gpt-4o)
+- Rule 6: **Streaming Support** - New features should support streaming when applicable
+
+### Must Avoid
+
+- Anti-pattern 1: **Synchronous LLM calls** - Always use acompletion
+- Anti-pattern 2: **Hardcoded API keys** - Use settings or environment variables
+- Anti-pattern 3: **Blocking I/O** - Use async httpx instead of requests
+- Anti-pattern 4: **Mutable default args** - Use None and create new instances
+
+## Code Patterns
+
+### Naming Conventions
+
+- Files: `snake_case.py`
+- Classes: `PascalCase` (e.g., `AgentLoop`, `SkillLoader`)
+- Functions: `snake_case` (e.g., `get_zai_provider`, `detect_zai_endpoint`)
+- Private: `_leading_underscore` (e.g., `_call_llm`, `_get_provider_kwargs`)
+- Async generators: `*_stream` suffix (e.g., `process_stream`, `_stream_llm`)
+
+### Import Patterns
+
+```python
+# Standard library first
+import asyncio
+from typing import Optional, Dict, Any, AsyncGenerator
+
+# Third-party next
+from litellm import acompletion
+from pydantic import Field
+
+# Local imports last
+from anyclaw.config.settings import settings
+from .history import ConversationHistory
+```
+
+### Error Handling
+
+```python
+# Standard error handling pattern
+try:
+    response = await acompletion(**kwargs)
+    return response.choices[0].message.content
+except Exception as e:
+    return f"Error: {str(e)}"
+```
+
+### Streaming Pattern
+
+```python
+# Streaming output pattern
+async def process_stream(self, user_input: str) -> AsyncGenerator[str, None]:
+    """Stream response chunks"""
+    self.history.add_user_message(user_input)
+
+    full_response = []
+    async for chunk in self._stream_llm(messages):
+        full_response.append(chunk)
+        yield chunk
+
+    self.history.add_assistant_message("".join(full_response))
+```
+
+### Provider Pattern
+
+```python
+# Get provider-specific kwargs based on model prefix
+def _get_provider_kwargs(model: str) -> Dict[str, Any]:
+    if model.startswith("zai/"):
+        from anyclaw.providers.zai import get_zai_provider
+        provider = get_zai_provider()
+        return provider.get_completion_kwargs(model)
+    return {}
+```
+
+### Skill Pattern
+
+```python
+# Skill implementation pattern
+class MySkill(Skill):
+    """Skill description"""
+
+    async def execute(self, **kwargs) -> str:
+        """Execute skill
+
+        Args:
+            param1: Description
+
+        Returns:
+            Result string
+        """
+        # Implementation
+        return result
+```
+
+## Testing Patterns
+
+### Unit Tests
+
+- Test file location: `tests/` directory
+- Naming: `test_{module}.py`
+- Async tests: Use `@pytest.mark.asyncio` decorator
+
+```python
+@pytest.mark.asyncio
+async def test_process_stream():
+    agent = AgentLoop(enable_tools=False)
+    chunks = []
+    async for chunk in agent.process_stream("test"):
+        chunks.append(chunk)
+    assert len(chunks) > 0
+```
+
+### Fixtures
+
+```python
+@pytest.fixture
+def mock_settings():
+    with patch("anyclaw.config.settings") as mock:
+        mock.zai_api_key = "test-key"
+        yield mock
+```
+
+## Provider Configuration
+
+### ZAI Endpoints
+
+| Endpoint | Base URL | Use Case |
+|----------|----------|----------|
+| coding-global | api.z.ai/api/paas/v4 | GLM Coding Plan (Global) |
+| coding-cn | open.bigmodel.cn/api/paas/v4 | GLM Coding Plan (China) |
+| global | api.z.ai/api/paas/v4 | Standard Z.AI API |
+| cn | open.bigmodel.cn/api/paas/v4 | Z.AI China API |
+
+### Model Routing
+
+```python
+# Model prefix determines provider
+"zai/glm-5"        → ZAI Provider
+"zai/glm-4.7"      → ZAI Provider
+"gpt-4o-mini"      → OpenAI (default)
+"claude-3-5-sonnet" → Anthropic
+```
+
+## Configuration Reference
+
+### Key Settings
+
+```python
+# Agent settings
+agent_name: str = "AnyClaw"
+agent_role: str = "You are a helpful AI assistant..."
+
+# LLM settings
+llm_provider: str = "openai"
+llm_model: str = "gpt-4o-mini"
+llm_temperature: float = 0.7
+llm_max_tokens: int = 2000
+
+# Streaming settings
+stream_enabled: bool = True
+stream_buffer_size: int = 10
+
+# Memory settings
+memory_enabled: bool = True
+memory_max_chars: int = 10000
+memory_daily_load_days: int = 2
+
+# Token settings
+token_soft_limit: int = 100000
+token_hard_limit: int = 200000
+```
+
+## Recent Changes
+
+| Date | Feature | Impact |
+|------|---------|--------|
+| 2026-03-18 | feat-streaming-output | Added streaming output support |
+| 2026-03-18 | feat-builtin-skills-v2 | Added 5 new skills (code_exec, process, text, system, data) |
+| 2026-03-18 | feat-memory-system | Added long-term memory and daily logs |
+| 2026-03-18 | feat-context-compression | Added context compression |
+| 2026-03-18 | feat-agent-persona | Added persona system |
+| 2026-03-18 | feat-token-counter | Added token counting |
+| 2026-03-18 | feat-workspace-init | Added workspace initialization |
+| 2026-03-18 | feat-zai-provider | Added ZAI/GLM Provider support |
+| 2026-03-18 | feat-tool-calling | Added Tool Calling framework |
+| 2026-03-18 | feat-mvp-* | MVP implementation complete |
+
+## CLI Commands Reference
+
+```bash
+# Chat
+anyclaw chat [--stream/--no-stream] [--model MODEL]
+
+# Configuration
+anyclaw config --show
+anyclaw config --show --provider zai
+
+# Onboarding
+anyclaw onboard --auth-choice zai-coding-global
+anyclaw onboard detect-zai --api-key KEY --save
+
+# Workspace
+anyclaw setup [--workspace PATH]
+anyclaw workspace status
+
+# Token
+anyclaw token count --text "..."
+anyclaw token status
+
+# Persona
+anyclaw persona list
+anyclaw persona show default
+
+# Memory
+anyclaw memory show
+anyclaw memory log "entry"
+anyclaw memory search "keyword"
+anyclaw memory stats
+
+# Compress
+anyclaw compress status
+anyclaw compress run
+```
+
+## Update Log
+
+- 2026-03-18: Added feat-streaming-output - Streaming output support
+- 2026-03-18: Added feat-builtin-skills-v2 - Extended builtin skills
+- 2026-03-18: Added feat-memory-system - Memory system
+- 2026-03-18: Added feat-context-compression - Context compression
+- 2026-03-18: Added feat-agent-persona - Persona system
+- 2026-03-18: Added feat-token-counter - Token counting
+- 2026-03-18: Added feat-workspace-init - Workspace initialization
+- 2026-03-18: Added feat-zai-provider - ZAI/GLM CodePlan Provider
+- 2026-03-18: Added feat-tool-calling - Tool Calling core framework
+- 2026-03-18: Initial MVP features completed (5 features)
+- 2026-03-18: Project context created
