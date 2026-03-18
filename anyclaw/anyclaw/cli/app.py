@@ -30,6 +30,7 @@ app.add_typer(create_memory_app(), name="memory")
 def chat(
     agent_name: str = typer.Option(None, help="Agent name"),
     model: str = typer.Option(None, help="LLM model"),
+    stream: bool = typer.Option(None, "--stream/--no-stream", help="Enable streaming output"),
 ):
     """Start interactive chat"""
 
@@ -38,8 +39,11 @@ def chat(
         settings.agent_name = agent_name
     if model:
         settings.llm_model = model
+    if stream is not None:
+        settings.stream_enabled = stream
 
-    console.print(f"[bold blue]Starting {settings.agent_name}...[/bold blue]\n")
+    console.print(f"[bold blue]Starting {settings.agent_name}...[/bold blue]")
+    console.print(f"[dim]Streaming: {'enabled' if settings.stream_enabled else 'disabled'}[/dim]\n")
 
     # 初始化组件
     agent = AgentLoop()
@@ -52,13 +56,22 @@ def chat(
 
     console.print(f"[dim]Loaded {len(skills_info)} skills[/dim]\n")
 
-    # 定义处理函数
-    async def process(user_input: str) -> str:
-        return await agent.process(user_input)
-
     # 运行 CLI
     import asyncio
-    asyncio.run(channel.run(process))
+
+    if settings.stream_enabled:
+        # 流式模式
+        async def stream_process(user_input: str):
+            async for chunk in agent.process_stream(user_input):
+                yield chunk
+
+        asyncio.run(channel.run_stream(stream_process))
+    else:
+        # 非流式模式
+        async def process(user_input: str) -> str:
+            return await agent.process(user_input)
+
+        asyncio.run(channel.run(process))
 
 
 @app.command()

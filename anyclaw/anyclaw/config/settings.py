@@ -207,6 +207,17 @@ class Settings(BaseSettings):
         description="是否自动更新记忆（无需确认）"
     )
 
+    # 流式输出配置
+    stream_enabled: bool = Field(
+        default=True,
+        description="是否启用流式输出"
+    )
+    stream_buffer_size: int = Field(
+        default=10,
+        ge=1,
+        description="流式输出缓冲块数"
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
