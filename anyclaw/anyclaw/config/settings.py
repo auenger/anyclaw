@@ -149,6 +149,43 @@ class Settings(BaseSettings):
         description="单个人设文件最大字符数"
     )
 
+    # 压缩配置
+    compress_enabled: bool = Field(
+        default=True,
+        description="是否启用自动压缩"
+    )
+    compress_threshold: int = Field(
+        default=10,
+        ge=2,
+        description="触发压缩的消息数阈值"
+    )
+    compress_keep_recent: int = Field(
+        default=5,
+        ge=1,
+        description="压缩时保留的最近消息数"
+    )
+    compress_strategy: str = Field(
+        default="truncate",
+        description="压缩策略: summary/truncate/key_points"
+    )
+
+    # 滑动窗口配置
+    window_enabled: bool = Field(
+        default=True,
+        description="是否启用滑动窗口"
+    )
+    window_size: int = Field(
+        default=20,
+        ge=5,
+        description="滑动窗口大小"
+    )
+
+    # 检查点配置
+    checkpoint_dir: str = Field(
+        default="~/.anyclaw/checkpoints",
+        description="检查点存储目录"
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
