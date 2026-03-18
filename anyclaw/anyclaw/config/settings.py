@@ -116,6 +116,28 @@ class Settings(BaseSettings):
         description="引导文件总最大字符数"
     )
 
+    # Token 管理配置
+    token_soft_limit: int = Field(
+        default=100000,
+        ge=1000,
+        description="Token 软限制（触发警告）"
+    )
+    token_hard_limit: int = Field(
+        default=200000,
+        ge=1000,
+        description="Token 硬限制（阻止输入）"
+    )
+    token_warning_threshold: float = Field(
+        default=0.8,
+        ge=0.5,
+        le=1.0,
+        description="Token 警告阈值（相对于软限制）"
+    )
+    token_warning_enabled: bool = Field(
+        default=True,
+        description="是否启用 token 警告"
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

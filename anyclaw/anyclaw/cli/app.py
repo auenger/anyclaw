@@ -13,9 +13,11 @@ console = Console()
 # 导入并注册子命令
 from .onboard import create_onboard_app
 from .workspace import create_workspace_app
+from .token import create_token_app
 
 app.add_typer(create_onboard_app(), name="onboard")
 app.add_typer(create_workspace_app(), name="workspace")
+app.add_typer(create_token_app(), name="token")
 
 
 @app.command()
