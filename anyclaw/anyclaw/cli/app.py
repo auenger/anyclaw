@@ -50,11 +50,15 @@ def chat(
     channel = CLIChannel()
 
     # 加载技能
-    skill_loader = SkillLoader(settings.skills_dir)
-    skills_info = skill_loader.load_all()
-    agent.set_skills(skills_info)
+    skill_loader = SkillLoader(skills_dir=settings.skills_dir)
+    skills_info = skill_loader.load_all()  # 加载所有技能
+    skills_dict = skill_loader.get_skill_definitions()  # 获取 SkillDefinition 格式
 
-    console.print(f"[dim]Loaded {len(skills_info)} skills[/dim]\n")
+    # 设置技能（如果有）
+    if skills_dict:
+        agent.set_skills(skills_dict)
+
+    console.print(f"[dim]Loaded {len(skills_info)} skills ({len(skills_dict)} with definitions)[/dim]\n")
 
     # 运行 CLI
     import asyncio
