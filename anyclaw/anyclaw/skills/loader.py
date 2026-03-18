@@ -4,7 +4,7 @@ from typing import List, Dict, Optional
 from pathlib import Path
 
 from .base import Skill
-from .models import SkillDefinition
+from .models import SkillDefinition, SkillFrontmatter
 from .parser import parse_skill_md, validate_skill
 
 
@@ -124,7 +124,27 @@ class SkillLoader:
 
     def get_skill_definitions(self) -> Dict[str, SkillDefinition]:
         """获取所有 SkillDefinition（用于 Tool Calling）"""
-        return self.md_skills.copy()
+        definitions = {}
+
+        # 转换 Python 技能为 SkillDefinition
+        for name, skill in self.python_skills.items():
+            info = skill.get_info()
+            skill_name = info.get("name", name)
+            definitions[skill_name] = SkillDefinition(
+                name=skill_name,
+                description=info.get("description", ""),
+                content=info.get("description", ""),
+                frontmatter=SkillFrontmatter(
+                    name=skill_name,
+                    description=info.get("description", "")
+                ),
+                source_path=f"python:{name}"
+            )
+
+        # 添加 MD 技能
+        definitions.update(self.md_skills)
+
+        return definitions
 
     def get_python_skill(self, name: str) -> Optional[Skill]:
         """获取 Python Skill 实例"""

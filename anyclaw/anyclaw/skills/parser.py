@@ -2,11 +2,14 @@
 import re
 import shutil
 import os
+import logging
 from pathlib import Path
 from typing import Optional, Tuple
 import yaml
 
 from .models import SkillDefinition, SkillFrontmatter
+
+logger = logging.getLogger(__name__)
 
 
 class SkillParseError(Exception):
@@ -29,7 +32,9 @@ def parse_skill_md(file_path: Path) -> Optional[SkillDefinition]:
         frontmatter, markdown = extract_frontmatter(content)
 
         if not frontmatter:
-            raise SkillParseError(f"No valid frontmatter in {file_path}")
+            # 静默跳过没有 frontmatter 的文件（可能是纯文档）
+            logger.debug(f"Skipping {file_path}: no valid frontmatter")
+            return None
 
         # 解析 frontmatter
         fm = SkillFrontmatter.model_validate(frontmatter)
@@ -46,7 +51,7 @@ def parse_skill_md(file_path: Path) -> Optional[SkillDefinition]:
         return skill
 
     except Exception as e:
-        print(f"[SkillParser] Error parsing {file_path}: {e}")
+        logger.debug(f"Error parsing {file_path}: {e}")
         return None
 
 

@@ -1,4 +1,6 @@
 """CLI 应用"""
+from pathlib import Path
+
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -31,8 +33,12 @@ def chat(
     agent_name: str = typer.Option(None, help="Agent name"),
     model: str = typer.Option(None, help="LLM model"),
     stream: bool = typer.Option(None, "--stream/--no-stream", help="Enable streaming output"),
+    workspace: str = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
 ):
     """Start interactive chat"""
+    from anyclaw.workspace.manager import WorkspaceManager
+    from anyclaw.workspace import sync_workspace_templates
+    from pathlib import Path
 
     # 覆盖配置
     if agent_name:
@@ -42,11 +48,18 @@ def chat(
     if stream is not None:
         settings.stream_enabled = stream
 
+    # 确保 workspace 存在
+    ws_manager = WorkspaceManager(workspace_path=workspace)
+    if not ws_manager.exists():
+        console.print("[dim]初始化工作区...[/dim]")
+        ws_manager.ensure_exists(silent=True)
+
     console.print(f"[bold blue]Starting {settings.agent_name}...[/bold blue]")
+    console.print(f"[dim]Workspace: {ws_manager.path}[/dim]")
     console.print(f"[dim]Streaming: {'enabled' if settings.stream_enabled else 'disabled'}[/dim]\n")
 
     # 初始化组件
-    agent = AgentLoop()
+    agent = AgentLoop(workspace=ws_manager.path)
     channel = CLIChannel()
 
     # 加载技能
@@ -170,42 +183,86 @@ def providers():
 def setup(
     workspace: str = typer.Option(None, "--workspace", "-w", help="自定义工作区路径"),
     no_git: bool = typer.Option(False, "--no-git", help="跳过 git 初始化"),
-    skip_bootstrap: bool = typer.Option(False, "--skip-bootstrap", help="跳过引导文件创建"),
+    force: bool = typer.Option(False, "--force", "-f", help="强制重新创建工作区"),
 ):
     """初始化设置（创建工作区和默认文件）"""
     from anyclaw.workspace.manager import WorkspaceManager
-    from anyclaw.workspace.bootstrap import BootstrapLoader
+    from anyclaw.workspace import sync_workspace_templates
 
     console.print("\n[bold blue]AnyClaw Setup[/bold blue]\n")
 
     # 创建工作区
     manager = WorkspaceManager(workspace_path=workspace)
 
-    if manager.exists():
+    if manager.exists() and not force:
         console.print(f"[yellow]工作区已存在: {manager.path}[/yellow]")
+        console.print("[dim]同步模板文件...[/dim]")
     else:
         try:
-            manager.create(init_git=not no_git)
+            added = manager.create(init_git=not no_git, force=force)
             console.print(f"[green]✓[/green] 工作区创建成功: {manager.path}")
+            for name in added:
+                console.print(f"  [dim]Created {name}[/dim]")
         except Exception as e:
             console.print(f"[red]创建失败: {e}[/red]")
             raise typer.Exit(1)
+
+    # 同步模板（只创建缺失的）
+    added = sync_workspace_templates(manager.path)
+    if added:
+        console.print("[green]✓[/green] 新增模板文件:")
+        for name in added:
+            console.print(f"  [dim]{name}[/dim]")
 
     # 显示状态
     if manager.is_git_repo():
         console.print("[green]✓[/green] Git 仓库已初始化")
 
-    # 引导状态
-    if not skip_bootstrap:
-        loader = BootstrapLoader(manager)
-        if loader.has_bootstrap():
-            console.print("[green]✓[/green] 引导文件已创建")
-            console.print("\n[dim]运行 'anyclaw chat' 开始首次会话[/dim]")
-        else:
-            console.print("[dim]引导文件已跳过[/dim]")
+    # 显示工作区结构
+    console.print(f"\n[bold]工作区结构:[/bold]")
+    console.print(f"  {manager.path}")
+    console.print(f"  ├── SOUL.md       # Agent 人设")
+    console.print(f"  ├── USER.md       # 用户档案")
+    console.print(f"  ├── AGENTS.md     # Agent 指令")
+    console.print(f"  ├── TOOLS.md      # 工具说明")
+    console.print(f"  ├── HEARTBEAT.md  # 心跳任务")
+    console.print(f"  ├── memory/       # 记忆存储")
+    console.print(f"  │   ├── MEMORY.md")
+    console.print(f"  │   └── HISTORY.md")
+    console.print(f"  └── skills/       # 自定义技能")
 
     console.print("\n[bold green]设置完成！[/bold green]")
-    console.print(f"工作区路径: {manager.path}")
+    console.print(f"\n下一步:")
+    console.print(f"  1. 编辑 [cyan]{manager.path}/USER.md[/cyan] 填写你的信息")
+    console.print(f"  2. 运行 [cyan]anyclaw chat[/cyan] 开始对话")
+
+
+@app.command()
+def init(
+    workspace: str = typer.Option(None, "--workspace", "-w", help="自定义工作区路径"),
+):
+    """在工作目录初始化 .anyclaw（用于项目级配置）"""
+    from anyclaw.workspace import sync_workspace_templates
+
+    # 在当前目录创建 .anyclaw
+    cwd = Path.cwd()
+    anyclaw_dir = cwd / ".anyclaw"
+    anyclaw_dir.mkdir(exist_ok=True)
+
+    console.print(f"[bold]在当前目录初始化 .anyclaw[/bold]")
+    console.print(f"路径: {anyclaw_dir}\n")
+
+    # 同步模板
+    added = sync_workspace_templates(anyclaw_dir)
+
+    if added:
+        console.print("[green]✓[/green] 创建文件:")
+        for name in added:
+            console.print(f"  [dim]{name}[/dim]")
+    else:
+        console.print("[dim]所有文件已存在，无需更新[/dim]")
+
+    console.print("\n[green]完成！[/green] 编辑 .anyclaw 下的文件来自定义行为。")
 
 
 if __name__ == "__main__":

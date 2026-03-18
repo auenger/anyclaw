@@ -27,6 +27,7 @@
 | feat-tool-calling | Tool Calling 核心框架 | ✅ completed | 95% | 95 |
 | feat-zai-provider | ZAI/GLM CodePlan Provider | ✅ completed | 95% | 90 |
 | feat-workspace-init | Workspace 初始化和引导 | ✅ completed | 90% | 88 |
+| feat-workspace-templates | Workspace 模板系统增强 | ✅ completed | 95% | 85 |
 | feat-token-counter | Token 计数与限制 | ✅ completed | 90% | 85 |
 | feat-agent-persona | 智能体人设系统 | ✅ completed | 90% | 82 |
 | feat-context-compression | 智能上下文压缩 | ✅ completed | 90% | 80 |
@@ -51,6 +52,7 @@ feat-mvp-init (初始化) ✅
     ├─→ feat-mvp-cli (CLI 频道) ✅
     │       └─→ feat-streaming-output (流式输出) ✅
     ├─→ feat-workspace-init (Workspace 初始化) ✅
+    │       ├─→ feat-workspace-templates (模板系统) ✅
     │       ├─→ feat-agent-persona (人设系统) ✅
     │       └─→ feat-memory-system (记忆系统) ✅
     └─→ feat-mvp-integration (集成测试) ✅
@@ -210,20 +212,21 @@ anyclaw chat --no-stream
 14. ✅ 长期记忆 (feat-memory-system)
 15. ✅ 扩展内置技能 (feat-builtin-skills-v2)
 16. ✅ 流式输出 (feat-streaming-output)
+17. ✅ Workspace 模板系统 (feat-workspace-templates)
 
 ## 当前队列状态
 
 ```yaml
 pending: []   # 无待开发需求
 active:  []   # 无活跃需求
-completed: 15 个特性
+completed: 16 个特性
 ```
 
 ## 统计
 
 | 指标 | 数值 |
 |------|------|
-| 完成特性数 | 15 |
+| 完成特性数 | 16 |
 | 内置技能数 | 11 |
 | 测试数量 | 280 |
 | 配置项数量 | 25+ |

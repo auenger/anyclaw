@@ -41,6 +41,22 @@ anyclaw/
 │   │   └── builtin/           # 内置技能
 │   │       ├── echo/
 │   │       └── time/
+│   ├── tools/                 # 工具系统
+│   │   ├── base.py            # 工具基类
+│   │   ├── registry.py        # 工具注册表
+│   │   ├── shell.py           # Shell 执行工具
+│   │   └── filesystem.py      # 文件系统工具
+│   ├── templates/             # 模板文件
+│   │   ├── SOUL.md            # Agent 人设模板
+│   │   ├── USER.md            # 用户档案模板
+│   │   ├── AGENTS.md          # Agent 指令模板
+│   │   ├── TOOLS.md           # 工具说明模板
+│   │   ├── HEARTBEAT.md       # 心跳任务模板
+│   │   └── memory/            # 记忆模板
+│   ├── workspace/             # 工作区管理
+│   │   ├── manager.py         # 工作区管理器
+│   │   ├── templates.py       # 模板同步
+│   │   └── bootstrap.py       # 引导系统
 │   ├── config/                # 配置系统
 │   │   └── settings.py        # Pydantic Settings
 │   └── cli/                   # CLI 应用
@@ -94,6 +110,13 @@ cp anyclaw/.env.example anyclaw/.env
 ```bash
 # 从 anyclaw/ 目录运行
 cd anyclaw
+
+# 初始化工作区
+poetry run python -m anyclaw setup
+
+# 在项目目录初始化
+cd /your/project
+poetry run python -m anyclaw init
 
 # 启动 CLI 聊天
 poetry run python -m anyclaw chat
@@ -197,6 +220,37 @@ poetry run mypy anyclaw/
 - 实现 `async execute(**kwargs) -> str` 方法
 - 将技能放在 `anyclaw/anyclaw/skills/builtin/` 目录
 - 每个技能目录包含 `skill.py` 文件
+
+### Workspace 模板系统
+
+AnyClaw 使用模板系统初始化工作区：
+
+```bash
+# 创建完整工作区 (~/.anyclaw/workspace)
+anyclaw setup
+
+# 在当前目录初始化项目级配置
+anyclaw init
+```
+
+**工作区结构**:
+```
+~/.anyclaw/workspace/
+├── SOUL.md       # Agent 人设
+├── USER.md       # 用户档案
+├── AGENTS.md     # Agent 指令
+├── TOOLS.md      # 工具说明
+├── HEARTBEAT.md  # 心跳任务
+├── memory/       # 记忆存储
+│   ├── MEMORY.md
+│   └── HISTORY.md
+└── skills/       # 自定义技能
+```
+
+**模板同步**:
+- 模板文件位于 `anyclaw/templates/`
+- 只创建缺失文件，不覆盖现有
+- 通过 `sync_workspace_templates()` 函数实现
 
 ### 测试规范
 

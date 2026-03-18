@@ -4,14 +4,9 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
-from anyclaw.workspace.templates import (
-    BOOTSTRAP_TEMPLATE,
-    GITIGNORE_TEMPLATE,
-    SOUL_TEMPLATE,
-    USER_TEMPLATE,
-)
+from anyclaw.workspace.templates import sync_workspace_templates, GITIGNORE_TEMPLATE
 
 
 class WorkspaceManager:
@@ -84,15 +79,16 @@ class WorkspaceManager:
         """检查是否是 git 仓库"""
         return (self._path / ".git").exists()
 
-    def create(self, init_git: bool = True, force: bool = False) -> bool:
+    def create(self, init_git: bool = True, force: bool = False, silent: bool = False) -> List[str]:
         """创建工作区
 
         Args:
             init_git: 是否初始化 git 仓库
             force: 是否强制重新创建（删除已存在的）
+            silent: 是否静默模式
 
         Returns:
-            是否成功创建
+            创建的文件列表
         """
         try:
             # 强制模式下删除已存在的目录
@@ -106,10 +102,15 @@ class WorkspaceManager:
             if init_git and not self.is_git_repo():
                 self._init_git()
 
-            # 创建默认文件
-            self._create_default_files()
+            # 创建 .gitignore
+            gitignore_path = self._path / ".gitignore"
+            if not gitignore_path.exists():
+                gitignore_path.write_text(GITIGNORE_TEMPLATE, encoding="utf-8")
 
-            return True
+            # 同步模板文件
+            added = sync_workspace_templates(self._path, silent=silent)
+
+            return added
 
         except Exception as e:
             raise RuntimeError(f"创建工作区失败: {e}") from e
@@ -144,21 +145,24 @@ class WorkspaceManager:
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return False
 
-    def _create_default_files(self) -> None:
-        """创建默认文件"""
-        files_to_create = [
-            ("BOOTSTRAP.md", BOOTSTRAP_TEMPLATE),
-            (".gitignore", GITIGNORE_TEMPLATE),
-            ("SOUL.md", SOUL_TEMPLATE),
-            ("USER.md", USER_TEMPLATE),
-        ]
+    def ensure_exists(self, silent: bool = False) -> List[str]:
+        """确保工作区存在
 
-        for filename, content in files_to_create:
-            filepath = self._path / filename
-            if not filepath.exists():
-                filepath.write_text(content, encoding="utf-8")
+        如果不存在则创建。
 
-    def get_files(self) -> list[dict]:
+        Args:
+            silent: 是否静默模式
+
+        Returns:
+            创建的文件列表
+        """
+        if self.exists():
+            # 同步模板文件（只创建缺失的）
+            return sync_workspace_templates(self._path, silent=silent)
+        else:
+            return self.create(silent=silent)
+
+    def get_files(self) -> List[dict]:
         """获取工作区文件列表
 
         Returns:
@@ -180,7 +184,59 @@ class WorkspaceManager:
 
         return files
 
-    def get_bootstrap_files(self) -> list[dict]:
+    def get_status(self) -> dict:
+        """获取工作区状态
+
+        Returns:
+            状态信息字典
+        """
+        status = {
+            "exists": self.exists(),
+            "path": str(self._path),
+            "profile": self._profile,
+            "is_git_repo": False,
+            "files": [],
+        }
+
+        if self.exists():
+            status["is_git_repo"] = self.is_git_repo()
+            status["files"] = self.get_files()
+
+        return status
+
+    def read_file(self, filename: str) -> Optional[str]:
+        """读取工作区文件
+
+        Args:
+            filename: 文件名
+
+        Returns:
+            文件内容，不存在返回 None
+        """
+        filepath = self._path / filename
+        if filepath.exists():
+            return filepath.read_text(encoding="utf-8")
+        return None
+
+    def write_file(self, filename: str, content: str) -> bool:
+        """写入工作区文件
+
+        Args:
+            filename: 文件名
+            content: 文件内容
+
+        Returns:
+            是否成功
+        """
+        try:
+            filepath = self._path / filename
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            filepath.write_text(content, encoding="utf-8")
+            return True
+        except Exception:
+            return False
+
+    def get_bootstrap_files(self) -> List[dict]:
         """获取引导文件列表
 
         Returns:
@@ -212,26 +268,6 @@ class WorkspaceManager:
             bootstrap_path.unlink()
             return True
         return False
-
-    def get_status(self) -> dict:
-        """获取工作区状态
-
-        Returns:
-            状态信息字典
-        """
-        status = {
-            "exists": self.exists(),
-            "path": str(self._path),
-            "profile": self._profile,
-            "is_git_repo": False,
-            "files": [],
-        }
-
-        if self.exists():
-            status["is_git_repo"] = self.is_git_repo()
-            status["files"] = self.get_files()
-
-        return status
 
     def __repr__(self) -> str:
         return f"WorkspaceManager(path={self._path}, profile={self._profile})"

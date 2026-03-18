@@ -1,84 +1,228 @@
 """Agent 主处理循环"""
+
 import asyncio
-from typing import Optional, Dict, List
+import json
+import re
+from pathlib import Path
+from typing import Optional, Dict, List, Any, AsyncGenerator, Callable, Awaitable
+
+# 优化 litellm 性能
+import litellm
+litellm.drop_params = True
+litellm.set_verbose = False
+
 from litellm import acompletion
+
 from anyclaw.config.settings import settings
 from anyclaw.skills.models import SkillDefinition
+from anyclaw.tools.registry import ToolRegistry
+from anyclaw.tools.shell import ExecTool
+from anyclaw.tools.filesystem import ReadFileTool, WriteFileTool, ListDirTool
 from .history import ConversationHistory
 from .context import ContextBuilder
-from .tool_loop import ToolCallingLoop
 
 
 class AgentLoop:
     """Agent 主处理循环"""
 
-    def __init__(self, enable_tools: bool = True):
+    _TOOL_RESULT_MAX_CHARS = 16_000
+
+    def __init__(
+        self,
+        enable_tools: bool = True,
+        workspace: Optional[Path] = None,
+    ):
         self.history = ConversationHistory(max_length=10)
         self.skills: Dict[str, SkillDefinition] = {}
         self.enable_tools = enable_tools
-        self.tool_loop: Optional[ToolCallingLoop] = None
+        self.workspace = workspace or Path.cwd()
+
+        # 初始化 Tool Registry
+        self.tools = ToolRegistry()
+        if enable_tools:
+            self._register_default_tools()
+
+    def _register_default_tools(self) -> None:
+        """注册默认工具"""
+        self.tools.register(ExecTool(
+            working_dir=str(self.workspace),
+            timeout=settings.tool_timeout if hasattr(settings, 'tool_timeout') else 60,
+        ))
+        self.tools.register(ReadFileTool(workspace=self.workspace))
+        self.tools.register(WriteFileTool(workspace=self.workspace))
+        self.tools.register(ListDirTool(workspace=self.workspace))
 
     def set_skills(self, skills: Dict[str, SkillDefinition]) -> None:
-        """设置可用技能"""
+        """设置可用技能（兼容旧接口）"""
         self.skills = skills
-        if self.enable_tools and skills:
-            self.tool_loop = ToolCallingLoop(
-                skills=skills,
-                history=self.history,
-                max_iterations=settings.tool_max_iterations
-            )
+
+    def _get_skills_info(self) -> List[Dict[str, Any]]:
+        """获取技能信息列表"""
+        return [
+            {"name": name, "description": skill.description}
+            for name, skill in self.skills.items()
+        ]
 
     async def process(self, user_input: str) -> str:
         """处理用户输入"""
-        # 1. 添加用户消息到历史
         self.history.add_user_message(user_input)
 
-        # 2. 构建上下文
         context_builder = ContextBuilder(self.history, self._get_skills_info())
         messages = context_builder.build()
 
-        # 3. 调用 LLM（支持 tool calling）
-        if self.enable_tools and self.tool_loop and self.skills:
-            response = await self.tool_loop.process_with_tools(
-                messages,
-                settings.llm_model
-            )
+        if self.enable_tools:
+            response = await self._run_with_tools(messages)
         else:
             response = await self._call_llm(messages)
 
-        # 4. 添加助手响应到历史
         self.history.add_assistant_message(response)
-
         return response
 
-    async def _call_llm(self, messages: list) -> str:
-        """调用 LLM"""
+    async def process_stream(self, user_input: str) -> AsyncGenerator[str, None]:
+        """流式处理用户输入"""
+        self.history.add_user_message(user_input)
+
+        context_builder = ContextBuilder(self.history, self._get_skills_info())
+        messages = context_builder.build()
+
+        full_response = []
+
         try:
-            # 获取模型特定的调用参数
-            kwargs = self._get_llm_kwargs(settings.llm_model)
-            kwargs["model"] = settings.llm_model
-            kwargs["messages"] = messages
-            kwargs["temperature"] = settings.llm_temperature
-            kwargs["max_tokens"] = settings.llm_max_tokens
-            kwargs["timeout"] = settings.llm_timeout
-
-            response = await acompletion(**kwargs)
-
-            return response.choices[0].message.content
-
+            if self.enable_tools:
+                async for chunk in self._stream_with_tools(messages):
+                    full_response.append(chunk)
+                    yield chunk
+            else:
+                async for chunk in self._stream_llm(messages):
+                    full_response.append(chunk)
+                    yield chunk
         except Exception as e:
-            return f"Error: {str(e)}"
+            error_msg = f"[错误: {str(e)}]"
+            full_response.append(error_msg)
+            yield error_msg
 
-    def _get_llm_kwargs(self, model: str) -> Dict:
-        """
-        获取 LLM 调用的额外参数
+        self.history.add_assistant_message("".join(full_response))
 
-        支持模型前缀路由到正确的 provider:
-        - zai/* -> ZAI Provider
-        - openai/* 或 gpt-* -> OpenAI
-        - anthropic/* 或 claude-* -> Anthropic
-        """
-        kwargs: Dict = {}
+    async def _stream_with_tools(self, messages: List[Dict]) -> AsyncGenerator[str, None]:
+        """流式处理（支持 tool calling）"""
+        # 暂时使用非流式处理 tool calling
+        response = await self._run_with_tools(messages)
+        yield response
+
+    async def _stream_llm(self, messages: List[Dict]) -> AsyncGenerator[str, None]:
+        """流式调用 LLM"""
+        kwargs = self._get_llm_kwargs(settings.llm_model)
+        kwargs["model"] = settings.llm_model
+        kwargs["messages"] = messages
+        kwargs["temperature"] = settings.llm_temperature
+        kwargs["max_tokens"] = settings.llm_max_tokens
+        kwargs["timeout"] = settings.llm_timeout
+        kwargs["stream"] = True
+
+        response = await acompletion(**kwargs)
+
+        async for chunk in response:
+            delta = chunk.choices[0].delta
+            if delta and delta.content:
+                yield delta.content
+
+    async def _run_with_tools(
+        self,
+        messages: List[Dict[str, Any]],
+        max_iterations: int = 10,
+        on_progress: Optional[Callable[[str, bool], Awaitable[None]]] = None,
+    ) -> str:
+        """运行带 tool calling 的循环"""
+        iteration = 0
+
+        while iteration < max_iterations:
+            iteration += 1
+
+            # 获取工具定义
+            tool_defs = self.tools.get_definitions()
+
+            # 调用 LLM
+            response = await self._call_llm_with_tools(messages, tool_defs)
+
+            message = response.choices[0].message
+
+            # 检查是否有 tool calls
+            if not hasattr(message, 'tool_calls') or not message.tool_calls:
+                return message.content or ""
+
+            # 处理 tool calls
+            messages.append({
+                "role": "assistant",
+                "content": message.content,
+                "tool_calls": self._format_tool_calls(message.tool_calls)
+            })
+
+            for tool_call in message.tool_calls:
+                tool_name = tool_call.function.name
+                try:
+                    arguments = json.loads(tool_call.function.arguments)
+                except json.JSONDecodeError:
+                    arguments = {}
+
+                # 显示进度
+                if on_progress:
+                    hint = self._tool_hint(tool_name, arguments)
+                    await on_progress(hint, tool_hint=True)
+
+                # 执行工具
+                result = await self.tools.execute(tool_name, arguments)
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": result[:self._TOOL_RESULT_MAX_CHARS]
+                })
+
+        return "达到最大迭代次数"
+
+    def _tool_hint(self, name: str, args: Dict[str, Any]) -> str:
+        """生成工具调用提示"""
+        val = next(iter(args.values()), None) if args else None
+        if isinstance(val, str) and len(val) > 40:
+            return f'{name}("{val[:40]}…")'
+        elif isinstance(val, str):
+            return f'{name}("{val}")'
+        else:
+            return name
+
+    async def _call_llm(self, messages: list) -> str:
+        """调用 LLM（无 tools）"""
+        kwargs = self._get_llm_kwargs(settings.llm_model)
+        kwargs["model"] = settings.llm_model
+        kwargs["messages"] = messages
+        kwargs["temperature"] = settings.llm_temperature
+        kwargs["max_tokens"] = settings.llm_max_tokens
+        kwargs["timeout"] = settings.llm_timeout
+
+        response = await acompletion(**kwargs)
+        return response.choices[0].message.content
+
+    async def _call_llm_with_tools(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: Optional[List[Dict[str, Any]]] = None,
+    ):
+        """调用 LLM（带 tools）"""
+        kwargs = self._get_llm_kwargs(settings.llm_model)
+        kwargs["model"] = settings.llm_model
+        kwargs["messages"] = messages
+        kwargs["temperature"] = settings.llm_temperature
+        kwargs["max_tokens"] = settings.llm_max_tokens
+        kwargs["timeout"] = settings.llm_timeout
+
+        if tools:
+            kwargs["tools"] = tools
+
+        return await acompletion(**kwargs)
+
+    def _get_llm_kwargs(self, model: str) -> Dict[str, Any]:
+        """获取 LLM 调用的额外参数"""
+        kwargs: Dict[str, Any] = {}
 
         # ZAI Provider
         if model.startswith("zai/"):
@@ -100,138 +244,18 @@ class AgentLoop:
                 kwargs["api_key"] = settings.anthropic_api_key
             return kwargs
 
-        # 默认使用 OpenAI API Key
-        if settings.openai_api_key:
-            kwargs["api_key"] = settings.openai_api_key
-
         return kwargs
 
-    def clear_history(self) -> None:
-        """清空对话历史"""
-        self.history.clear()
-
-    def _get_skills_info(self) -> List[Dict[str, str]]:
-        """获取技能信息列表"""
-        return [
-            {"name": skill.name, "description": skill.description}
-            for skill in self.skills.values()
-            if skill.eligible
-        ]
-
-    # ========== 流式输出支持 ==========
-
-    async def process_stream(self, user_input: str):
-        """流式处理用户输入（async generator）
-
-        Args:
-            user_input: 用户输入文本
-
-        Yields:
-            str: 响应内容块
-        """
-        # 1. 添加用户消息到历史
-        self.history.add_user_message(user_input)
-
-        # 2. 构建上下文
-        context_builder = ContextBuilder(self.history, self._get_skills_info())
-        messages = context_builder.build()
-
-        # 3. 流式调用 LLM
-        full_response = []
-
-        try:
-            if self.enable_tools and self.tool_loop and self.skills:
-                # Tool Calling 流式
-                async for chunk in self._stream_with_tools(messages):
-                    full_response.append(chunk)
-                    yield chunk
-            else:
-                # 普通流式
-                async for chunk in self._stream_llm(messages):
-                    full_response.append(chunk)
-                    yield chunk
-
-        except Exception as e:
-            error_msg = f"[Stream Error: {str(e)}]"
-            full_response.append(error_msg)
-            yield error_msg
-
-        # 4. 保存完整响应到历史
-        self.history.add_assistant_message("".join(full_response))
-
-    async def _stream_llm(self, messages: list):
-        """流式调用 LLM
-
-        Args:
-            messages: 消息列表
-
-        Yields:
-            str: 响应内容块
-        """
-        try:
-            kwargs = self._get_llm_kwargs(settings.llm_model)
-            kwargs["model"] = settings.llm_model
-            kwargs["messages"] = messages
-            kwargs["temperature"] = settings.llm_temperature
-            kwargs["max_tokens"] = settings.llm_max_tokens
-            kwargs["timeout"] = settings.llm_timeout
-            kwargs["stream"] = True  # 启用流式
-
-            response = await acompletion(**kwargs)
-
-            async for chunk in response:
-                delta = chunk.choices[0].delta
-                if delta and delta.content:
-                    yield delta.content
-
-        except Exception as e:
-            yield f"[Error: {str(e)}]"
-
-    async def _stream_with_tools(self, messages: list):
-        """Tool Calling 流式处理
-
-        Args:
-            messages: 消息列表
-
-        Yields:
-            str: 响应内容块
-        """
-        # 简化实现：先流式获取响应，然后处理工具调用
-        # 完整的 Tool Calling 流式需要更复杂的实现
-
-        iteration = 0
-        current_messages = list(messages)
-
-        while iteration < settings.tool_max_iterations:
-            # 流式获取响应
-            response_text = []
-
-            async for chunk in self._stream_llm(current_messages):
-                response_text.append(chunk)
-                yield chunk
-
-            full_response = "".join(response_text)
-
-            # 检查是否需要调用工具
-            # 这里简化处理，直接返回响应
-            # 完整实现需要解析响应中的工具调用
-            break
-
-    async def process_with_stream_fallback(self, user_input: str) -> str:
-        """带回退的流式处理（如果不支持流式则回退到普通模式）
-
-        Args:
-            user_input: 用户输入文本
-
-        Returns:
-            str: 完整响应
-        """
-        if not settings.stream_enabled:
-            return await self.process(user_input)
-
-        # 收集流式输出
-        chunks = []
-        async for chunk in self.process_stream(user_input):
-            chunks.append(chunk)
-
-        return "".join(chunks)
+    def _format_tool_calls(self, tool_calls) -> List[Dict[str, Any]]:
+        """格式化 tool calls 为消息格式"""
+        formatted = []
+        for tc in tool_calls:
+            formatted.append({
+                "id": tc.id,
+                "type": "function",
+                "function": {
+                    "name": tc.function.name,
+                    "arguments": tc.function.arguments
+                }
+            })
+        return formatted

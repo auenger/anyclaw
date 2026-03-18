@@ -105,11 +105,48 @@ class ToolCallingLoop:
         if tools:
             kwargs["tools"] = tools
 
-        # 根据配置添加 API key
+        # 获取模型特定的调用参数
+        provider_kwargs = self._get_provider_kwargs(model)
+        kwargs.update(provider_kwargs)
+
+        return await acompletion(**kwargs)
+
+    def _get_provider_kwargs(self, model: str) -> Dict[str, Any]:
+        """
+        获取 provider 特定的调用参数
+
+        支持模型前缀路由到正确的 provider:
+        - zai/* -> ZAI Provider
+        - openai/* 或 gpt-* -> OpenAI
+        - anthropic/* 或 claude-* -> Anthropic
+        """
+        kwargs: Dict[str, Any] = {}
+
+        # ZAI Provider
+        if model.startswith("zai/"):
+            from anyclaw.providers.zai import get_zai_provider
+            provider = get_zai_provider()
+            if provider.is_configured():
+                kwargs.update(provider.get_completion_kwargs(model))
+            return kwargs
+
+        # OpenAI
+        if model.startswith("openai/") or model.startswith("gpt"):
+            if settings.openai_api_key:
+                kwargs["api_key"] = settings.openai_api_key
+            return kwargs
+
+        # Anthropic
+        if model.startswith("anthropic/") or model.startswith("claude"):
+            if settings.anthropic_api_key:
+                kwargs["api_key"] = settings.anthropic_api_key
+            return kwargs
+
+        # 默认使用 OpenAI API Key
         if settings.openai_api_key:
             kwargs["api_key"] = settings.openai_api_key
 
-        return await acompletion(**kwargs)
+        return kwargs
 
     def _format_tool_calls(self, tool_calls) -> List[Dict[str, Any]]:
         """格式化 tool calls 为消息格式"""

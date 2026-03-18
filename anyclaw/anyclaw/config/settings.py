@@ -1,6 +1,10 @@
 """AnyClaw 配置系统"""
+from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# 获取包内技能目录的绝对路径
+_BUILTIN_SKILLS_DIR = str(Path(__file__).parent.parent / "skills" / "builtin")
 
 
 class Settings(BaseSettings):
@@ -84,9 +88,9 @@ class Settings(BaseSettings):
         description="CLI 输入提示符"
     )
 
-    # 技能配置
+    # 技能配置（使用包内绝对路径）
     skills_dir: str = Field(
-        default="anyclaw/skills/builtin",
+        default=_BUILTIN_SKILLS_DIR,
         description="技能目录"
     )
 
