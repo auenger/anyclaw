@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-18T21:45:00"
-  version: 17
+  last_updated: "2026-03-18T22:00:00"
+  version: 18
 
 # 父需求（用于分组追踪)
 parents:
@@ -24,22 +24,24 @@ parents:
 active: []
 
 # 等待中的需求（按优先级排序）
-pending:
-  - id: feat-streaming-output
-    name: 流式输出支持
-    priority: 76
-    size: M
-    value_points:
-      - Agent 流式响应
-      - CLI 实时显示
-      - 流式配置控制
-      - Tool Calling 流式支持
+pending: []
 
 # 阻塞中的需求
 blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-streaming-output
+    name: 流式输出支持
+    priority: 76
+    size: M
+    completed_at: "2026-03-18T22:00:00"
+    archive_path: features/archive/done-feat-streaming-output
+    value_points:
+      - Agent 流式响应
+      - CLI 实时显示
+      - 流式配置控制
+      - Tool Calling 流式支持
   - id: feat-builtin-skills-v2
     name: 内置技能扩展 V2
     priority: 78
