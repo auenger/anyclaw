@@ -186,6 +186,27 @@ class Settings(BaseSettings):
         description="检查点存储目录"
     )
 
+    # 记忆系统配置
+    memory_enabled: bool = Field(
+        default=True,
+        description="是否启用记忆系统"
+    )
+    memory_max_chars: int = Field(
+        default=10000,
+        ge=1000,
+        description="长期记忆最大字符数"
+    )
+    memory_daily_load_days: int = Field(
+        default=2,
+        ge=1,
+        le=30,
+        description="加载最近几天的日志"
+    )
+    memory_auto_update: bool = Field(
+        default=False,
+        description="是否自动更新记忆（无需确认）"
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

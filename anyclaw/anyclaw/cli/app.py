@@ -16,12 +16,14 @@ from .workspace import create_workspace_app
 from .token import create_token_app
 from .persona import create_persona_app
 from .compress import create_compress_app
+from .memory import create_memory_app
 
 app.add_typer(create_onboard_app(), name="onboard")
 app.add_typer(create_workspace_app(), name="workspace")
 app.add_typer(create_token_app(), name="token")
 app.add_typer(create_persona_app(), name="persona")
 app.add_typer(create_compress_app(), name="compress")
+app.add_typer(create_memory_app(), name="memory")
 
 
 @app.command()
