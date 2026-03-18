@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-18T13:15:00"
-  version: 12
+  last_updated: "2026-03-18T14:00:00"
+  version: 13
 
 # 父需求（用于分组追踪)
 parents:
@@ -25,17 +25,6 @@ active: []
 
 # 等待中的需求（按优先级排序）
 pending:
-  - id: feat-context-compression
-    name: 智能上下文压缩
-    priority: 80
-    size: M
-    created_at: "2026-03-18T15:30:00"
-    dependencies: []
-    value_points:
-      - 对话摘要压缩
-      - 滑动窗口策略
-      - 长对话处理
-
   - id: feat-memory-system
     name: 记忆系统
     priority: 78
@@ -52,6 +41,13 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-context-compression
+    name: 智能上下文压缩
+    priority: 80
+    size: M
+    completed_at: "2026-03-18T14:00:00"
+    archive_path: features/archive/done-feat-context-compression
+
   - id: feat-bundled-skills
     name: 内置 Skills 移植与扩展
     priority: 75
