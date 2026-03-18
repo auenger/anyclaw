@@ -36,4 +36,5 @@ def test_skill_loader():
     skills_info = loader.load_all()
 
     assert isinstance(skills_info, list)
+    # 应该至少有 echo, time, weather 三个 skill
     assert len(skills_info) >= 0

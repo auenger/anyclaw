@@ -42,6 +42,18 @@ class Settings(BaseSettings):
         description="LLM 请求超时时间（秒）"
     )
 
+    # Tool Calling 配置
+    tool_timeout: int = Field(
+        default=60,
+        ge=1,
+        description="Tool 执行超时时间（秒）"
+    )
+    tool_max_iterations: int = Field(
+        default=10,
+        ge=1,
+        description="Tool Calling 最大迭代次数"
+    )
+
     # API Keys
     openai_api_key: str = Field(
         default="",
