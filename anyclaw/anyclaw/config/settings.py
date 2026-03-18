@@ -64,6 +64,20 @@ class Settings(BaseSettings):
         description="Anthropic API Key"
     )
 
+    # ZAI Provider 配置
+    zai_api_key: str = Field(
+        default="",
+        description="ZAI API Key"
+    )
+    zai_endpoint: str = Field(
+        default="auto",
+        description="ZAI endpoint: auto/global/cn/coding-global/coding-cn"
+    )
+    zai_base_url: str = Field(
+        default="",
+        description="自定义 ZAI base URL (覆盖 endpoint 设置)"
+    )
+
     # CLI 配置
     cli_prompt: str = Field(
         default="You: ",
@@ -80,6 +94,26 @@ class Settings(BaseSettings):
     workspace_dir: str = Field(
         default="workspace",
         description="工作空间目录"
+    )
+
+    # Workspace 配置
+    workspace: str = Field(
+        default="~/.anyclaw/workspace",
+        description="工作区路径"
+    )
+    skip_bootstrap: bool = Field(
+        default=False,
+        description="跳过引导文件创建"
+    )
+    bootstrap_max_chars: int = Field(
+        default=20000,
+        ge=1000,
+        description="单个引导文件最大字符数"
+    )
+    bootstrap_total_max_chars: int = Field(
+        default=150000,
+        ge=10000,
+        description="引导文件总最大字符数"
     )
 
     model_config = SettingsConfigDict(
