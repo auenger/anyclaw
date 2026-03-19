@@ -298,3 +298,33 @@ def skill_show(
             console.print(f"  [red]✗ Missing dependencies:[/red]")
             for reason in reasons:
                 console.print(f"    [red]-[/red] {reason}")
+
+
+@app.command("reload")
+def skill_reload(
+    name: Optional[str] = typer.Argument(None, help="Skill name to reload (omit to reload all)"),
+):
+    """Reload skill(s) at runtime"""
+    from anyclaw.skills.loader import SkillLoader
+
+    loader = SkillLoader(skills_dir=settings.skills_dir)
+    loader.load_all()
+
+    if name:
+        # 重载单个 skill
+        console.print(f"[dim]Reloading skill: {name}[/dim]")
+        success = loader.reload_skill(name)
+        if success:
+            console.print(f"[green]✓[/green] Reloaded: [cyan]{name}[/cyan]")
+        else:
+            console.print(f"[red]✗[/red] Failed to reload: {name}")
+            raise typer.Exit(1)
+    else:
+        # 重载所有 skills
+        console.print("[dim]Reloading all skills...[/dim]")
+        stats = loader.reload_all()
+        console.print(f"[green]✓[/green] Reload complete:")
+        console.print(f"  Total: {stats['total']}")
+        console.print(f"  Success: [green]{stats['success']}[/green]")
+        if stats['failed'] > 0:
+            console.print(f"  Failed: [red]{stats['failed']}[/red]")
