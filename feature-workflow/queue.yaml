@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-19T21:30:00"
-  version: 29
+  last_updated: "2026-03-19T23:00:00"
+  version: 31
 
 # 父需求（用于分组追踪)
 parents:
@@ -39,17 +39,19 @@ parents:
       - feat-mcp-client
 
 # 正在开发的需求
-active: []
-
-# 等待中的需求（按优先级排序）
-pending:
+active:
   - id: feat-exec-security
     name: ExecTool 危险命令混合模式安全限制
     description: 核心保护层（硬编码）+ 可配置扩展层，实现代码级危险命令拦截
     priority: 65
     size: M
     dependencies: []
+    branch: feature/exec-security
+    worktree: ../AnyClaw-exec-security
+    started_at: "2026-03-19T23:00:00"
 
+# 等待中的需求（按优先级排序）
+pending:
   - id: feat-ssrf-guard
     name: SSRF 防护系统
     description: 阻止对私有网络、云元数据端点、本地服务的访问
@@ -76,6 +78,13 @@ pending:
     description: 消息内容清理、工具参数验证、URL/路径格式验证
     priority: 50
     size: M
+    dependencies: []
+
+  - id: feat-session-archive
+    name: 会话归档系统
+    description: 对话记录持久化、按项目隔离（Git root/cwd）、按日期归档、Tool/Skill 调用记录
+    priority: 45
+    size: L
     dependencies: []
 
 # 阻塞中的需求
