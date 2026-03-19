@@ -26,6 +26,10 @@ class OpenClawMetadata(BaseModel):
     requires: Optional[OpenClawRequires] = Field(default=None, description="依赖检查")
     install: List[OpenClawInstall] = Field(default_factory=list, description="安装方法")
     parameters: Optional[Dict[str, Any]] = Field(default=None, description="参数定义")
+    # 新增字段 - 渐进式加载
+    always: bool = Field(default=False, description="是否始终加载到上下文")
+    scripts: List[str] = Field(default_factory=list, description="可执行脚本列表")
+    references: List[str] = Field(default_factory=list, description="参考文档列表")
 
 
 class SkillFrontmatter(BaseModel):

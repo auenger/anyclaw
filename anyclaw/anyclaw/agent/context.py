@@ -143,7 +143,29 @@ Reply directly with text for conversations."""
         return ""
 
     def _build_skills_summary(self) -> str:
-        """构建技能摘要"""
+        """构建技能摘要（XML 格式）"""
+        # 如果 skills_info 是字典且包含 loader，使用新的 XML 格式
+        if isinstance(self.skills_info, dict) and "loader" in self.skills_info:
+            loader = self.skills_info["loader"]
+            xml_summary = loader.build_skills_summary()
+
+            # 获取并加载 always skills
+            always_skills = loader.get_always_skills()
+            always_content = ""
+            if always_skills:
+                always_content = loader.load_skills_for_context(always_skills)
+
+            parts = ["# Skills\n", xml_summary]
+
+            if always_content:
+                parts.append("\n## Always-loaded Skills\n")
+                parts.append(always_content)
+
+            parts.append("\nUse skills when appropriate. Request skill content with `skill.load <name>` when needed.")
+
+            return "\n".join(parts)
+
+        # 向后兼容：旧格式
         lines = ["# Skills", ""]
         lines.append("You have access to these skills:")
         lines.append("")

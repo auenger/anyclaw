@@ -188,3 +188,220 @@ class ToolExecutor:
             return f"Error: Tool '{tool_name}' is not available. Reasons: {reasons}"
 
         return await self.execute(skill, arguments)
+
+
+class SkillScriptExecutor:
+    """技能脚本执行器 - 执行 skill 内的脚本文件"""
+
+    DEFAULT_TIMEOUT = 60  # 默认超时时间（秒）
+
+    def __init__(self, skills_loader):
+        """
+        初始化执行器
+
+        Args:
+            skills_loader: SkillLoader 实例
+        """
+        self.loader = skills_loader
+
+    async def execute_script(
+        self,
+        skill_name: str,
+        script_path: str,
+        args: Optional[List[str]] = None,
+        timeout: Optional[int] = None,
+    ) -> str:
+        """
+        执行技能内的脚本
+
+        Args:
+            skill_name: 技能名称
+            script_path: 脚本相对路径（相对于 skill 目录）
+            args: 脚本参数
+            timeout: 超时时间（秒）
+
+        Returns:
+            执行结果（stdout）或错误信息
+        """
+        args = args or []
+        timeout = timeout or self.DEFAULT_TIMEOUT
+
+        # 获取 skill 路径
+        source = self.loader.get_skill_source(skill_name)
+        if not source:
+            return f"Error: Skill '{skill_name}' not found"
+
+        skill_dir = source.path
+        script_file = skill_dir / script_path
+
+        if not script_file.exists():
+            return f"Error: Script '{script_path}' not found in skill '{skill_name}'"
+
+        # 根据扩展名选择执行器
+        suffix = script_file.suffix.lower()
+
+        if suffix == '.py':
+            return await self._execute_python(script_file, args, skill_dir, timeout)
+        elif suffix in ('.sh', '.bash'):
+            return await self._execute_shell(script_file, args, skill_dir, timeout)
+        else:
+            return f"Error: Unsupported script type '{suffix}'"
+
+    async def _execute_python(
+        self,
+        script_file: Path,
+        args: List[str],
+        cwd: Path,
+        timeout: int,
+    ) -> str:
+        """执行 Python 脚本"""
+        import shutil
+
+        python_path = shutil.which('python3') or shutil.which('python')
+        if not python_path:
+            return "Error: Python interpreter not found"
+
+        cmd = [python_path, str(script_file)] + args
+
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                cwd=str(cwd),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(),
+                timeout=timeout
+            )
+
+            if process.returncode != 0:
+                error_msg = stderr.decode('utf-8', errors='replace').strip()
+                return f"Error (exit {process.returncode}): {error_msg}"
+
+            return stdout.decode('utf-8', errors='replace').strip()
+
+        except asyncio.TimeoutError:
+            process.kill()
+            return f"Error: Script execution timed out after {timeout} seconds"
+        except Exception as e:
+            return f"Error: {e}"
+
+    async def _execute_shell(
+        self,
+        script_file: Path,
+        args: List[str],
+        cwd: Path,
+        timeout: int,
+    ) -> str:
+        """执行 Shell 脚本"""
+        import shutil
+
+        bash_path = shutil.which('bash')
+        if not bash_path:
+            return "Error: Bash not found"
+
+        cmd = [bash_path, str(script_file)] + args
+
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                cwd=str(cwd),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(),
+                timeout=timeout
+            )
+
+            if process.returncode != 0:
+                error_msg = stderr.decode('utf-8', errors='replace').strip()
+                return f"Error (exit {process.returncode}): {error_msg}"
+
+            return stdout.decode('utf-8', errors='replace').strip()
+
+        except asyncio.TimeoutError:
+            process.kill()
+            return f"Error: Script execution timed out after {timeout} seconds"
+        except Exception as e:
+            return f"Error: {e}"
+
+    def list_scripts(self, skill_name: str) -> List[str]:
+        """
+        列出技能内的所有脚本
+
+        Args:
+            skill_name: 技能名称
+
+        Returns:
+            脚本相对路径列表
+        """
+        source = self.loader.get_skill_source(skill_name)
+        if not source:
+            return []
+
+        scripts_dir = source.path / "scripts"
+        if not scripts_dir.exists():
+            return []
+
+        scripts = []
+        for script_file in scripts_dir.rglob("*"):
+            if script_file.is_file() and script_file.suffix in ('.py', '.sh', '.bash'):
+                relative = script_file.relative_to(source.path)
+                scripts.append(str(relative))
+
+        return scripts
+
+    def list_references(self, skill_name: str) -> List[str]:
+        """
+        列出技能内的所有参考文档
+
+        Args:
+            skill_name: 技能名称
+
+        Returns:
+            参考文档相对路径列表
+        """
+        source = self.loader.get_skill_source(skill_name)
+        if not source:
+            return []
+
+        refs_dir = source.path / "references"
+        if not refs_dir.exists():
+            return []
+
+        references = []
+        for ref_file in refs_dir.rglob("*"):
+            if ref_file.is_file():
+                relative = ref_file.relative_to(source.path)
+                references.append(str(relative))
+
+        return references
+
+    def read_reference(self, skill_name: str, ref_path: str) -> Optional[str]:
+        """
+        读取技能内的参考文档
+
+        Args:
+            skill_name: 技能名称
+            ref_path: 参考文档相对路径
+
+        Returns:
+            文档内容或 None
+        """
+        source = self.loader.get_skill_source(skill_name)
+        if not source:
+            return None
+
+        ref_file = source.path / ref_path
+        if not ref_file.exists():
+            return None
+
+        try:
+            return ref_file.read_text(encoding='utf-8')
+        except Exception as e:
+            return None
+

@@ -1,59 +1,83 @@
-"""CLI 频道"""
+"""CLI Channel implementation with streaming support."""
+
+from __future__ import annotations
+
 import asyncio
-from typing import Callable, AsyncGenerator
+from typing import Any, AsyncGenerator, Callable
+
 from rich.console import Console
 from rich.prompt import Prompt
 from rich.live import Live
 from rich.text import Text
-from anyclaw.config.settings import settings
+
+from anyclaw.bus.events import OutboundMessage
+from anyclaw.bus.queue import MessageBus
+from anyclaw.channels.base import BaseChannel
 
 
-class CLIChannel:
-    """CLI 频道"""
+class CLIConfig:
+    """CLI channel configuration."""
 
-    def __init__(self):
+    def __init__(self, config: dict[str, Any] | None = None):
+        config = config or {}
+        self.enabled: bool = config.get("enabled", True)
+        self.allow_from: list[str] = config.get("allow_from", ["*"])
+        self.prompt: str = config.get("prompt", "You: ")
+        self.agent_name: str = config.get("agent_name", "AnyClaw")
+
+
+class CLIChannel(BaseChannel):
+    """CLI channel with streaming output support."""
+
+    name = "cli"
+    display_name = "CLI"
+
+    def __init__(self, config: Any, bus: MessageBus):
+        if isinstance(config, dict):
+            config = CLIConfig(config)
+        super().__init__(config, bus)
+        self.config: CLIConfig = config
         self.console = Console()
-        self.running = False
         self._stream_interrupted = False
+        self._response_callback: Callable[[str], AsyncGenerator[str, None]] | None = None
 
-    def print_welcome(self):
-        """打印欢迎信息"""
-        self.console.print(f"\n[bold blue]Welcome to {settings.agent_name}![/bold blue]")
-        self.console.print("[dim]Type 'exit' or 'quit' to exit[/dim]")
-        self.console.print("[dim]Type 'clear' to clear conversation history[/dim]\n")
+    @classmethod
+    def default_config(cls) -> dict[str, Any]:
+        return {"enabled": True, "allow_from": ["*"]}
 
-    def print_response(self, response: str):
-        """打印响应"""
-        self.console.print(f"\n[bold green]{settings.agent_name}:[/bold green] {response}\n")
+    def set_response_callback(
+        self, callback: Callable[[str], AsyncGenerator[str, None]]
+    ) -> None:
+        """Set callback to generate streaming responses."""
+        self._response_callback = callback
 
-    def get_input(self) -> str:
-        """获取用户输入"""
-        return Prompt.ask(settings.cli_prompt, console=self.console)
+    async def start(self) -> None:
+        """Start the CLI channel loop."""
+        self._running = True
+        self._print_welcome()
 
-    async def run(self, process_func: Callable[[str], str]):
-        """运行 CLI 循环（非流式）"""
-        self.print_welcome()
-        self.running = True
-
-        while self.running:
+        while self._running:
             try:
-                user_input = self.get_input()
+                user_input = self._get_input()
 
-                # 处理特殊命令
-                if user_input.lower() in ['exit', 'quit']:
+                # Handle special commands
+                if user_input.lower() in ["exit", "quit"]:
                     self.console.print("[yellow]Goodbye![/yellow]")
                     break
 
-                if user_input.lower() == 'clear':
+                if user_input.lower() == "clear":
                     self.console.print("[yellow]Conversation cleared.[/yellow]")
                     continue
 
                 if not user_input.strip():
                     continue
 
-                # 处理用户输入
-                response = await process_func(user_input)
-                self.print_response(response)
+                # Forward to bus via _handle_message
+                await self._handle_message(
+                    sender_id="user",
+                    chat_id="default",
+                    content=user_input,
+                )
 
             except KeyboardInterrupt:
                 self.console.print("\n[yellow]Interrupted. Goodbye![/yellow]")
@@ -61,38 +85,57 @@ class CLIChannel:
             except Exception as e:
                 self.console.print(f"[red]Error: {e}[/red]")
 
-    # ========== 流式输出支持 ==========
+    async def stop(self) -> None:
+        """Stop the CLI channel."""
+        self._running = False
+
+    async def send(self, msg: OutboundMessage) -> None:
+        """Send a message to the CLI (print to console)."""
+        content = msg.content
+        if not content:
+            return
+
+        # Print with agent name prefix
+        self.console.print(f"\n[bold green]{self.config.agent_name}:[/bold green] {content}\n")
+
+    def _print_welcome(self) -> None:
+        """Print welcome message."""
+        self.console.print(f"\n[bold blue]Welcome to {self.config.agent_name}![/bold blue]")
+        self.console.print("[dim]Type 'exit' or 'quit' to exit[/dim]")
+        self.console.print("[dim]Type 'clear' to clear conversation history[/dim]\n")
+
+    def _get_input(self) -> str:
+        """Get user input."""
+        return Prompt.ask(self.config.prompt, console=self.console)
+
+    # ========== Streaming Support (for direct use without bus) ==========
 
     async def run_stream(
         self,
         stream_func: Callable[[str], AsyncGenerator[str, None]]
-    ):
-        """运行 CLI 循环（流式模式）
+    ) -> None:
+        """Run CLI with streaming output (bypasses bus)."""
+        self._response_callback = stream_func
+        self._print_welcome()
+        self._running = True
 
-        Args:
-            stream_func: 返回 async generator 的函数，接收用户输入，生成响应块
-        """
-        self.print_welcome()
-        self.running = True
-
-        while self.running:
+        while self._running:
             try:
-                user_input = self.get_input()
+                user_input = self._get_input()
 
-                # 处理特殊命令
-                if user_input.lower() in ['exit', 'quit']:
+                if user_input.lower() in ["exit", "quit"]:
                     self.console.print("[yellow]Goodbye![/yellow]")
                     break
 
-                if user_input.lower() == 'clear':
+                if user_input.lower() == "clear":
                     self.console.print("[yellow]Conversation cleared.[/yellow]")
                     continue
 
                 if not user_input.strip():
                     continue
 
-                # 流式处理用户输入
-                await self.print_stream(stream_func(user_input))
+                # Stream the response
+                await self._print_stream(stream_func(user_input))
 
             except KeyboardInterrupt:
                 self.console.print("\n[yellow]Interrupted.[/yellow]")
@@ -100,22 +143,17 @@ class CLIChannel:
             except Exception as e:
                 self.console.print(f"[red]Error: {e}[/red]")
 
-    async def print_stream(self, stream_gen: AsyncGenerator[str, None]):
-        """打印流式响应
-
-        Args:
-            stream_gen: async generator，生成响应块
-        """
+    async def _print_stream(self, stream_gen: AsyncGenerator[str, None]) -> None:
+        """Print streaming response."""
         self._stream_interrupted = False
 
-        # 打印 Agent 名称前缀
-        self.console.print(f"\n[bold green]{settings.agent_name}:[/bold green] ", end="")
+        # Print agent name prefix
+        self.console.print(f"\n[bold green]{self.config.agent_name}:[/bold green] ", end="")
 
         try:
             async for chunk in stream_gen:
                 if self._stream_interrupted:
                     break
-                # 直接打印块（不换行）
                 self.console.print(chunk, end="", highlight=False)
 
         except asyncio.CancelledError:
@@ -123,36 +161,9 @@ class CLIChannel:
         except Exception as e:
             self.console.print(f"\n[red][Error: {e}][/red]")
 
-        # 完成后换行
+        # New line after completion
         self.console.print()
 
-    async def print_stream_with_live(
-        self,
-        stream_gen: AsyncGenerator[str, None],
-        show_cursor: bool = True
-    ):
-        """使用 Rich Live 打印流式响应（带光标效果）
-
-        Args:
-            stream_gen: async generator，生成响应块
-            show_cursor: 是否显示打字光标
-        """
-        self._stream_interrupted = False
-        text = Text()
-
-        try:
-            with Live(text, console=self.console, refresh_per_second=20) as live:
-                async for chunk in stream_gen:
-                    if self._stream_interrupted:
-                        break
-                    text.append(chunk)
-                    live.update(text)
-
-        except asyncio.CancelledError:
-            text.append("\n[dim][interrupted][/dim]")
-        except Exception as e:
-            text.append(f"\n[red][Error: {e}][/red]")
-
-    def interrupt_stream(self):
-        """中断当前流式输出"""
+    def interrupt_stream(self) -> None:
+        """Interrupt current streaming output."""
         self._stream_interrupted = True
