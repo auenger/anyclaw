@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-19T16:00:00"
-  version: 23
+  last_updated: "2026-03-19T16:30:00"
+  version: 24
 
 # 父需求（用于分组追踪)
 parents:
@@ -43,13 +43,6 @@ active: []
 
 # 等待中的需求（按优先级排序）
 pending:
-  - id: feat-skill-dynamic-loader
-    name: Skill 动态加载修复
-    description: 修复动态加载问题，支持任意路径加载、.skill安装、热重载
-    priority: 80
-    size: M
-    dependencies: []
-
   - id: feat-skill-progressive-loading
     name: Skill 渐进式加载
     description: 实现渐进式加载、依赖检查、scripts执行、always skills
@@ -83,6 +76,19 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-skill-dynamic-loader
+    name: Skill 动态加载修复
+    priority: 80
+    size: M
+    completed_at: "2026-03-19T16:30:00"
+    archive_path: features/archive/done-feat-skill-dynamic-loader
+    value_points:
+      - 任意路径 Python skill 加载
+      - 多目录优先级合并 (workspace > managed > bundled)
+      - 热重载功能 (reload_skill, reload_all)
+      - Skill 来源追踪
+      - 'anyclaw skill reload' CLI 命令
+
   - id: feat-skill-toolkit
     name: Skill 工具链
     priority: 90
