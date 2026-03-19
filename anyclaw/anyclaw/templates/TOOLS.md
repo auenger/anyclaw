@@ -19,3 +19,29 @@
 - `read_file`: 读取文件内容
 - `write_file`: 写入文件（覆盖）
 - `list_dir`: 列出目录内容
+
+## 安全配置 — restrict_to_workspace
+
+默认情况下，`write_file` 工具只允许在 workspace 目录内写入文件，提升安全性。
+
+### 配置方式
+
+**通过环境变量：**
+```bash
+export ANYCLAW_RESTRICT_TO_WORKSPACE=false
+```
+
+**通过配置文件 (~/.anyclaw/config.json)：**
+```json
+{
+  "security": {
+    "restrict_to_workspace": false
+  }
+}
+```
+
+### 行为说明
+
+- `restrict_to_workspace=true`（默认）：只能写入 workspace 目录及其子目录
+- `restrict_to_workspace=false`：允许写入任意路径（受系统权限限制）
+- 符号链接会被解析为真实路径进行验证

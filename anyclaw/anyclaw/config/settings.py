@@ -242,6 +242,12 @@ class Settings(BaseSettings):
         default=True,
         description="是否启用流式输出"
     )
+
+    # 安全配置
+    restrict_to_workspace: bool = Field(
+        default=True,
+        description="是否限制文件写入到 workspace 内（提升安全性）"
+    )
     stream_buffer_size: int = Field(
         default=10,
         ge=1,

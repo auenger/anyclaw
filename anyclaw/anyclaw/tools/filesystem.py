@@ -97,9 +97,15 @@ class ReadFileTool(Tool):
 class WriteFileTool(Tool):
     """写入文件工具"""
 
-    def __init__(self, workspace: Optional[Path] = None, allowed_dir: Optional[Path] = None):
+    def __init__(
+        self,
+        workspace: Optional[Path] = None,
+        allowed_dir: Optional[Path] = None,
+        restrict_to_workspace: bool = True,
+    ):
         self.workspace = workspace or Path.cwd()
         self.allowed_dir = allowed_dir or self.workspace
+        self.restrict_to_workspace = restrict_to_workspace
 
     @property
     def name(self) -> str:
@@ -139,15 +145,33 @@ class WriteFileTool(Tool):
 
             return f"成功写入 {len(content):,} 字符到 {path}"
 
+        except PermissionError as e:
+            return str(e)
         except Exception as e:
             return f"写入文件时出错: {str(e)}"
 
     def _resolve_path(self, path: str) -> Path:
-        """解析路径"""
+        """解析路径并进行权限检查"""
         p = Path(path)
         if p.is_absolute():
-            return p
-        return self.workspace / p
+            resolved = p.resolve()
+        else:
+            resolved = (self.workspace / p).resolve()
+
+        # 如果启用了 workspace 限制，检查路径是否在允许范围内
+        if self.restrict_to_workspace:
+            allowed_resolved = self.allowed_dir.resolve()
+            try:
+                # 检查解析后的路径是否在允许的目录内
+                resolved.relative_to(allowed_resolved)
+            except ValueError:
+                raise PermissionError(
+                    f"权限错误: 路径 {path} 超出 workspace 范围\n"
+                    f"允许的目录: {allowed_resolved}\n"
+                    f"提示: 设置 restrict_to_workspace=false 可禁用此限制"
+                )
+
+        return resolved
 
 
 class ListDirTool(Tool):

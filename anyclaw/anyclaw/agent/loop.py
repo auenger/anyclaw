@@ -57,7 +57,10 @@ class AgentLoop:
             timeout=settings.tool_timeout if hasattr(settings, 'tool_timeout') else 60,
         ))
         self.tools.register(ReadFileTool(workspace=self.workspace))
-        self.tools.register(WriteFileTool(workspace=self.workspace))
+        self.tools.register(WriteFileTool(
+            workspace=self.workspace,
+            restrict_to_workspace=settings.restrict_to_workspace,
+        ))
         self.tools.register(ListDirTool(workspace=self.workspace))
 
         # 记忆工具
