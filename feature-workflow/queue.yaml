@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-19T18:00:00"
-  version: 25
+  last_updated: "2026-03-19T19:30:00"
+  version: 26
 
 # 父需求（用于分组追踪)
 parents:
@@ -34,31 +34,25 @@ parents:
     description: MCP 客户端支持，连接 MCP Server 生态
     priority: 70
     size: L
-    status: pending
+    status: active
     children:
       - feat-mcp-client
 
 # 正在开发的需求
 active:
-  - id: feat-im-channels
-    name: IM Channel 支持
-    description: 添加飞书和 Discord 即时通讯渠道，实现 MessageBus 消息路由机制
-    priority: 65
-    size: L
-    dependencies: []
-    branch: feature/im-channels
-    worktree: .
-    started_at: "2026-03-19T17:00:00"
-
-# 等待中的需求（按优先级排序）
-pending:
   - id: feat-mcp-client
     name: MCP 客户端
     description: MCP 协议客户端，支持 stdio/SSE/HTTP 连接，复用 MCP Server 生态
     priority: 70
     size: L
     dependencies: []
+    parent: feat-mcp-integration
+    branch: feature/mcp-client
+    worktree: ../AnyClaw-mcp-client
+    started_at: "2026-03-19T19:30:00"
 
+# 等待中的需求（按优先级排序）
+pending:
   - id: feat-workspace-restrict
     name: workspace 写入限制
     description: 增加 restrict_to_workspace 配置项，控制文件写入权限，提升安全性
@@ -71,6 +65,19 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-im-channels
+    name: IM Channel 支持
+    priority: 65
+    size: L
+    completed_at: "2026-03-19T20:00:00"
+    archive_path: features/archive/done-feat-im-channels
+    value_points:
+      - MessageBus 消息路由机制
+      - 飞书 Channel (webhook + REST API)
+      - Discord Channel (Gateway + Rate Limit)
+      - 多 Channel 并行运行
+      - Channel 注册与发现系统
+
   - id: feat-skill-progressive-loading
     name: Skill 渐进式加载
     priority: 75
