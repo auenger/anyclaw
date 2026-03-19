@@ -9,15 +9,19 @@ logger = logging.getLogger(__name__)
 
 # ZAI Endpoint 映射
 ZAI_ENDPOINTS = {
+    "coding": "https://open.bigmodel.cn/api/coding/paas/v4",  # GLM Coding Plan (默认)
     "global": "https://api.z.ai/api/paas/v4",
     "cn": "https://open.bigmodel.cn/api/paas/v4",
     "coding-global": "https://api.z.ai/api/paas/v4",
     "coding-cn": "https://open.bigmodel.cn/api/paas/v4",
-    "coding": "https://open.bigmodel.cn/api/coding/paas/v4",  # GLM Coding Plan
 }
+
+# 默认 endpoint
+ZAI_DEFAULT_ENDPOINT = "coding"
 
 # 默认模型映射
 ZAI_DEFAULT_MODELS = {
+    "coding": "glm-4.7",
     "global": "glm-5",
     "cn": "glm-5",
     "coding-global": "glm-5",
@@ -105,8 +109,8 @@ class ZAIProvider(Provider):
         if self.endpoint == "auto":
             if self._detected_endpoint:
                 return self._detected_endpoint
-            # 默认使用 coding-global
-            return "coding-global"
+            # 默认使用 coding (GLM Coding Plan)
+            return ZAI_DEFAULT_ENDPOINT
         return self.endpoint
 
     def _do_auto_detect(self) -> None:
@@ -114,24 +118,31 @@ class ZAIProvider(Provider):
         try:
             from .zai_detect import detect_zai_endpoint
             result = detect_zai_endpoint(self.api_key)
-            self._detected_endpoint = result.get("endpoint", "coding-global")
+            self._detected_endpoint = result.get("endpoint", ZAI_DEFAULT_ENDPOINT)
             logger.info(f"ZAI endpoint auto-detected: {self._detected_endpoint}")
         except Exception as e:
             logger.warning(f"ZAI endpoint auto-detect failed: {e}")
-            self._detected_endpoint = "coding-global"
+            self._detected_endpoint = ZAI_DEFAULT_ENDPOINT
 
     def get_default_model(self) -> str:
         """获取默认模型"""
         effective_endpoint = self._get_effective_endpoint()
-        return ZAI_DEFAULT_MODELS.get(effective_endpoint, "glm-5")
+        return ZAI_DEFAULT_MODELS.get(effective_endpoint, "glm-4.7")
 
     def get_completion_kwargs(self, model: str) -> Dict[str, Any]:
-        """获取 litellm acompletion 所需的额外参数"""
+        """获取 litellm acompletion 所需的额外参数
+
+        ZAI 使用 OpenAI 兼容接口，所以使用 openai/ 前缀 + 自定义 api_base
+        """
         kwargs = super().get_completion_kwargs(model)
 
-        # 确保模型有 zai/ 前缀
-        if not model.startswith("zai/"):
-            kwargs["_model_override"] = f"zai/{model}"
+        # 处理模型名：使用 openai/ 前缀（OpenAI 兼容接口）
+        if model.startswith("openai/"):
+            # 已经是正确格式，保持不变
+            pass
+        elif "/" not in model:
+            # 没有 provider 前缀，添加 openai/ 前缀
+            kwargs["_model_override"] = f"openai/{model}"
 
         return kwargs
 

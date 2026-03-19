@@ -1,5 +1,13 @@
-"""AnyClaw 配置系统"""
+"""AnyClaw 配置系统
+
+支持从多个来源加载配置：
+1. 环境变量 (.env 文件)
+2. JSON 配置文件 (~/.anyclaw/config.json)
+3. 默认值
+"""
+
 from pathlib import Path
+from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -58,7 +66,7 @@ class Settings(BaseSettings):
         description="Tool Calling 最大迭代次数"
     )
 
-    # API Keys
+    # API Keys（优先从配置文件读取）
     openai_api_key: str = Field(
         default="",
         description="OpenAI API Key"
@@ -74,8 +82,8 @@ class Settings(BaseSettings):
         description="ZAI API Key"
     )
     zai_endpoint: str = Field(
-        default="auto",
-        description="ZAI endpoint: auto/global/cn/coding-global/coding-cn"
+        default="coding",
+        description="ZAI endpoint: coding/global/cn (默认使用 coding 即 GLM Coding Plan)"
     )
     zai_base_url: str = Field(
         default="",
@@ -233,6 +241,97 @@ class Settings(BaseSettings):
         """获取系统提示词"""
         return self.agent_role.format(name=self.agent_name)
 
+    def get_api_key(self, provider: Optional[str] = None) -> Optional[str]:
+        """获取 API Key
+
+        优先级：
+        1. 环境变量
+        2. 配置文件
+        3. 当前 settings 中的值
+
+        Args:
+            provider: Provider 名称，默认使用当前配置的 provider
+
+        Returns:
+            API Key 或 None
+        """
+        import os
+
+        provider = provider or self.llm_provider
+
+        # 环境变量映射
+        env_key_map = {
+            "openai": "OPENAI_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+            "zai": "ZAI_API_KEY",
+        }
+
+        # 1. 先检查环境变量
+        if provider in env_key_map:
+            env_val = os.environ.get(env_key_map[provider])
+            if env_val:
+                return env_val
+
+        # 2. 尝试从配置文件加载
+        try:
+            from anyclaw.config.loader import get_api_key as load_api_key
+            key = load_api_key(provider)
+            if key:
+                return key
+        except Exception:
+            pass
+
+        # 3. 使用当前 settings 中的值
+        key_map = {
+            "openai": self.openai_api_key,
+            "anthropic": self.anthropic_api_key,
+            "zai": self.zai_api_key,
+        }
+
+        return key_map.get(provider, "")
+
+    def get_effective_api_key(self) -> Optional[str]:
+        """获取当前配置的有效 API Key"""
+        return self.get_api_key(self.llm_provider)
+
+
+def _load_from_config_file(settings: Settings) -> Settings:
+    """从配置文件加载设置覆盖默认值"""
+    try:
+        from anyclaw.config.loader import get_config
+
+        config = get_config()
+
+        # 覆盖 agent 设置
+        if config.agent.name:
+            settings.agent_name = config.agent.name
+        if config.agent.workspace:
+            settings.workspace = config.agent.workspace
+
+        # 覆盖 LLM 设置
+        if config.llm.model:
+            settings.llm_model = config.llm.model
+        if config.llm.provider:
+            settings.llm_provider = config.llm.provider
+        if config.llm.max_tokens:
+            settings.llm_max_tokens = config.llm.max_tokens
+        if config.llm.temperature:
+            settings.llm_temperature = config.llm.temperature
+
+        # 覆盖 API Keys（只有当环境变量为空时）
+        import os
+        if not os.environ.get("OPENAI_API_KEY") and config.providers.openai.api_key:
+            settings.openai_api_key = config.providers.openai.api_key
+        if not os.environ.get("ANTHROPIC_API_KEY") and config.providers.anthropic.api_key:
+            settings.anthropic_api_key = config.providers.anthropic.api_key
+        if not os.environ.get("ZAI_API_KEY") and config.providers.zai.api_key:
+            settings.zai_api_key = config.providers.zai.api_key
+
+    except Exception:
+        pass
+
+    return settings
+
 
 # 全局配置实例
-settings = Settings()
+settings = _load_from_config_file(Settings())

@@ -29,12 +29,13 @@ class MemoryManager:
     """记忆管理器
 
     管理两种类型的记忆：
-    - 长期记忆 (MEMORY.md): 跨会话持久化的重要信息
+    - 长期记忆 (memory/MEMORY.md): 跨会话持久化的重要信息
     - 每日日志 (memory/YYYY-MM-DD.md): 按日期记录的会话日志
     """
 
+    MEMORY_DIR = "memory"
     LONG_TERM_FILE = "MEMORY.md"
-    DAILY_DIR = "memory"
+    HISTORY_FILE = "HISTORY.md"
 
     # 默认配置
     DEFAULT_MAX_CHARS = 10000
@@ -54,7 +55,7 @@ class MemoryManager:
             daily_load_days: 加载最近几天的日志
         """
         self.workspace_path = workspace_path or Path.home() / ".anyclaw" / "workspace"
-        self.memory_dir = self.workspace_path / self.DAILY_DIR
+        self.memory_dir = self.workspace_path / self.MEMORY_DIR
         self.max_chars = max_chars
         self.daily_load_days = daily_load_days
 
@@ -66,7 +67,8 @@ class MemoryManager:
         Returns:
             长期记忆内容，如果不存在返回 None
         """
-        filepath = self.workspace_path / self.LONG_TERM_FILE
+        self.memory_dir.mkdir(parents=True, exist_ok=True)
+        filepath = self.memory_dir / self.LONG_TERM_FILE
         if filepath.exists():
             content = filepath.read_text(encoding="utf-8")
             # 检查大小限制
@@ -81,8 +83,8 @@ class MemoryManager:
         Args:
             content: 要保存的内容
         """
-        self.workspace_path.mkdir(parents=True, exist_ok=True)
-        filepath = self.workspace_path / self.LONG_TERM_FILE
+        self.memory_dir.mkdir(parents=True, exist_ok=True)
+        filepath = self.memory_dir / self.LONG_TERM_FILE
         filepath.write_text(content, encoding="utf-8")
 
     def update_long_term(self, section: str, content: str) -> None:
@@ -178,7 +180,7 @@ class MemoryManager:
 
     def long_term_exists(self) -> bool:
         """检查长期记忆是否存在"""
-        return (self.workspace_path / self.LONG_TERM_FILE).exists()
+        return (self.memory_dir / self.LONG_TERM_FILE).exists()
 
     # ==================== 每日日志 ====================
 

@@ -18,6 +18,7 @@ from anyclaw.skills.models import SkillDefinition
 from anyclaw.tools.registry import ToolRegistry
 from anyclaw.tools.shell import ExecTool
 from anyclaw.tools.filesystem import ReadFileTool, WriteFileTool, ListDirTool
+from anyclaw.tools.memory import SaveMemoryTool, UpdatePersonaTool
 from .history import ConversationHistory
 from .context import ContextBuilder
 
@@ -52,6 +53,10 @@ class AgentLoop:
         self.tools.register(WriteFileTool(workspace=self.workspace))
         self.tools.register(ListDirTool(workspace=self.workspace))
 
+        # 记忆工具
+        self.tools.register(SaveMemoryTool(workspace_path=str(self.workspace)))
+        self.tools.register(UpdatePersonaTool(workspace_path=str(self.workspace)))
+
     def set_skills(self, skills: Dict[str, SkillDefinition]) -> None:
         """设置可用技能（兼容旧接口）"""
         self.skills = skills
@@ -67,7 +72,11 @@ class AgentLoop:
         """处理用户输入"""
         self.history.add_user_message(user_input)
 
-        context_builder = ContextBuilder(self.history, self._get_skills_info())
+        context_builder = ContextBuilder(
+            self.history,
+            self._get_skills_info(),
+            workspace=self.workspace,
+        )
         messages = context_builder.build()
 
         if self.enable_tools:
@@ -82,7 +91,11 @@ class AgentLoop:
         """流式处理用户输入"""
         self.history.add_user_message(user_input)
 
-        context_builder = ContextBuilder(self.history, self._get_skills_info())
+        context_builder = ContextBuilder(
+            self.history,
+            self._get_skills_info(),
+            workspace=self.workspace,
+        )
         messages = context_builder.build()
 
         full_response = []
@@ -190,10 +203,48 @@ class AgentLoop:
         else:
             return name
 
+    def _normalize_model_name(self, model: str) -> str:
+        """规范化模型名称
+
+        对于 ZAI provider：
+        - zai/glm-4.7 -> openai/glm-4.7 (使用 OpenAI 兼容接口)
+        - glm-4.7 -> openai/glm-4.7
+
+        对于其他 provider：
+        - 如果没有前缀，根据 provider 添加对应前缀
+        """
+        # ZAI 特殊处理：使用 OpenAI 兼容接口
+        if model.startswith("zai/"):
+            # zai/glm-4.7 -> openai/glm-4.7
+            return model.replace("zai/", "openai/", 1)
+
+        # 如果已经有前缀，直接返回
+        if "/" in model:
+            return model
+
+        # 根据配置的 provider 添加前缀
+        provider = settings.llm_provider
+        provider_prefix_map = {
+            "openai": "openai",
+            "anthropic": "anthropic",
+            "zai": "openai",  # ZAI 使用 OpenAI 兼容接口
+            "deepseek": "deepseek",
+            "openrouter": "openrouter",
+            "ollama": "ollama",
+        }
+
+        prefix = provider_prefix_map.get(provider, "openai")
+        return f"{prefix}/{model}"
+
     async def _call_llm(self, messages: list) -> str:
         """调用 LLM（无 tools）"""
-        kwargs = self._get_llm_kwargs(settings.llm_model)
-        kwargs["model"] = settings.llm_model
+        model = self._normalize_model_name(settings.llm_model)
+        kwargs = self._get_llm_kwargs(model)
+
+        # 处理模型名覆盖
+        actual_model = kwargs.pop("_model_override", model)
+
+        kwargs["model"] = actual_model
         kwargs["messages"] = messages
         kwargs["temperature"] = settings.llm_temperature
         kwargs["max_tokens"] = settings.llm_max_tokens
@@ -208,8 +259,13 @@ class AgentLoop:
         tools: Optional[List[Dict[str, Any]]] = None,
     ):
         """调用 LLM（带 tools）"""
-        kwargs = self._get_llm_kwargs(settings.llm_model)
-        kwargs["model"] = settings.llm_model
+        model = self._normalize_model_name(settings.llm_model)
+        kwargs = self._get_llm_kwargs(model)
+
+        # 处理模型名覆盖
+        actual_model = kwargs.pop("_model_override", model)
+
+        kwargs["model"] = actual_model
         kwargs["messages"] = messages
         kwargs["temperature"] = settings.llm_temperature
         kwargs["max_tokens"] = settings.llm_max_tokens
@@ -224,7 +280,15 @@ class AgentLoop:
         """获取 LLM 调用的额外参数"""
         kwargs: Dict[str, Any] = {}
 
-        # ZAI Provider
+        # ZAI Provider (使用 OpenAI 兼容接口)
+        if model.startswith("openai/") and settings.llm_provider == "zai":
+            from anyclaw.providers.zai import get_zai_provider
+            provider = get_zai_provider()
+            if provider.is_configured():
+                kwargs.update(provider.get_completion_kwargs(model))
+            return kwargs
+
+        # ZAI Provider (旧格式)
         if model.startswith("zai/"):
             from anyclaw.providers.zai import get_zai_provider
             provider = get_zai_provider()
@@ -233,15 +297,25 @@ class AgentLoop:
             return kwargs
 
         # OpenAI
-        if model.startswith("openai/") or model.startswith("gpt"):
-            if settings.openai_api_key:
-                kwargs["api_key"] = settings.openai_api_key
+        if model.startswith("openai/"):
+            api_key = settings.get_api_key("openai")
+            if api_key:
+                kwargs["api_key"] = api_key
             return kwargs
 
         # Anthropic
-        if model.startswith("anthropic/") or model.startswith("claude"):
-            if settings.anthropic_api_key:
-                kwargs["api_key"] = settings.anthropic_api_key
+        if model.startswith("anthropic/"):
+            api_key = settings.get_api_key("anthropic")
+            if api_key:
+                kwargs["api_key"] = api_key
+            return kwargs
+
+        # DeepSeek
+        if model.startswith("deepseek/"):
+            api_key = settings.get_api_key("deepseek")
+            if api_key:
+                kwargs["api_key"] = api_key
+                kwargs["api_base"] = "https://api.deepseek.com/v1"
             return kwargs
 
         return kwargs

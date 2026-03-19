@@ -9,6 +9,9 @@ include = [
     {path = "anyclaw/templates/**/*", format = ["sdist", "wheel"]},
 ]
 
+[tool.poetry.scripts]
+anyclaw = "anyclaw.cli.app:app"
+
 [tool.poetry.dependencies]
 python = "^3.9"
 pydantic = "^2.12.0"

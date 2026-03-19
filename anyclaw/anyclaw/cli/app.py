@@ -19,6 +19,7 @@ from .token import create_token_app
 from .persona import create_persona_app
 from .compress import create_compress_app
 from .memory import create_memory_app
+from .config_cmd import create_config_app
 
 app.add_typer(create_onboard_app(), name="onboard")
 app.add_typer(create_workspace_app(), name="workspace")
@@ -26,6 +27,7 @@ app.add_typer(create_token_app(), name="token")
 app.add_typer(create_persona_app(), name="persona")
 app.add_typer(create_compress_app(), name="compress")
 app.add_typer(create_memory_app(), name="memory")
+app.add_typer(create_config_app(), name="config")
 
 
 @app.command()
@@ -89,31 +91,6 @@ def chat(
             return await agent.process(user_input)
 
         asyncio.run(channel.run(process))
-
-
-@app.command()
-def config(
-    show: bool = typer.Option(False, "--show", help="Show current config"),
-    provider: str = typer.Option(None, "--provider", "-p", help="Filter by provider (zai, openai, anthropic)"),
-):
-    """Manage configuration"""
-
-    if show:
-        console.print("\n[bold]Current Configuration:[/bold]\n")
-
-        # 基础配置
-        console.print(f"Agent Name: {settings.agent_name}")
-        console.print(f"LLM Provider: {settings.llm_provider}")
-        console.print(f"LLM Model: {settings.llm_model}")
-        console.print(f"Temperature: {settings.llm_temperature}")
-        console.print(f"Max Tokens: {settings.llm_max_tokens}")
-        console.print(f"Timeout: {settings.llm_timeout}")
-        console.print(f"Skills Dir: {settings.skills_dir}")
-        console.print(f"Workspace Dir: {settings.workspace_dir}")
-
-        # Provider 特定配置
-        if provider == "zai" or provider is None:
-            show_zai_config()
 
 
 def show_zai_config() -> None:
