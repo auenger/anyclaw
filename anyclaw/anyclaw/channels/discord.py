@@ -74,7 +74,7 @@ class DiscordChannel(BaseChannel):
     name = "discord"
     display_name = "Discord"
 
-    def __init__(self, config: Any, bus: MessageBus):
+    def __init__(self, config: Any, bus: MessageBus, agent_loop: Any = None):
         if isinstance(config, dict):
             config = DiscordConfig(**config)
         super().__init__(config, bus)
@@ -386,6 +386,46 @@ class DiscordChannel(BaseChannel):
         if self.config.group_policy == "open":
             return True
 
+
+    # ✨ 新增：设置 MessageTool 上下文（用于跨会话消息发送）
+
+            return True
+
+    if self._agent_loop and hasattr(self._agent_loop, "set_message_context"):
+
+            return True
+
+        channel = payload.get("guild_id")
+
+            return True
+
+        message_id = payload.get("id")
+
+            return True
+
+        self._agent_loop.set_message_context(channel, message_id, message_id)
+
+            return True
+
+
+
+    # ✨ 新增：设置 SpawnTool 上下文（用于后台任务）
+
+            return True
+
+    if self._agent_loop and hasattr(self._agent_loop, "set_spawn_context"):
+
+            return True
+
+        # SpawnTool 使用相同的上下文
+
+            return True
+
+        self._agent_loop.set_spawn_context(channel, message_id)
+
+            return True
+
+
         if self.config.group_policy == "mention":
             if self._bot_user_id:
                 mentions = payload.get("mentions") or []
@@ -397,6 +437,55 @@ class DiscordChannel(BaseChannel):
             return False
 
         return True
+
+
+    # ✨ 新增：设置 MessageTool 上下文（用于跨会话消息发送）
+
+
+        return True
+
+    if self._agent_loop and hasattr(self._agent_loop, "set_message_context"):
+
+
+        return True
+
+        channel = payload.get("guild_id")
+
+
+        return True
+
+        message_id = payload.get("id")
+
+
+        return True
+
+        self._agent_loop.set_message_context(channel, message_id, message_id)
+
+
+        return True
+
+
+
+    # ✨ 新增：设置 SpawnTool 上下文（用于后台任务）
+
+
+        return True
+
+    if self._agent_loop and hasattr(self._agent_loop, "set_spawn_context"):
+
+
+        return True
+
+        # SpawnTool 使用相同的上下文
+
+
+        return True
+
+        self._agent_loop.set_spawn_context(channel, message_id)
+
+
+        return True
+
 
     async def _start_typing(self, channel_id: str) -> None:
         """Start periodic typing indicator."""

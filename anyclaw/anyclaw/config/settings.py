@@ -85,6 +85,44 @@ class Settings(BaseSettings):
         description="list_dir 最大返回条目数"
     )
 
+    # MessageTool 配置
+    enable_message_tool: bool = Field(
+        default=True,
+        description="是否启用 MessageTool（跨会话消息发送）"
+    )
+
+    # SubAgent 配置
+    enable_subagent: bool = Field(
+        default=True,
+        description="是否启用 SubAgent（后台任务管理）"
+    )
+    subagent_max_iterations: int = Field(
+        default=15,
+        ge=1,
+        le=50,
+        description="SubAgent 最大迭代次数"
+    )
+    subagent_restrict_workspace: bool = Field(
+        default=False,
+        description="SubAgent 是否限制在工作区内"
+    )
+
+    # Cron 配置
+    enable_cron: bool = Field(
+        default=True,
+        description="是否启用 Cron 调度（定时任务）"
+    )
+    cron_jobs_file: str = Field(
+        default="~/.anyclaw/cron/jobs.json",
+        description="Cron 任务存储文件路径"
+    )
+    cron_max_jobs: int = Field(
+        default=100,
+        ge=1,
+        le=1000,
+        description="Cron 最大任务数"
+    )
+
     # API Keys（优先从配置文件读取）
     openai_api_key: str = Field(
         default="",
