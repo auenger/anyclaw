@@ -7,9 +7,11 @@
 """
 
 from pathlib import Path
-from typing import Optional, List
+from typing import Dict, List, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from anyclaw.tools.mcp.config import MCPServerConfig
 
 # 获取包内技能目录的绝对路径
 _BUILTIN_SKILLS_DIR = str(Path(__file__).parent.parent / "skills" / "builtin")
@@ -244,6 +246,12 @@ class Settings(BaseSettings):
         default=10,
         ge=1,
         description="流式输出缓冲块数"
+    )
+
+    # MCP Server 配置
+    mcp_servers: Dict[str, MCPServerConfig] = Field(
+        default_factory=dict,
+        description="MCP Server 配置字典"
     )
 
     model_config = SettingsConfigDict(

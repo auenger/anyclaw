@@ -21,6 +21,7 @@ from .compress import create_compress_app
 from .memory import create_memory_app
 from .config_cmd import create_config_app
 from .skill_cmd import create_skill_app
+from .mcp_cmd import create_mcp_app
 
 app.add_typer(create_onboard_app(), name="onboard")
 app.add_typer(create_workspace_app(), name="workspace")
@@ -30,6 +31,7 @@ app.add_typer(create_compress_app(), name="compress")
 app.add_typer(create_memory_app(), name="memory")
 app.add_typer(create_config_app(), name="config")
 app.add_typer(create_skill_app(), name="skill")
+app.add_typer(create_mcp_app(), name="mcp")
 
 
 @app.command()
