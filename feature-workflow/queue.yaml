@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-18T22:00:00"
-  version: 18
+  last_updated: "2026-03-19T16:00:00"
+  version: 23
 
 # 父需求（用于分组追踪)
 parents:
@@ -19,18 +19,83 @@ parents:
       - feat-mvp-cli
       - feat-mvp-skills
       - feat-mvp-integration
+  - id: feat-skill-system-v2
+    name: Skill 系统增强 V2
+    description: 完善 Skill 系统，支持工具链、渐进式加载、动态加载
+    priority: 85
+    size: L
+    status: in_progress
+    children:
+      - feat-skill-toolkit
+      - feat-skill-dynamic-loader
+      - feat-skill-progressive-loading
+  - id: feat-mcp-integration
+    name: MCP 协议集成
+    description: MCP 客户端支持，连接 MCP Server 生态
+    priority: 70
+    size: L
+    status: pending
+    children:
+      - feat-mcp-client
 
 # 正在开发的需求
 active: []
 
 # 等待中的需求（按优先级排序）
-pending: []
+pending:
+  - id: feat-skill-dynamic-loader
+    name: Skill 动态加载修复
+    description: 修复动态加载问题，支持任意路径加载、.skill安装、热重载
+    priority: 80
+    size: M
+    dependencies: []
+
+  - id: feat-skill-progressive-loading
+    name: Skill 渐进式加载
+    description: 实现渐进式加载、依赖检查、scripts执行、always skills
+    priority: 75
+    size: M
+    dependencies: []
+
+  - id: feat-mcp-client
+    name: MCP 客户端
+    description: MCP 协议客户端，支持 stdio/SSE/HTTP 连接，复用 MCP Server 生态
+    priority: 70
+    size: L
+    dependencies: []
+
+  - id: feat-im-channels
+    name: IM Channel 支持
+    description: 添加飞书和 Discord 即时通讯渠道，实现 MessageBus 消息路由机制
+    priority: 65
+    size: L
+    dependencies: []
+
+  - id: feat-workspace-restrict
+    name: workspace 写入限制
+    description: 增加 restrict_to_workspace 配置项，控制文件写入权限，提升安全性
+    priority: 60
+    size: S
+    dependencies: []
 
 # 阻塞中的需求
 blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-skill-toolkit
+    name: Skill 工具链
+    priority: 90
+    size: M
+    completed_at: "2026-03-19T16:00:00"
+    archive_path: features/archive/done-feat-skill-toolkit
+    value_points:
+      - Skill 创建 (anyclaw skill create)
+      - Skill 验证 (anyclaw skill validate)
+      - Skill 打包 (anyclaw skill package)
+      - Skill 管理 (anyclaw skill list/install/show)
+      - 完整测试套件 (31 tests)
+
   - id: feat-streaming-output
     name: 流式输出支持
     priority: 76
@@ -42,6 +107,7 @@ completed:
       - CLI 实时显示
       - 流式配置控制
       - Tool Calling 流式支持
+
   - id: feat-builtin-skills-v2
     name: 内置技能扩展 V2
     priority: 78
