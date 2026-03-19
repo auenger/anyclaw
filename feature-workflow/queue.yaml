@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-19T23:00:00"
-  version: 31
+  last_updated: "2026-03-19T23:45:00"
+  version: 33
 
 # 父需求（用于分组追踪)
 parents:
@@ -39,19 +39,17 @@ parents:
       - feat-mcp-client
 
 # 正在开发的需求
-active:
-  - id: feat-exec-security
-    name: ExecTool 危险命令混合模式安全限制
-    description: 核心保护层（硬编码）+ 可配置扩展层，实现代码级危险命令拦截
-    priority: 65
-    size: M
-    dependencies: []
-    branch: feature/exec-security
-    worktree: ../AnyClaw-exec-security
-    started_at: "2026-03-19T23:00:00"
+active: []
 
 # 等待中的需求（按优先级排序）
 pending:
+  - id: feat-skill-conversation-mode
+    name: 技能对话模式
+    description: Agent 在对话中动态创建/编辑/使用技能，新技能立即可用
+    priority: 85
+    size: M
+    dependencies: []
+
   - id: feat-ssrf-guard
     name: SSRF 防护系统
     description: 阻止对私有网络、云元数据端点、本地服务的访问
@@ -92,6 +90,18 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-exec-security
+    name: ExecTool 危险命令混合模式安全限制
+    priority: 65
+    size: M
+    completed_at: "2026-03-19T23:45:00"
+    archive_path: features/archive/done-feat-exec-security
+    value_points:
+      - 核心保护层 (CoreGuard) - 硬编码不可绕过的危险命令拦截
+      - 用户自定义层 (UserGuard) - 支持配置 deny/allow patterns
+      - anyclaw security show/test/list CLI 命令
+      - 完整测试套件 (25 tests)
+
   - id: feat-workspace-restrict
     name: workspace 写入限制
     priority: 60
