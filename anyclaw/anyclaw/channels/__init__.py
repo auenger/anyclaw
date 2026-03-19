@@ -1,4 +1,14 @@
-"""AnyClaw 频道模块"""
-from .cli import CLIChannel
+"""AnyClaw chat channels module."""
 
-__all__ = ["CLIChannel"]
+from anyclaw.channels.base import BaseChannel
+from anyclaw.channels.cli import CLIChannel
+from anyclaw.channels.manager import ChannelManager
+from anyclaw.channels.registry import discover_all, get_channel_class
+
+__all__ = [
+    "BaseChannel",
+    "CLIChannel",
+    "ChannelManager",
+    "discover_all",
+    "get_channel_class",
+]
