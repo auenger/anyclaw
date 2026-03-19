@@ -258,6 +258,20 @@ class Settings(BaseSettings):
         default_factory=list,
         description="用户自定义的命令白名单模式（设置后启用白名单模式）"
     )
+
+    # SSRF 防护配置
+    ssrf_enabled: bool = Field(
+        default=True,
+        description="是否启用 SSRF 防护"
+    )
+    ssrf_allowed_networks: List[str] = Field(
+        default_factory=list,
+        description="允许访问的私有网络（CIDR 格式）"
+    )
+    ssrf_allowed_private_domains: List[str] = Field(
+        default_factory=list,
+        description="允许访问的私有域名"
+    )
     stream_buffer_size: int = Field(
         default=10,
         ge=1,

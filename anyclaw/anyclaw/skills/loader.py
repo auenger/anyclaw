@@ -69,6 +69,9 @@ class SkillLoader:
         self._skill_sources: Dict[str, SkillSource] = {}
         self._loaded_modules: Dict[str, str] = {}  # skill_name -> module_name
 
+        # 热重载相关
+        self._last_mtime: Optional[float] = None
+
     def load_all(self) -> List[Dict]:
         """加载所有技能"""
         # 按优先级顺序加载（低优先级先加载，高优先级覆盖）
@@ -541,6 +544,80 @@ class SkillLoader:
                     always_skills.append(name)
 
         return always_skills
+
+    # ==================== 热重载检测 ====================
+
+    def get_skills_mtime(self) -> float:
+        """
+        获取技能目录的最新修改时间
+
+        Returns:
+            所有技能目录中最新的修改时间戳
+        """
+        import os
+
+        max_mtime = 0.0
+
+        for skills_dir in self.skills_dirs:
+            if not skills_dir.exists():
+                continue
+
+            # 检查目录本身的修改时间
+            try:
+                dir_mtime = skills_dir.stat().st_mtime
+                max_mtime = max(max_mtime, dir_mtime)
+            except OSError:
+                pass
+
+            # 检查所有 SKILL.md 文件的修改时间
+            for skill_md in skills_dir.rglob("SKILL.md"):
+                try:
+                    file_mtime = skill_md.stat().st_mtime
+                    max_mtime = max(max_mtime, file_mtime)
+                except OSError:
+                    pass
+
+            # 检查所有 skill.py 文件的修改时间
+            for skill_py in skills_dir.rglob("skill.py"):
+                try:
+                    file_mtime = skill_py.stat().st_mtime
+                    max_mtime = max(max_mtime, file_mtime)
+                except OSError:
+                    pass
+
+        return max_mtime
+
+    def has_skills_changed(self) -> bool:
+        """
+        检测技能目录是否有变化
+
+        Returns:
+            True 如果检测到变化，False 否则
+        """
+        current_mtime = self.get_skills_mtime()
+
+        if self._last_mtime is None:
+            # 首次调用，记录当前时间
+            self._last_mtime = current_mtime
+            return False
+
+        if current_mtime > self._last_mtime:
+            self._last_mtime = current_mtime
+            return True
+
+        return False
+
+    def auto_reload_if_changed(self) -> Optional[Dict[str, int]]:
+        """
+        如果检测到变化则自动重载
+
+        Returns:
+            如果重载了，返回统计信息；否则返回 None
+        """
+        if self.has_skills_changed():
+            logger.info("Detected skill changes, auto-reloading...")
+            return self.reload_all()
+        return None
 
 
 class MultiDirectorySkillLoader(SkillLoader):

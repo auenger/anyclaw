@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-19T23:45:00"
-  version: 33
+  last_updated: "2026-03-19T23:50:00"
+  version: 34
 
 # 父需求（用于分组追踪)
 parents:
@@ -43,13 +43,6 @@ active: []
 
 # 等待中的需求（按优先级排序）
 pending:
-  - id: feat-skill-conversation-mode
-    name: 技能对话模式
-    description: Agent 在对话中动态创建/编辑/使用技能，新技能立即可用
-    priority: 85
-    size: M
-    dependencies: []
-
   - id: feat-ssrf-guard
     name: SSRF 防护系统
     description: 阻止对私有网络、云元数据端点、本地服务的访问
@@ -90,6 +83,18 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-skill-conversation-mode
+    name: 技能对话模式
+    priority: 85
+    size: M
+    completed_at: "2026-03-19T23:45:00"
+    archive_path: features/archive/done-feat-skill-conversation-mode
+    value_points:
+      - skill-creator 内置技能 (SKILL.md 格式)
+      - 技能工具函数 (create_skill, reload_skill, validate_skill, show_skill, list_skills)
+      - 热重载检测 (has_skills_changed, auto_reload_if_changed)
+      - 完整测试套件 (23 tests)
+
   - id: feat-exec-security
     name: ExecTool 危险命令混合模式安全限制
     priority: 65
