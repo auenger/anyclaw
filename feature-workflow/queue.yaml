@@ -83,6 +83,19 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-toml-config
+    name: TOML 配置系统升级
+    priority: 70
+    size: M
+    completed_at: "2026-03-19T15:30:00"
+    archive_path: features/archive/done-feat-toml-config
+    value_points:
+      - TOML 配置格式支持 (优先于 JSON)
+      - 配置模板文件 (带详细中文注释)
+      - IM Channels 配置集成 (Feishu/Discord)
+      - CLI 配置命令增强 (init/template/migrate/set)
+      - 配置向后兼容 (JSON 格式)
+
   - id: feat-skill-conversation-mode
     name: 技能对话模式
     priority: 85

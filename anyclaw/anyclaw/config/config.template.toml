@@ -1,0 +1,225 @@
+# ╔═══════════════════════════════════════════════════════════════════════════╗
+# ║                        AnyClaw 配置文件                                    ║
+# ║  配置文件路径: ~/.anyclaw/config.toml                                      ║
+# ║  使用命令查看: anyclaw config show                                         ║
+# ╚═══════════════════════════════════════════════════════════════════════════╝
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [agent] - 智能体基本配置
+# ─────────────────────────────────────────────────────────────────────────────
+[agent]
+# 智能体名称，显示在对话和 IM 消息中
+name = "AnyClaw"
+
+# 工作区路径，存储记忆、技能、模板等文件
+# 支持使用 ~ 表示用户目录
+workspace = "~/.anyclaw/workspace"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [llm] - 大语言模型配置
+# ─────────────────────────────────────────────────────────────────────────────
+[llm]
+# LLM 提供商: openai, anthropic, zai, deepseek, openrouter, ollama
+provider = "zai"
+
+# 模型名称
+# OpenAI: gpt-4o, gpt-4o-mini, gpt-4-turbo
+# Anthropic: claude-3-5-sonnet, claude-3-opus
+# ZAI: glm-4.7, glm-4-plus
+# DeepSeek: deepseek-chat, deepseek-coder
+model = "glm-4.7"
+
+# 最大生成 token 数 (1-128000)
+max_tokens = 2000
+
+# 温度参数，控制输出随机性 (0.0-2.0)
+# 0.0 = 确定性输出，2.0 = 最大随机性
+temperature = 0.7
+
+# 上下文窗口大小，用于 token 计数和压缩判断
+context_window_tokens = 128000
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [providers] - API Key 和 Provider 特定配置
+# ─────────────────────────────────────────────────────────────────────────────
+
+# OpenAI 配置
+[providers.openai]
+# API Key (必填)
+api_key = ""
+# 自定义 API Base URL (可选，用于代理或私有部署)
+# api_base = "https://api.openai.com/v1"
+
+# Anthropic 配置
+[providers.anthropic]
+api_key = ""
+# api_base = "https://api.anthropic.com"
+
+# ZAI/GLM 配置 (智谱 AI Coding Plan)
+[providers.zai]
+api_key = ""
+api_base = "https://open.bigmodel.cn/api/coding/paas/v4"
+
+# DeepSeek 配置
+[providers.deepseek]
+api_key = ""
+# api_base = "https://api.deepseek.com/v1"
+
+# OpenRouter 配置 (多模型聚合)
+[providers.openrouter]
+api_key = ""
+# api_base = "https://openrouter.ai/api/v1"
+
+# Ollama 配置 (本地模型)
+[providers.ollama]
+# Ollama 不需要 API Key
+api_key = ""
+# api_base = "http://localhost:11434/v1"
+
+# 自定义 Provider
+[providers.custom]
+api_key = ""
+# api_base = "http://your-server:port/v1"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [channels.cli] - 命令行通道配置
+# ─────────────────────────────────────────────────────────────────────────────
+[channels.cli]
+# 是否启用 CLI 通道
+enabled = true
+
+# 输入提示符
+prompt = "You: "
+
+# 智能体显示名称
+agent_name = "AnyClaw"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [channels.feishu] - 飞书/Lark 通道配置
+# ─────────────────────────────────────────────────────────────────────────────
+# 需要先创建飞书应用: https://open.feishu.cn/app
+[channels.feishu]
+# 是否启用飞书通道
+enabled = false
+
+# 飞书应用 ID (App ID)
+app_id = ""
+
+# 飞书应用密钥 (App Secret)
+app_secret = ""
+
+# 加密密钥 (可选，用于消息加密)
+encrypt_key = ""
+
+# 验证令牌 (可选，用于消息验证)
+verification_token = ""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [channels.discord] - Discord 通道配置
+# ─────────────────────────────────────────────────────────────────────────────
+# 需要先创建 Discord Bot: https://discord.com/developers/applications
+[channels.discord]
+# 是否启用 Discord 通道
+enabled = false
+
+# Bot Token (从 Discord Developer Portal 获取)
+token = ""
+
+# 群组消息策略
+# "mention" = 只响应 @机器人 的消息
+# "open" = 响应所有消息
+group_policy = "mention"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [mcp_servers] - MCP Server 配置
+# ─────────────────────────────────────────────────────────────────────────────
+# MCP (Model Context Protocol) 服务器配置
+# 使用命令管理: anyclaw mcp list / anyclaw mcp test
+
+# 示例: 文件系统 MCP Server
+# [mcp_servers.filesystem]
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-filesystem", "~"]
+# tool_timeout = 30
+# enabled_tools = ["*"]
+
+# 示例: GitHub MCP Server
+# [mcp_servers.github]
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-github"]
+# env = { GITHUB_TOKEN = "your-token" }
+# enabled_tools = ["*"]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [security] - 安全配置
+# ─────────────────────────────────────────────────────────────────────────────
+[security]
+# 是否限制文件写入到 workspace 内 (推荐开启)
+restrict_to_workspace = true
+
+# SSRF 防护 (阻止访问私有网络)
+# 查看当前配置: anyclaw security show
+ssrf_enabled = true
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [memory] - 记忆系统配置
+# ─────────────────────────────────────────────────────────────────────────────
+[memory]
+# 是否启用记忆系统
+enabled = true
+
+# 长期记忆最大字符数
+max_chars = 10000
+
+# 加载最近几天的日志
+daily_load_days = 2
+
+# 是否自动更新记忆 (无需确认)
+auto_update = false
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [compression] - 上下文压缩配置
+# ─────────────────────────────────────────────────────────────────────────────
+[compression]
+# 是否启用自动压缩
+enabled = true
+
+# 触发压缩的消息数阈值
+threshold = 10
+
+# 压缩时保留的最近消息数
+keep_recent = 5
+
+# 压缩策略: summary (摘要), truncate (截断), key_points (要点)
+strategy = "truncate"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [streaming] - 流式输出配置
+# ─────────────────────────────────────────────────────────────────────────────
+[streaming]
+# 是否启用流式输出
+enabled = true
+
+# 流式输出缓冲块数
+buffer_size = 10
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [tools] - 工具系统配置
+# ─────────────────────────────────────────────────────────────────────────────
+[tools]
+# 工具执行超时时间 (秒)
+timeout = 60
+
+# Tool Calling 最大迭代次数
+max_iterations = 10

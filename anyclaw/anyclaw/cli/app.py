@@ -68,7 +68,14 @@ def chat(
 
     # 初始化组件
     agent = AgentLoop(workspace=ws_manager.path)
-    channel = CLIChannel()
+
+    # 初始化 MessageBus 和 CLIChannel
+    from anyclaw.bus.queue import MessageBus
+    from anyclaw.channels.cli import CLIConfig
+
+    bus = MessageBus()
+    cli_config = CLIConfig({"agent_name": settings.agent_name})
+    channel = CLIChannel(cli_config, bus)
 
     # 加载技能
     skill_loader = SkillLoader(skills_dir=settings.skills_dir)

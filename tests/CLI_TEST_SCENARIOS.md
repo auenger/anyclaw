@@ -11,9 +11,10 @@
 5. [技能系统测试](#5-技能系统测试)
 6. [MCP 服务测试](#6-mcp-服务测试)
 7. [Agent 聊天测试](#7-agent-聊天测试)
-8. [Provider 管理测试](#8-provider-管理测试)
-9. [错误处理测试](#9-错误处理测试)
-10. [集成测试场景](#10-集成测试场景)
+8. [技能对话模式测试](#8-技能对话模式测试)
+9. [Provider 管理测试](#9-provider-管理测试)
+10. [错误处理测试](#10-错误处理测试)
+11. [集成测试场景](#11-集成测试场景)
 
 ---
 
@@ -383,9 +384,265 @@ poetry run anyclaw chat --workspace /tmp/test-workspace
 
 ---
 
-## 8. Provider 管理测试
+## 8. 技能对话模式测试
 
-### 8.1 Onboard 配置
+技能对话模式允许 Agent 在对话中动态创建、验证和管理技能，实现技能的自助式开发。
+
+### 8.1 skill-creator 内置技能验证
+
+```bash
+# 验证 skill-creator 技能存在
+ls ~/.anyclaw/workspace/skills/skill-creator/
+# 或检查内置目录
+ls anyclaw/anyclaw/skills/builtin/skill-creator/
+
+# 预期输出:
+# SKILL.md  (必需)
+# scripts/  (可选)
+# references/  (可选)
+```
+
+### 8.2 在对话中创建技能
+
+```
+# 启动聊天
+poetry run anyclaw chat
+
+# 进入聊天后，请求创建技能:
+> 请帮我创建一个名为 "code-reviewer" 的技能，用于代码审查
+
+# 预期 Agent 行为:
+# 1. Agent 识别到技能创建请求
+# 2. 调用 create_skill 工具
+# 3. 返回创建结果:
+#    [OK] Skill 'code-reviewer' created at: ~/.anyclaw/workspace/skills/code-reviewer/
+# 4. 提示用户可以编辑 SKILL.md 添加详细说明
+```
+
+### 8.3 create_skill 工具测试
+
+```
+# 在聊天中测试 create_skill 工具
+
+# 测试 1: 创建基础技能
+> 使用 create_skill 创建一个名为 "test-skill" 的技能，描述为"测试技能"
+
+# 预期输出:
+# [OK] Skill 'test-skill' created at: ...
+
+# 测试 2: 创建带资源的技能
+> 创建一个名为 "api-helper" 的技能，包含 scripts 和 references 资源目录
+
+# 预期输出:
+# [OK] Skill 'api-helper' created with resources: scripts, references
+
+# 测试 3: 创建已存在的技能（错误处理）
+> 再次创建名为 "test-skill" 的技能
+
+# 预期输出:
+# [ERROR] Skill 'test-skill' already exists. Use --force to overwrite.
+```
+
+### 8.4 validate_skill 工具测试
+
+```
+# 在聊天中验证技能
+
+# 测试 1: 验证有效技能
+> 验证 test-skill 技能的格式是否正确
+
+# 预期输出:
+# [OK] Skill 'test-skill' is valid!
+# - Has SKILL.md
+# - Valid frontmatter (name, description)
+# - Body content present
+
+# 测试 2: 验证无效技能
+> 验证一个不存在的技能路径
+
+# 预期输出:
+# [ERROR] Path does not exist: /path/to/nonexistent
+
+# 测试 3: 验证缺少必需字段的技能
+# (先手动创建一个无效的 SKILL.md)
+> 验证 invalid-skill 技能
+
+# 预期输出:
+# [ERROR] Validation failed:
+# - Missing required field: name
+# - Missing required field: description
+```
+
+### 8.5 reload_skill 工具测试
+
+```
+# 测试技能热重载
+
+# 测试 1: 重载所有技能
+> 重载所有技能
+
+# 预期输出:
+# [OK] Reloaded 5 skills (5 success, 0 failed)
+
+# 测试 2: 重载单个技能
+> 重载 test-skill 技能
+
+# 预期输出:
+# [OK] Skill 'test-skill' reloaded successfully
+
+# 测试 3: 重载不存在的技能
+> 重载 nonexistent-skill 技能
+
+# 预期输出:
+# [ERROR] Skill 'nonexistent-skill' not found
+```
+
+### 8.6 show_skill 工具测试
+
+```
+# 查看技能详情
+
+# 测试 1: 显示存在的技能
+> 显示 test-skill 技能的详情
+
+# 预期输出:
+# === Skill: test-skill ===
+# Source: workspace
+# Path: ~/.anyclaw/workspace/skills/test-skill
+# Description: 测试技能
+# Content Preview:
+# [SKILL.md 内容预览...]
+
+# 测试 2: 显示不存在的技能
+> 显示 nonexistent-skill 技能的详情
+
+# 预期输出:
+# [ERROR] Skill 'nonexistent-skill' not found
+```
+
+### 8.7 list_skills 工具测试
+
+```
+# 列出所有技能
+
+# 测试 1: 列出所有可用技能
+> 列出所有技能
+
+# 预期输出:
+# === Available Skills ===
+# [Python Skills]
+# - echo (bundled) - Echo input text
+# - calc (bundled) - Calculator operations
+#
+# [MD Skills]
+# - skill-creator (bundled) - Create or update AgentSkills
+# - test-skill (workspace) - 测试技能
+# Total: 4 skills
+
+# 测试 2: 空技能列表
+# (在新的工作区中)
+> 列出所有技能
+
+# 预期输出:
+# No skills installed. Use 'create_skill' to create one.
+```
+
+### 8.8 热重载检测测试
+
+```bash
+# 手动测试热重载检测
+
+# 1. 启动聊天
+poetry run anyclaw chat
+
+# 2. 在另一个终端创建新技能
+poetry run anyclaw skill create hot-reload-test
+
+# 3. 回到聊天，发送消息
+> 你好
+
+# 预期: Agent 应该检测到技能变化并自动重载
+# 输出可能包含:
+# [System] Detected skill changes, reloading...
+# [System] Reloaded 1 new skill(s)
+
+# 4. 验证新技能可用
+> 列出所有技能
+
+# 预期输出包含: hot-reload-test
+```
+
+### 8.9 完整工作流测试
+
+```
+# 在对话中完成完整的技能创建流程
+
+# Step 1: 创建技能
+> 创建一个名为 "code-formatter" 的技能，
+> 描述为 "代码格式化工具，支持 Python、JavaScript、TypeScript"，
+> 包含 scripts 资源目录
+
+# 预期: [OK] Skill created...
+
+# Step 2: 查看技能
+> 显示 code-formatter 技能的详情
+
+# 预期: 显示技能信息和内容预览
+
+# Step 3: 编辑技能 (Agent 无法直接编辑，但可以指导用户)
+> 我应该如何编辑这个技能？
+
+# 预期: Agent 提供编辑指导，说明 SKILL.md 的位置和格式
+
+# Step 4: 验证技能
+> 验证 code-formatter 技能
+
+# 预期: [OK] Skill is valid!
+
+# Step 5: 重载技能
+> 重载 code-formatter 技能
+
+# 预期: [OK] Skill reloaded
+
+# Step 6: 确认技能可用
+> 列出所有技能
+
+# 预期: 输出包含 code-formatter
+```
+
+### 8.10 技能即时可用测试
+
+```
+# 验证新创建的技能在下次对话中可用
+
+# 1. 启动新对话
+poetry run anyclaw chat
+
+# 2. 创建技能
+> 创建技能 "quick-test"，描述 "快速测试技能"
+
+# 3. 退出对话
+> 退出
+
+# 4. 启动新对话
+poetry run anyclaw chat
+
+# 5. 检查技能是否可用
+> 列出所有技能
+
+# 预期: quick-test 出现在技能列表中
+
+# 6. 使用新技能（如果技能内容完整）
+> 使用 quick-test 技能
+
+# 预期: Agent 根据 quick-test 的 SKILL.md 内容执行操作
+```
+
+---
+
+## 9. Provider 管理测试
+
+### 9.1 Onboard 配置
 
 ```bash
 # 查看认证选项
@@ -395,7 +652,7 @@ poetry run anyclaw onboard --list-auth-choices
 poetry run anyclaw onboard
 ```
 
-### 8.2 Token 管理
+### 9.2 Token 管理
 
 ```bash
 # 查看token使用情况
@@ -407,9 +664,9 @@ poetry run anyclaw token stats
 
 ---
 
-## 9. 错误处理测试
+## 10. 错误处理测试
 
-### 9.1 无效命令
+### 10.1 无效命令
 
 ```bash
 # 执行不存在的命令
@@ -417,7 +674,7 @@ poetry run anyclaw invalid-command
 # 预期: 显示错误信息和帮助
 ```
 
-### 9.2 缺少参数
+### 10.2 缺少参数
 
 ```bash
 # skill create 缺少名称
@@ -429,14 +686,14 @@ poetry run anyclaw config set openai.api_key
 # 预期: 用法提示
 ```
 
-### 9.3 无效配置键
+### 10.3 无效配置键
 
 ```bash
 poetry run anyclaw config set invalid.key value
 # 预期: "未知的配置段: invalid"
 ```
 
-### 9.4 文件不存在
+### 10.4 文件不存在
 
 ```bash
 poetry run anyclaw skill validate /nonexistent/path
@@ -446,7 +703,7 @@ poetry run anyclaw skill install /nonexistent/path
 # 预期: 错误提示路径未找到
 ```
 
-### 9.5 技能已存在
+### 10.5 技能已存在
 
 ```bash
 # 安装已存在的技能 (不使用 --force)
@@ -457,9 +714,9 @@ poetry run anyclaw skill install ./my-first-skill
 
 ---
 
-## 10. 集成测试场景
+## 11. 集成测试场景
 
-### 10.1 完整工作流程
+### 11.1 完整工作流程
 
 ```bash
 # 1. 清理环境
@@ -496,7 +753,7 @@ poetry run anyclaw chat --workspace /tmp/anyclaw-test --no-stream
 poetry run anyclaw skill list  # 确认技能存在
 ```
 
-### 10.2 多 Provider 切换
+### 11.2 多 Provider 切换
 
 ```bash
 # 设置 OpenAI
@@ -513,7 +770,7 @@ poetry run anyclaw config show
 poetry run anyclaw config providers
 ```
 
-### 10.3 工作区模板同步
+### 11.3 工作区模板同步
 
 ```bash
 # 创建新工作区
