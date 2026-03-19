@@ -1,8 +1,8 @@
 ---
 last_updated: '2026-03-19'
-version: 4
-features_completed: 17
-tests_passing: 280
+version: 5
+features_completed: 18
+tests_passing: 295
 ---
 
 # Project Context: AnyClaw
@@ -35,7 +35,14 @@ anyclaw/
 │   │   ├── tool_loop.py       # Tool calling loop
 │   │   └── persona.py         # Persona system
 │   ├── channels/              # Channel plugins
-│   │   └── cli.py             # CLI channel (sync + stream)
+│   │   ├── cli.py             # CLI channel (sync + stream)
+│   │   ├── feishu.py          # Feishu channel
+│   │   └── discord.py         # Discord channel
+│   ├── core/                  # Core services
+│   │   ├── serve.py           # Multi-channel serve manager
+│   │   └── daemon.py          # Daemon process management
+│   ├── utils/                 # Utilities
+│   │   └── logging_config.py  # Logging configuration
 │   ├── skills/                # Skill system
 │   │   ├── base.py            # Skill base class
 │   │   ├── loader.py          # Skill loader
@@ -75,7 +82,7 @@ anyclaw/
 │       ├── persona.py         # Persona commands
 │       ├── compress.py        # Compress commands
 │       └── memory.py          # Memory commands
-├── tests/                     # Test files (280 tests)
+├── tests/                     # Test files (295 tests)
 ├── pyproject.toml             # Project config
 └── .env                       # Environment vars
 ```
@@ -265,7 +272,10 @@ token_hard_limit: int = 200000
 
 | Date | Feature | Impact |
 |------|---------|--------|
-| 2026-03-19 | feat-config-system | JSON config file support (~/.anyclaw/config.json) |
+| 2026-03-19 | feat-serve-mode | Multi-channel serve mode with daemon support |
+| 2026-03-19 | feat-exec-security | ExecTool dangerous command protection |
+| 2026-03-19 | feat-skill-conversation-mode | Skill conversation mode with hot reload |
+| 2026-03-19 | feat-toml-config | TOML config file support (~/.anyclaw/config.toml) |
 | 2026-03-19 | feat-memory-persistence | save_memory and update_persona tools |
 | 2026-03-18 | feat-streaming-output | Added streaming output support |
 | 2026-03-18 | feat-builtin-skills-v2 | Added 5 new skills (code_exec, process, text, system, data) |
@@ -283,6 +293,16 @@ token_hard_limit: int = 200000
 ```bash
 # Chat
 anyclaw chat [--stream/--no-stream] [--model MODEL]
+
+# Multi-channel Serve Mode
+anyclaw serve                    # Foreground mode
+anyclaw serve --debug            # Debug mode (detailed logs)
+anyclaw serve --verbose          # Verbose output
+anyclaw serve --quiet            # Quiet mode (warnings only)
+anyclaw serve --daemon           # Background daemon mode
+anyclaw serve --status           # Check daemon status
+anyclaw serve --stop             # Stop daemon
+anyclaw serve --logs             # Follow daemon logs
 
 # Configuration
 anyclaw config --show
@@ -317,7 +337,10 @@ anyclaw compress run
 
 ## Update Log
 
-- 2026-03-19: Added feat-config-system - JSON config file support
+- 2026-03-19: Added feat-serve-mode - Multi-channel serve mode with daemon support
+- 2026-03-19: Added feat-exec-security - ExecTool dangerous command protection
+- 2026-03-19: Added feat-skill-conversation-mode - Skill conversation mode with hot reload
+- 2026-03-19: Added feat-toml-config - TOML config file support
 - 2026-03-19: Added feat-memory-persistence - Memory persistence tools
 - 2026-03-18: Added feat-streaming-output - Streaming output support
 - 2026-03-18: Added feat-builtin-skills-v2 - Extended builtin skills

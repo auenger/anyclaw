@@ -74,10 +74,16 @@ anyclaw/
 │   │   └── automation.py      # 记忆自动化
 │   ├── providers/             # LLM Provider
 │   │   └── zai.py             # ZAI/GLM Provider
+│   ├── core/                  # 核心服务
+│   │   ├── serve.py           # 多通道服务管理
+│   │   └── daemon.py          # 守护进程管理
+│   ├── utils/                 # 工具模块
+│   │   └── logging_config.py  # 日志配置
 │   ├── config/                # 配置系统
 │   │   └── settings.py        # Pydantic Settings
 │   └── cli/                   # CLI 应用
-│       └── app.py             # Typer 应用
+│       ├── app.py             # Typer 应用
+│       └── serve_cmd.py       # serve 命令
 ├── tests/                     # 测试目录
 ├── pyproject.toml             # 项目配置
 └── .env.example               # 环境变量示例
@@ -159,6 +165,14 @@ poetry run python -m anyclaw skill reload
 # MCP 管理
 poetry run python -m anyclaw mcp list
 poetry run python -m anyclaw mcp test filesystem
+
+# 多通道服务模式
+poetry run python -m anyclaw serve              # 前台运行
+poetry run python -m anyclaw serve --debug      # 调试模式
+poetry run python -m anyclaw serve --daemon     # 后台守护进程
+poetry run python -m anyclaw serve --status     # 查看状态
+poetry run python -m anyclaw serve --stop       # 停止服务
+poetry run python -m anyclaw serve --logs       # 查看日志
 ```
 
 ### 测试

@@ -16,6 +16,7 @@
 - 🌊 **流式输出** - 实时响应流
 - 🔌 **MCP 协议** - 连接 MCP Server 生态
 - 💬 **IM 集成** - 支持飞书、Discord 等即时通讯平台
+- 🖥️ **Serve 模式** - 多通道并行服务，支持后台守护进程
 - 🛡️ **安全限制** - Workspace 写入保护
 
 ## 快速开始
@@ -66,6 +67,11 @@ anyclaw chat --stream
 | 命令 | 说明 |
 |------|------|
 | `anyclaw chat` | 启动交互式聊天 |
+| `anyclaw serve` | 多通道服务模式 |
+| `anyclaw serve --daemon` | 后台守护进程 |
+| `anyclaw serve --status` | 查看服务状态 |
+| `anyclaw serve --stop` | 停止后台服务 |
+| `anyclaw serve --logs` | 查看服务日志 |
 | `anyclaw setup` | 初始化工作区 |
 | `anyclaw init` | 在当前目录初始化配置 |
 | `anyclaw config init` | 初始化配置文件 |
@@ -82,6 +88,11 @@ anyclaw chat --stream
 | `anyclaw skill reload [name]` | 热重载技能 |
 | `anyclaw mcp list` | 列出 MCP 服务器 |
 | `anyclaw mcp test <name>` | 测试 MCP 连接 |
+| `anyclaw serve` | 多通道服务模式 (前台) |
+| `anyclaw serve --daemon` | 后台守护进程模式 |
+| `anyclaw serve --status` | 查看服务状态 |
+| `anyclaw serve --stop` | 停止后台服务 |
+| `anyclaw serve --logs` | 查看服务日志 |
 | `anyclaw version` | 显示版本 |
 
 ## 工作区结构
@@ -150,6 +161,32 @@ anyclaw mcp test filesystem
 - **飞书 (Feishu)**: Webhook + REST API
 - **Discord**: Gateway + Rate Limit
 
+## 多通道服务模式
+
+同时运行多个 IM 通道：
+
+```bash
+# 前台运行所有启用的通道
+anyclaw serve
+
+# 调试模式 (详细日志)
+anyclaw serve --debug
+
+# 后台守护进程
+anyclaw serve --daemon
+
+# 查看服务状态
+anyclaw serve --status
+
+# 停止服务
+anyclaw serve --stop
+
+# 查看日志
+anyclaw serve --logs
+```
+
+日志文件位置: `~/.anyclaw/logs/serve.log`
+
 ## 开发
 
 ### 环境设置
@@ -199,6 +236,7 @@ anyclaw/
 - [x] MCP 协议集成
 - [x] IM Channel 支持
 - [x] Skill 工具链
+- [x] 多通道服务模式 (Serve Mode)
 - [ ] Web UI
 - [ ] 插件系统
 - [ ] 多 Agent 协作

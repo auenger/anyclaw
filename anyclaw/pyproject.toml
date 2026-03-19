@@ -26,6 +26,8 @@ websockets = ">=12.0"
 mcp = ">=1.0.0"
 # TOML support (Python 3.11+ has built-in tomllib)
 tomli = {version = "^2.0.0", python = "<3.11"}
+# Process management for daemon mode
+psutil = "^6.0.0"
 
 [tool.poetry.extras]
 feishu = ["lark-oapi"]

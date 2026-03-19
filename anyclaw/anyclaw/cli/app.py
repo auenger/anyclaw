@@ -23,6 +23,7 @@ from .config_cmd import create_config_app
 from .skill_cmd import create_skill_app
 from .mcp_cmd import create_mcp_app
 from .security_cmd import create_security_app
+from .serve_cmd import serve
 
 app.add_typer(create_onboard_app(), name="onboard")
 app.add_typer(create_workspace_app(), name="workspace")
@@ -34,6 +35,9 @@ app.add_typer(create_config_app(), name="config")
 app.add_typer(create_skill_app(), name="skill")
 app.add_typer(create_mcp_app(), name="mcp")
 app.add_typer(create_security_app(), name="security")
+
+# Register serve command directly
+app.command(name="serve")(serve)
 
 
 @app.command()

@@ -6,7 +6,9 @@
 
 **最后更新**: 2026-03-19
 
-**测试状态**: 280 个测试通过 ✅
+**测试状态**: 295 个测试通过 ✅
+
+**完成特性数**: 18
 
 ## 特性列表
 
@@ -24,6 +26,7 @@
 
 | 特性 ID | 名称 | 状态 | 完成度 | 优先级 |
 |---------|------|------|--------|--------|
+| feat-serve-mode | 多通道服务模式 | ✅ completed | 95% | 80 |
 | feat-tool-calling | Tool Calling 核心框架 | ✅ completed | 95% | 95 |
 | feat-zai-provider | ZAI/GLM CodePlan Provider | ✅ completed | 95% | 90 |
 | feat-workspace-init | Workspace 初始化和引导 | ✅ completed | 90% | 88 |
@@ -52,7 +55,8 @@ feat-mvp-init (初始化) ✅
     │       │       └─→ feat-context-compression (上下文压缩) ✅
     │       └─→ feat-streaming-output (流式输出) ✅
     ├─→ feat-mvp-cli (CLI 频道) ✅
-    │       └─→ feat-streaming-output (流式输出) ✅
+    │       ├─→ feat-streaming-output (流式输出) ✅
+    │       └─→ feat-serve-mode (多通道服务) ✅
     ├─→ feat-workspace-init (Workspace 初始化) ✅
     │       ├─→ feat-workspace-templates (模板系统) ✅
     │       ├─→ feat-agent-persona (人设系统) ✅
@@ -75,6 +79,11 @@ feat-mvp-init (初始化) ✅
 
 ### CLI 功能
 - ✅ `anyclaw chat` - 交互式聊天（支持 --stream/--no-stream）
+- ✅ `anyclaw serve` - 多通道服务模式
+- ✅ `anyclaw serve --daemon` - 后台守护进程
+- ✅ `anyclaw serve --status` - 查看服务状态
+- ✅ `anyclaw serve --stop` - 停止服务
+- ✅ `anyclaw serve --logs` - 查看日志
 - ✅ `anyclaw config --show` - 查看配置
 - ✅ `anyclaw config show --provider zai` - 查看 ZAI 配置
 - ✅ `anyclaw onboard` - 配置向导
@@ -228,8 +237,16 @@ completed: 16 个特性
 
 | 指标 | 数值 |
 |------|------|
-| 完成特性数 | 16 |
+| 完成特性数 | 18 |
 | 内置技能数 | 11 |
-| 测试数量 | 280 |
+| 测试数量 | 295 |
 | 配置项数量 | 25+ |
-| CLI 命令数 | 10+ |
+| CLI 命令数 | 15+ |
+
+## 最近完成
+
+| 日期 | 特性 | 价值点 |
+|------|------|--------|
+| 2026-03-19 | feat-serve-mode | 多通道并行服务、守护进程、日志轮转 |
+| 2026-03-19 | feat-exec-security | ExecTool 危险命令防护 |
+| 2026-03-19 | feat-skill-conversation-mode | 技能对话模式、热重载 |

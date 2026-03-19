@@ -223,3 +223,27 @@ timeout = 60
 
 # Tool Calling 最大迭代次数
 max_iterations = 10
+
+
+# ╔═══════════════════════════════════════════════════════════════════════════╗
+# ║                      Serve 模式使用说明                                    ║
+# ║  多通道并行服务 - 同时运行 CLI、Discord、飞书等通道                         ║
+# ╚═══════════════════════════════════════════════════════════════════════════╝
+
+# 启用通道配置:
+# 1. 设置 [channels.cli] enabled = true
+# 2. 设置 [channels.discord] enabled = true, token = "your-bot-token"
+# 3. 设置 [channels.feishu] enabled = true, app_id = "...", app_secret = "..."
+
+# 使用命令:
+#   anyclaw serve              # 前台运行所有启用的通道
+#   anyclaw serve --debug      # 调试模式 (详细日志)
+#   anyclaw serve --verbose    # 详细输出
+#   anyclaw serve --quiet      # 静默模式 (只显示警告)
+#   anyclaw serve --daemon     # 后台守护进程模式
+#   anyclaw serve --status     # 查看后台服务状态
+#   anyclaw serve --stop       # 停止后台服务
+#   anyclaw serve --logs       # 查看服务日志
+
+# 日志文件位置: ~/.anyclaw/logs/serve.log
+# PID 文件位置: ~/.anyclaw/serve.pid

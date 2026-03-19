@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-19T23:50:00"
-  version: 34
+  last_updated: "2026-03-19T17:00:00"
+  version: 36
 
 # 父需求（用于分组追踪)
 parents:
@@ -83,6 +83,19 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-serve-mode
+    name: 多通道服务模式
+    priority: 80
+    size: M
+    completed_at: "2026-03-19T17:00:00"
+    archive_path: features/archive/done-feat-serve-mode
+    value_points:
+      - 多通道并行服务 (CLI + Discord + 飞书)
+      - 运行模式控制 (debug/verbose/quiet)
+      - 后台守护进程 (daemon/status/stop/logs)
+      - 日志轮转 (10MB * 5)
+      - 优雅关闭 (信号处理)
+
   - id: feat-toml-config
     name: TOML 配置系统升级
     priority: 70
