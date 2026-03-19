@@ -12,6 +12,7 @@ from typing import Optional, Dict, List, Any, AsyncGenerator, Callable, Awaitabl
 import litellm
 litellm.drop_params = True
 litellm.set_verbose = False
+litellm.suppress_debug_info = True  # 禁用 "Give Feedback / Get Help" 提示
 
 from litellm import acompletion
 
