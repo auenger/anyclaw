@@ -10,7 +10,7 @@ from rich.prompt import Prompt
 from rich.live import Live
 from rich.text import Text
 
-from anyclaw.bus.events import OutboundMessage
+from anyclaw.bus.events import InboundMessage, OutboundMessage
 from anyclaw.bus.queue import MessageBus
 from anyclaw.channels.base import BaseChannel
 
@@ -24,6 +24,8 @@ class CLIConfig:
         self.allow_from: list[str] = config.get("allow_from", ["*"])
         self.prompt: str = config.get("prompt", "You: ")
         self.agent_name: str = config.get("agent_name", "AnyClaw")
+        # In serve mode, CLI is monitor-only (no interactive input)
+        self.interactive: bool = config.get("interactive", True)
 
 
 class CLIChannel(BaseChannel):
@@ -43,7 +45,7 @@ class CLIChannel(BaseChannel):
 
     @classmethod
     def default_config(cls) -> dict[str, Any]:
-        return {"enabled": True, "allow_from": ["*"]}
+        return {"enabled": True, "allow_from": ["*"], "interactive": True}
 
     def set_response_callback(
         self, callback: Callable[[str], AsyncGenerator[str, None]]
@@ -54,6 +56,16 @@ class CLIChannel(BaseChannel):
     async def start(self) -> None:
         """Start the CLI channel loop."""
         self._running = True
+
+        # In non-interactive mode (serve mode), just wait forever
+        # Messages will be displayed via send() method
+        if not self.config.interactive:
+            self.console.print("[dim]CLI channel in monitor mode (no interactive input)[/dim]")
+            while self._running:
+                await asyncio.sleep(1)
+            return
+
+        # Interactive mode
         self._print_welcome()
 
         while self._running:

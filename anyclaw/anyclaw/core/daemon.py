@@ -86,22 +86,47 @@ class DaemonManager:
             self.pid_file.unlink()
 
     def is_running(self) -> bool:
-        """Check if daemon process is running.
+        """Check if daemon/serve process is running.
 
         Returns:
-            True if daemon is running
+            True if daemon/serve is running
         """
+        # First check PID file
         pid = self.read_pid()
-        if pid is None:
-            return False
+        if pid is not None:
+            try:
+                process = psutil.Process(pid)
+                # Check if it's actually an anyclaw process
+                cmdline = " ".join(process.cmdline()).lower()
+                return "anyclaw" in cmdline and process.is_running()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                # PID file exists but process is gone, clean up
+                self.remove_pid()
 
+        # Fallback: search for anyclaw serve processes
+        # This handles foreground mode (no PID file)
+        current_pid = os.getpid()
         try:
-            process = psutil.Process(pid)
-            # Check if it's actually an anyclaw process
-            cmdline = " ".join(process.cmdline()).lower()
-            return "anyclaw" in cmdline and process.is_running()
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            return False
+            for proc in psutil.process_iter(['pid', 'cmdline']):
+                try:
+                    # Skip current process (the one checking status)
+                    if proc.info['pid'] == current_pid:
+                        continue
+                    cmdline = " ".join(proc.info['cmdline'] or []).lower()
+                    # Check if it's an anyclaw serve process (but not --logs, --status, --stop)
+                    if "anyclaw" in cmdline and "serve" in cmdline:
+                        # Exclude subcommands that don't actually run the serve
+                        if any(x in cmdline for x in ["--logs", "--status", "--stop"]):
+                            continue
+                        # Update PID file for future checks
+                        self.write_pid(proc.info['pid'])
+                        return True
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+        except Exception:
+            pass
+
+        return False
 
     def get_status(self) -> dict:
         """Get daemon status.

@@ -205,10 +205,17 @@ def _run_foreground(log_level: str, workspace: Optional[str]) -> None:
     """Run in foreground."""
     console.print("\n[bold blue]Starting AnyClaw Serve Mode[/bold blue]\n")
 
+    # Write PID file for foreground mode too (for status/stop commands)
+    daemon_mgr = DaemonManager()
+    daemon_mgr.write_pid()
+
     try:
         asyncio.run(_run_serve_manager(workspace))
     except KeyboardInterrupt:
         console.print("\n[yellow]Interrupted[/yellow]")
+    finally:
+        # Clean up PID file on exit
+        daemon_mgr.remove_pid()
 
 
 async def _run_serve_manager(workspace: Optional[str]) -> None:

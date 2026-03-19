@@ -65,6 +65,7 @@ class CLIChannelConfig(BaseModel):
     allow_from: List[str] = Field(default_factory=lambda: ["*"])
     prompt: str = "You: "
     agent_name: str = "AnyClaw"
+    interactive: bool = True  # False for serve mode (monitor only)
 
 
 class FeishuChannelConfig(BaseModel):
@@ -85,6 +86,8 @@ class DiscordChannelConfig(BaseModel):
     token: str = ""
     allow_from: List[str] = Field(default_factory=lambda: ["*"])
     group_policy: Literal["mention", "open"] = "mention"
+    gateway_url: str = "wss://gateway.discord.gg/?v=10&encoding=json"
+    intents: int = 37377  # GUILD_MESSAGES + DIRECT_MESSAGES + MESSAGE_CONTENT
 
 
 class ChannelsConfig(BaseModel):

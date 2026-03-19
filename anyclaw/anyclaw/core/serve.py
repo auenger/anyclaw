@@ -91,6 +91,10 @@ class ServeManager:
             logger.info(f"Creating workspace: {self.workspace}")
             ws_manager.ensure_exists(silent=True)
 
+        # In serve mode, CLI should be monitor-only (no interactive input)
+        # This prevents the CLI channel from blocking with input prompts
+        self.config.channels.cli.interactive = False
+
         # Initialize channel manager
         self.channel_manager = ChannelManager(self.config, self.bus)
 
@@ -197,7 +201,7 @@ class ServeManager:
                         channel=msg.channel,
                         chat_id=msg.chat_id,
                         content=response,
-                        reply_to=msg.message_id,
+                        reply_to=msg.metadata.get("message_id"),
                     )
                     await self.bus.publish_outbound(outbound)
 
@@ -210,7 +214,7 @@ class ServeManager:
                         channel=msg.channel,
                         chat_id=msg.chat_id,
                         content=f"Error: {str(e)}",
-                        reply_to=msg.message_id,
+                        reply_to=msg.metadata.get("message_id"),
                     )
                     await self.bus.publish_outbound(error_msg)
 

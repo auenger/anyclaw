@@ -61,7 +61,7 @@ venv.bak/
 Thumbs.db
 
 # Project specific
-workspace/
+/workspace/
 MEMORY.md
 HISTORY.md
 .dev-progress.yaml
