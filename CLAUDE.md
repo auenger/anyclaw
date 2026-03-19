@@ -32,15 +32,26 @@ anyclaw/
 │   ├── agent/                 # Agent 系统
 │   │   ├── loop.py            # 主处理循环
 │   │   ├── context.py         # 上下文构建器
-│   │   └── history.py         # 对话历史
+│   │   ├── history.py         # 对话历史
+│   │   └── compression.py     # 上下文压缩
 │   ├── channels/              # 频道系统
-│   │   └── cli.py             # CLI 频道
+│   │   ├── cli.py             # CLI 频道
+│   │   ├── base.py            # 频道基类
+│   │   ├── feishu.py          # 飞书 Channel
+│   │   ├── discord.py         # Discord Channel
+│   │   └── bus.py             # 消息路由
+│   ├── mcp/                   # MCP 客户端
+│   │   ├── client.py          # MCP 连接管理
+│   │   ├── wrapper.py         # MCPToolWrapper
+│   │   └── config.py          # MCP 配置
 │   ├── skills/                # 技能系统
 │   │   ├── base.py            # 技能基类
-│   │   ├── loader.py          # 技能加载器
+│   │   ├── loader.py          # 技能加载器 (渐进式)
+│   │   ├── executor.py        # 脚本执行器
+│   │   ├── toolkit.py         # 技能工具链
+│   │   ├── models.py          # 数据模型
+│   │   ├── parser.py          # SKILL.md 解析
 │   │   └── builtin/           # 内置技能
-│   │       ├── echo/
-│   │       └── time/
 │   ├── tools/                 # 工具系统
 │   │   ├── base.py            # 工具基类
 │   │   ├── registry.py        # 工具注册表
@@ -56,7 +67,13 @@ anyclaw/
 │   ├── workspace/             # 工作区管理
 │   │   ├── manager.py         # 工作区管理器
 │   │   ├── templates.py       # 模板同步
-│   │   └── bootstrap.py       # 引导系统
+│   │   ├── bootstrap.py       # 引导系统
+│   │   └── restrict.py        # 写入限制
+│   ├── memory/                # 记忆系统
+│   │   ├── manager.py         # 记忆管理器
+│   │   └── automation.py      # 记忆自动化
+│   ├── providers/             # LLM Provider
+│   │   └── zai.py             # ZAI/GLM Provider
 │   ├── config/                # 配置系统
 │   │   └── settings.py        # Pydantic Settings
 │   └── cli/                   # CLI 应用
@@ -74,8 +91,14 @@ anyclaw/
 添加到历史记录 (ConversationHistory)
     ↓
 构建上下文 (ContextBuilder)
+    ├── 加载 SOUL.md / USER.md / AGENTS.md
+    ├── 加载 Skills Summary
+    ├── 加载 Always Skills
+    └── 智能压缩 (如需要)
     ↓
 调用 LLM (litellm acompletion)
+    ↓
+处理 Tool Calls (如有)
     ↓
 添加响应到历史
     ↓
@@ -126,6 +149,16 @@ poetry run python -m anyclaw config --show
 
 # 查看版本
 poetry run python -m anyclaw version
+
+# 技能管理
+poetry run python -m anyclaw skill create my-skill
+poetry run python -m anyclaw skill validate ./my-skill
+poetry run python -m anyclaw skill list
+poetry run python -m anyclaw skill reload
+
+# MCP 管理
+poetry run python -m anyclaw mcp list
+poetry run python -m anyclaw mcp test filesystem
 ```
 
 ### 测试
@@ -140,6 +173,7 @@ poetry run pytest tests/ -v
 poetry run pytest tests/test_config.py -v
 poetry run pytest tests/test_agent.py -v
 poetry run pytest tests/test_skills.py -v
+poetry run pytest tests/test_skill_loader.py -v
 
 # 运行带覆盖率的测试
 poetry run pytest --cov=anyclaw tests/
@@ -238,6 +272,14 @@ anyclaw config show
 - 实现 `async execute(**kwargs) -> str` 方法
 - 将技能放在 `anyclaw/anyclaw/skills/builtin/` 目录
 - 每个技能目录包含 `skill.py` 文件
+- 支持 SKILL.md 格式 (frontmatter + body)
+
+### 技能渐进式加载
+
+- `build_skills_summary()` - 生成 XML 格式技能摘要
+- `load_skills_for_context()` - 按需加载技能内容
+- `get_always_skills()` - 获取自动加载的技能
+- `_check_requirements()` - 检查 bins/env 依赖
 
 ### Workspace 模板系统
 
@@ -269,6 +311,12 @@ anyclaw init
 - 模板文件位于 `anyclaw/templates/`
 - 只创建缺失文件，不覆盖现有
 - 通过 `sync_workspace_templates()` 函数实现
+
+### Workspace 安全限制
+
+- `restrict_to_workspace` 配置项（默认启用）
+- WriteFileTool 路径检查
+- 符号链接解析防绕过
 
 ### 测试规范
 

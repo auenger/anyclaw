@@ -12,8 +12,11 @@
 - 🎯 **多 Provider** - 支持 OpenAI、Anthropic、ZAI/GLM 等
 - 💾 **记忆系统** - 长期记忆和上下文管理
 - 🎭 **人设系统** - 自定义 Agent 性格和行为
-- 📦 **技能系统** - 可扩展的技能框架
+- 📦 **技能系统** - 可扩展的技能框架，支持渐进式加载
 - 🌊 **流式输出** - 实时响应流
+- 🔌 **MCP 协议** - 连接 MCP Server 生态
+- 💬 **IM 集成** - 支持飞书、Discord 等即时通讯平台
+- 🛡️ **安全限制** - Workspace 写入保护
 
 ## 快速开始
 
@@ -72,6 +75,13 @@ anyclaw chat --stream
 | `anyclaw config edit` | 编辑配置文件 |
 | `anyclaw onboard` | 配置向导 |
 | `anyclaw providers` | 列出可用 Provider |
+| `anyclaw skill create <name>` | 创建新技能 |
+| `anyclaw skill validate <path>` | 验证技能 |
+| `anyclaw skill package <path>` | 打包技能 |
+| `anyclaw skill list` | 列出所有技能 |
+| `anyclaw skill reload [name]` | 热重载技能 |
+| `anyclaw mcp list` | 列出 MCP 服务器 |
+| `anyclaw mcp test <name>` | 测试 MCP 连接 |
 | `anyclaw version` | 显示版本 |
 
 ## 工作区结构
@@ -111,6 +121,35 @@ export ZAI_API_KEY=your-key
 export LLM_MODEL=zai/glm-4.7
 ```
 
+## MCP 集成
+
+AnyClaw 支持 MCP (Model Context Protocol) 协议，可以连接外部工具服务器：
+
+```yaml
+# ~/.anyclaw/mcp_servers.yaml
+servers:
+  filesystem:
+    transport: stdio
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"]
+    enabled_tools:
+      - read_file
+      - write_file
+```
+
+```bash
+# 管理 MCP 服务器
+anyclaw mcp list
+anyclaw mcp test filesystem
+```
+
+## IM Channel 支持
+
+支持多种即时通讯平台：
+
+- **飞书 (Feishu)**: Webhook + REST API
+- **Discord**: Gateway + Rate Limit
+
 ## 开发
 
 ### 环境设置
@@ -141,7 +180,8 @@ anyclaw/
 ├── agent/        # Agent 核心引擎
 ├── tools/        # 工具系统 (Tool Calling)
 ├── skills/       # 技能系统
-├── channels/     # 交互频道 (CLI, etc.)
+├── channels/     # 交互频道 (CLI, Feishu, Discord)
+├── mcp/          # MCP 客户端
 ├── workspace/    # 工作区管理
 ├── templates/    # 模板文件
 ├── providers/    # LLM Provider
@@ -156,6 +196,9 @@ anyclaw/
 - [x] 多 Provider 支持
 - [x] 记忆系统
 - [x] 流式输出
+- [x] MCP 协议集成
+- [x] IM Channel 支持
+- [x] Skill 工具链
 - [ ] Web UI
 - [ ] 插件系统
 - [ ] 多 Agent 协作

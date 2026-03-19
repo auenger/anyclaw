@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-19T21:00:00"
-  version: 28
+  last_updated: "2026-03-19T21:30:00"
+  version: 29
 
 # 父需求（用于分组追踪)
 parents:
@@ -47,6 +47,34 @@ pending:
     name: ExecTool 危险命令混合模式安全限制
     description: 核心保护层（硬编码）+ 可配置扩展层，实现代码级危险命令拦截
     priority: 65
+    size: M
+    dependencies: []
+
+  - id: feat-ssrf-guard
+    name: SSRF 防护系统
+    description: 阻止对私有网络、云元数据端点、本地服务的访问
+    priority: 62
+    size: M
+    dependencies: []
+
+  - id: feat-path-guard
+    name: 路径遍历防护
+    description: 阻止路径遍历攻击、符号链接绕过、工作区外访问
+    priority: 61
+    size: M
+    dependencies: []
+
+  - id: feat-credential-vault
+    name: 凭证安全管理
+    description: API Key 加密存储、日志脱敏、凭证验证
+    priority: 55
+    size: M
+    dependencies: []
+
+  - id: feat-input-sanitizer
+    name: 输入验证与清理
+    description: 消息内容清理、工具参数验证、URL/路径格式验证
+    priority: 50
     size: M
     dependencies: []
 
