@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-19T20:30:00"
-  version: 27
+  last_updated: "2026-03-19T21:00:00"
+  version: 28
 
 # 父需求（用于分组追踪)
 parents:
@@ -43,11 +43,11 @@ active: []
 
 # 等待中的需求（按优先级排序）
 pending:
-  - id: feat-workspace-restrict
-    name: workspace 写入限制
-    description: 增加 restrict_to_workspace 配置项，控制文件写入权限，提升安全性
-    priority: 60
-    size: S
+  - id: feat-exec-security
+    name: ExecTool 危险命令混合模式安全限制
+    description: 核心保护层（硬编码）+ 可配置扩展层，实现代码级危险命令拦截
+    priority: 65
+    size: M
     dependencies: []
 
 # 阻塞中的需求
@@ -55,6 +55,19 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-workspace-restrict
+    name: workspace 写入限制
+    priority: 60
+    size: S
+    completed_at: "2026-03-19T21:00:00"
+    archive_path: features/archive/done-feat-workspace-restrict
+    value_points:
+      - restrict_to_workspace 配置项（默认启用）
+      - WriteFileTool 路径检查逻辑
+      - 符号链接解析防绕过
+      - 清晰的权限错误提示
+      - 完整测试套件 (12 tests)
+
   - id: feat-mcp-client
     name: MCP 客户端
     priority: 70
