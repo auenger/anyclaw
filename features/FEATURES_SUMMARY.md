@@ -4,7 +4,7 @@
 
 **整体进度**: ████████████████████████ **100%** MVP + 扩展特性完成
 
-**最后更新**: 2026-03-18
+**最后更新**: 2026-03-19
 
 **测试状态**: 280 个测试通过 ✅
 
@@ -35,6 +35,8 @@
 | feat-builtin-skills-v2 | 内置技能扩展 V2 | ✅ completed | 95% | 78 |
 | feat-bundled-skills | 内置 Skills 移植与扩展 | ✅ completed | 90% | 75 |
 | feat-streaming-output | 流式输出支持 | ✅ completed | 90% | 76 |
+| feat-config-system | JSON 配置文件系统 | ✅ completed | 95% | 85 |
+| feat-memory-persistence | 记忆持久化工具 | ✅ completed | 90% | 80 |
 
 ## 特性依赖关系
 

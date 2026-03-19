@@ -1,7 +1,7 @@
 ---
-last_updated: '2026-03-18'
-version: 3
-features_completed: 15
+last_updated: '2026-03-19'
+version: 4
+features_completed: 17
 tests_passing: 280
 ---
 
@@ -265,6 +265,8 @@ token_hard_limit: int = 200000
 
 | Date | Feature | Impact |
 |------|---------|--------|
+| 2026-03-19 | feat-config-system | JSON config file support (~/.anyclaw/config.json) |
+| 2026-03-19 | feat-memory-persistence | save_memory and update_persona tools |
 | 2026-03-18 | feat-streaming-output | Added streaming output support |
 | 2026-03-18 | feat-builtin-skills-v2 | Added 5 new skills (code_exec, process, text, system, data) |
 | 2026-03-18 | feat-memory-system | Added long-term memory and daily logs |
@@ -315,6 +317,8 @@ anyclaw compress run
 
 ## Update Log
 
+- 2026-03-19: Added feat-config-system - JSON config file support
+- 2026-03-19: Added feat-memory-persistence - Memory persistence tools
 - 2026-03-18: Added feat-streaming-output - Streaming output support
 - 2026-03-18: Added feat-builtin-skills-v2 - Extended builtin skills
 - 2026-03-18: Added feat-memory-system - Memory system

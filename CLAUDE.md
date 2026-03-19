@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，参考 [Nanobot](https://github.com/HKUDS/nanobot) 和 [OpenClaw](https://github.com/openclaw/openclaw) 项目架构。项目采用 Python 3.11+ 开发，使用 Poetry 管理依赖。
+AnyClaw 是一个轻量级、可扩展的 AI 智能体框架。项目采用 Python 3.11+ 开发，使用 Poetry 管理依赖。
 
 ## 技术栈
 
@@ -188,17 +188,6 @@ poetry run mypy anyclaw/
 - `feature-workflow/queue.yaml` - 调度队列
 - `features/` - 需求目录 (pending/active/archive)
 
-## 参考项目
-
-- **Nanobot** (`reference/nanobot/`): 主要参考项目，超轻量级 AI 助手
-  - 核心架构: agent/channels/skills/providers
-  - 技能系统: 基于 Markdown 的技能定义
-  - 频道插件: 支持多种消息平台
-
-- **OpenClaw** (`reference/openclaw/`): 架构参考
-  - TypeScript/Node.js 实现
-  - 丰富的频道支持和扩展系统
-
 ## 开发规范
 
 ### 代码风格
@@ -210,9 +199,38 @@ poetry run mypy anyclaw/
 
 ### 配置管理
 
-- 使用 Pydantic Settings 定义配置
-- 环境变量优先于默认值
-- 配置文件: `anyclaw/.env`
+配置优先级：环境变量 > 配置文件 > 默认值
+
+**配置文件位置**: `~/.anyclaw/config.json`
+
+```bash
+# 初始化配置
+anyclaw config init
+
+# 设置 API Key
+anyclaw config set zai.api_key your-key
+
+# 设置模型
+anyclaw config set llm.model glm-4.7
+
+# 查看配置
+anyclaw config show
+```
+
+**配置文件格式**:
+```json
+{
+  "llm": {
+    "model": "glm-4.7",
+    "provider": "zai"
+  },
+  "providers": {
+    "zai": {
+      "api_key": "your-key"
+    }
+  }
+}
+```
 
 ### 技能开发
 
@@ -260,7 +278,7 @@ anyclaw init
 
 ## 重要提醒
 
-1. **不要提交敏感信息**: API Key、凭证等应放在 `.env` 文件中
+1. **不要提交敏感信息**: API Key、凭证等应放在配置文件或环境变量中
 2. **保持依赖同步**: 修改依赖后更新 `pyproject.toml` 和 `poetry.lock`
-3. **参考现有代码**: Nanobot 和 OpenClaw 包含大量可复用的模式
-4. **异步优先**: Agent 处理、LLM 调用、技能执行都应使用异步
+3. **异步优先**: Agent 处理、LLM 调用、技能执行都应使用异步
+4. **配置优先级**: 环境变量 > 配置文件 > 默认值

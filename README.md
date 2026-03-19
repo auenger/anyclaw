@@ -32,11 +32,14 @@ pip install -e .
 ### 配置
 
 ```bash
-# 设置 API Key
-export OPENAI_API_KEY=your-key
-# 或使用 ZAI/GLM
+# 方式1: 使用配置文件
+anyclaw config init
+anyclaw config set zai.api_key your-key
+anyclaw config set llm.model glm-4.7
+
+# 方式2: 使用环境变量
 export ZAI_API_KEY=your-key
-export ZAI_ENDPOINT=coding-global
+export LLM_MODEL=zai/glm-4.7
 
 # 初始化工作区
 anyclaw setup
@@ -62,7 +65,11 @@ anyclaw chat --stream
 | `anyclaw chat` | 启动交互式聊天 |
 | `anyclaw setup` | 初始化工作区 |
 | `anyclaw init` | 在当前目录初始化配置 |
-| `anyclaw config` | 查看配置 |
+| `anyclaw config init` | 初始化配置文件 |
+| `anyclaw config show` | 显示当前配置 |
+| `anyclaw config set <key> <value>` | 设置配置项 |
+| `anyclaw config path` | 显示配置文件路径 |
+| `anyclaw config edit` | 编辑配置文件 |
 | `anyclaw onboard` | 配置向导 |
 | `anyclaw providers` | 列出可用 Provider |
 | `anyclaw version` | 显示版本 |
@@ -88,8 +95,21 @@ anyclaw chat --stream
 |----------|----------|------|
 | OpenAI | `gpt-*` / `openai/*` | GPT-4, GPT-3.5 等 |
 | Anthropic | `claude-*` / `anthropic/*` | Claude 3 系列 |
-| ZAI/GLM | `zai/*` | GLM-4, GLM-5 等 |
+| ZAI/GLM | `zai/*` 或 `glm-*` | GLM-4.7, GLM-5 等，默认使用 Coding Plan |
 | 自定义 | - | OpenAI 兼容 API |
+
+### ZAI/GLM 配置
+
+```bash
+# 使用配置文件
+anyclaw config init
+anyclaw config set zai.api_key your-key
+anyclaw config set llm.model glm-4.7
+
+# 或使用环境变量
+export ZAI_API_KEY=your-key
+export LLM_MODEL=zai/glm-4.7
+```
 
 ## 开发
 
