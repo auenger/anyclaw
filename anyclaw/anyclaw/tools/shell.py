@@ -18,8 +18,11 @@ class ExecTool(Tool):
     - 用户保护层：可配置的 deny/allow patterns
     """
 
-    _MAX_TIMEOUT = 300
+    _MAX_TIMEOUT = 600  # 从 300 增加到 600（与 nanobot 一致）
     _MAX_OUTPUT = 10_000
+    # 超时处理时间（渐进式 kill 策略）
+    _GRACEFUL_WAIT = 10  # SIGTERM 等待时间（优雅退出）
+    _FORCE_WAIT = 3     # SIGKILL 等待时间（强制终止）
 
     def __init__(
         self,
@@ -86,8 +89,8 @@ class ExecTool(Tool):
     ) -> str:
         cwd = working_dir or self.working_dir or os.getcwd()
 
-        # 安全检查
-        guard_error = self._guard_command(command)
+        # 安全检查（传递 cwd）
+        guard_error = self._guard_command(command, cwd)
         if guard_error:
             return guard_error
 
@@ -112,12 +115,43 @@ class ExecTool(Tool):
                     timeout=effective_timeout,
                 )
             except asyncio.TimeoutError:
-                process.kill()
+                # 超时处理（改进版 - 渐进式 kill 策略）
+                # 1. 首先尝试 SIGTERM（优雅退出）
                 try:
-                    await asyncio.wait_for(process.wait(), timeout=5.0)
-                except asyncio.TimeoutError:
+                    process.terminate()
+                    # 等待进程退出（最多 10 秒）
+                    try:
+                        await asyncio.wait_for(
+                            process.wait(),
+                            timeout=10.0  # 给进程 10 秒时间优雅退出
+                        )
+                        return f"错误: 命令在 {effective_timeout} 秒后超时，已终止"
+                    except asyncio.TimeoutError:
+                        # 2. 如果 SIGTERM 失败，尝试 SIGKILL（强制终止）
+                        import signal
+                        try:
+                            process.kill()
+                            # 再等待 3 秒
+                            try:
+                                await asyncio.wait_for(
+                                    process.wait(),
+                                    timeout=3.0
+                                )
+                                return f"错误: 命令在 {effective_timeout} 秒后超时，已强制终止"
+                            except asyncio.TimeoutError:
+                                # 3. 如果还是没退出，杀死进程组
+                                try:
+                                    os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                                except (ProcessLookupError, PermissionError):
+                                    pass
+                                return f"错误: 命令在 {effective_timeout} 秒后超时，进程组已强制终止"
+                        except (ProcessLookupError, PermissionError):
+                            pass
+                except (ProcessLookupError, PermissionError):
+                    # 进程可能已经退出
                     pass
-                return f"错误: 命令在 {effective_timeout} 秒后超时"
+                except Exception as e:
+                    return f"错误: 超时后终止进程失败: {str(e)}"
 
             output_parts = []
 
@@ -127,35 +161,88 @@ class ExecTool(Tool):
             if stderr:
                 stderr_text = stderr.decode("utf-8", errors="replace")
                 if stderr_text.strip():
-                    output_parts.append(f"[stderr]\n{stderr_text}")
+                    output_parts.append(f"[stderr]\n{stderr_text}")  # 与 nanobot 一致
 
-            output_parts.append(f"\n退出码: {process.returncode}")
+            if process.returncode is not None:  # 检查退出码是否存在
+                output_parts.append(f"\nExit code: {process.returncode}")
 
-            result = "\n".join(output_parts) if output_parts else "(无输出)"
+            result = "\n".join(output_parts) if output_parts else "(no output)"
 
-            # 截断过长输出
+            # 保留头部和尾部（与 nanobot 一致）
             if len(result) > self._MAX_OUTPUT:
                 half = self._MAX_OUTPUT // 2
                 result = (
                     result[:half]
-                    + f"\n\n... ({len(result) - self._MAX_OUTPUT:,} 字符已截断) ...\n\n"
+                    + f"\n\n... ({len(result) - self._MAX_OUTPUT:,} chars truncated) ...\n\n"
                     + result[-half:]
                 )
 
             return result
 
         except Exception as e:
+            # 确保进程被清理
+            if process and process.returncode is None:
+                try:
+                    process.kill()
+                    await asyncio.wait_for(process.wait(), timeout=2.0)
+                except:
+                    pass
+
             return f"执行命令时出错: {str(e)}"
 
-    def _guard_command(self, command: str) -> Optional[str]:
+    def _guard_command(self, command: str, cwd: str) -> Optional[str]:
         """安全检查（使用混合保护模式）
 
         检查优先级：
         1. 核心保护（不可绕过）
         2. 用户 deny_patterns
         3. 用户 allow_patterns（如果启用）
+        4. 路径遍历检查（新增）
+        5. 内部 URL 检查（新增）
         """
         blocked, reason = self.guard.check(command)
         if blocked:
             return f"错误: 命令被安全策略阻止 - {reason}"
+
+        cmd = command.strip()
+        lower = cmd.lower()
+
+        # 路径遍历检查
+        if "..\\" in cmd or "../" in cmd:
+            return "错误: 命令被安全策略阻止 - 检测到路径遍历"
+
+        # 内部 URL 检查（SSRF 防护）
+        import re
+        _URL_RE = re.compile(r'https?://[^\s\"\'`;|<>]+', __import__('re').IGNORECASE)
+        for m in _URL_RE.finditer(cmd):
+            url = m.group(0)
+            from anyclaw.security.network import SSRFGuard
+            ssrf_guard = SSRFGuard(enabled=True)
+            if not ssrf_guard.is_safe_url(url):
+                return "错误: 命令被安全策略阻止 - 检测到内部/私有 URL"
+
+        # Workspace 限制
+        from anyclaw.config.settings import settings
+        if settings.restrict_to_workspace:
+            cwd_path = Path(cwd).resolve()
+            for raw in self._extract_absolute_paths(cmd):
+                try:
+                    expanded = os.path.expandvars(raw.strip())
+                    p = Path(expanded).expanduser().resolve()
+                except Exception:
+                    continue
+                if p.is_absolute() and cwd_path not in p.parents and p != cwd_path:
+                    return f"错误: 命令被安全策略阻止 - 路径超出工作目录"
+
         return None
+
+    @staticmethod
+    def _extract_absolute_paths(command: str) -> List[str]:
+        """提取命令中的绝对路径（Windows + POSIX + home）"""
+        # Windows 路径
+        win_paths = re.findall(r"[A-Za-z]:\\[^\s\"'|><;]+", command)
+        # POSIX 绝对路径
+        posix_paths = re.findall(r"(?:^|[\s|>'\"])(/[^\s\"'>;|<]+)", command)
+        # Home 快捷方式
+        home_paths = re.findall(r"(?:^|[\s|>'\"])(~[^\s\"'>;|<]*)", command)
+        return win_paths + posix_paths + home_paths

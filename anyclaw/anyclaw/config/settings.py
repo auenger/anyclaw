@@ -70,6 +70,21 @@ class Settings(BaseSettings):
         description="Tool Calling 最大迭代次数"
     )
 
+    # 工具超时配置
+    list_dir_timeout: int = Field(
+        default=30,
+        ge=1,
+        le=300,
+        description="list_dir 工具超时时间（秒）"
+    )
+
+    list_dir_max_entries: int = Field(
+        default=200,
+        ge=1,
+        le=10000,
+        description="list_dir 最大返回条目数"
+    )
+
     # API Keys（优先从配置文件读取）
     openai_api_key: str = Field(
         default="",
@@ -282,6 +297,34 @@ class Settings(BaseSettings):
     mcp_servers: Dict[str, MCPServerConfig] = Field(
         default_factory=dict,
         description="MCP Server 配置字典"
+    )
+
+    # SessionManager 配置
+    session_enabled: bool = Field(
+        default=True,
+        description="是否启用 SessionManager（默认启用）"
+    )
+
+    sessions_dir: str = Field(
+        default="sessions",
+        description="会话存储目录（相对于 workspace）"
+    )
+
+    max_history_messages: int = Field(
+        default=500,
+        ge=1,
+        le=10000,
+        description="会话历史最大消息数"
+    )
+
+    enable_session_persistence: bool = Field(
+        default=True,
+        description="是否启用会话持久化（JSONL 文件）"
+    )
+
+    enable_session_cache: bool = Field(
+        default=True,
+        description="是否启用会话内存缓存"
     )
 
     model_config = SettingsConfigDict(

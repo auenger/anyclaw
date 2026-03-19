@@ -1,5 +1,6 @@
 """文件系统工具"""
 
+import asyncio
 import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -175,11 +176,26 @@ class WriteFileTool(Tool):
 
 
 class ListDirTool(Tool):
-    """列出目录工具"""
+    """列出目录工具（带超时和限制）"""
 
-    def __init__(self, workspace: Optional[Path] = None, allowed_dir: Optional[Path] = None):
+    _DEFAULT_MAX = 200  # 默认最大条目数
+    _IGNORE_DIRS = {  # 忽略常见噪声目录
+        ".git", "node_modules", "__pycache__", ".venv", "venv",
+        "dist", "build", ".tox", ".mypy_cache", ".pytest_cache",
+        ".ruff_cache", ".coverage", "htmlcov",
+    }
+
+    def __init__(
+        self,
+        workspace: Optional[Path] = None,
+        allowed_dir: Optional[Path] = None,
+        timeout: int = 30,  # 添加超时参数（默认 30 秒）
+        max_entries: int = 200,  # 添加最大条目数限制
+    ):
         self.workspace = workspace or Path.cwd()
         self.allowed_dir = allowed_dir or self.workspace
+        self.timeout = timeout
+        self.max_entries = max_entries
 
     @property
     def name(self) -> str:
@@ -187,7 +203,7 @@ class ListDirTool(Tool):
 
     @property
     def description(self) -> str:
-        return "列出目录内容"
+        return "列出目录内容（支持递归和最大条目限制）"
 
     @property
     def parameters(self) -> Dict[str, Any]:
@@ -198,39 +214,77 @@ class ListDirTool(Tool):
                     "type": "string",
                     "description": "目录路径（默认为工作区）",
                 },
+                "max_entries": {
+                    "type": "integer",
+                    "description": "最大返回条目数（默认 200）",
+                    "minimum": 1,
+                    "default": self.max_entries,
+                },
             },
             "required": [],
         }
 
-    async def execute(self, path: str = ".", **kwargs: Any) -> str:
+    async def execute(self, path: str = ".", max_entries: int = None, **kwargs: Any) -> str:
+        """使用 asyncio.wait_for 添加超时控制"""
         try:
-            dir_path = self._resolve_path(path)
+            effective_max = max_entries or self.max_entries
+            return await asyncio.wait_for(
+                self._list_directory(path, effective_max),
+                timeout=self.timeout
+            )
+        except asyncio.TimeoutError:
+            return f"错误: 列出目录超时（{self.timeout}秒）"
 
-            if not dir_path.exists():
-                return f"错误: 目录不存在: {path}"
+    async def _list_directory(self, path: str, max_entries: int) -> str:
+        """异步列出目录内容（使用线程池）"""
+        dir_path = self._resolve_path(path)
 
-            if not dir_path.is_dir():
-                return f"错误: 不是目录: {path}"
+        if not dir_path.exists():
+            return f"错误: 目录不存在: {path}"
 
-            # 列出内容
-            items = []
-            for item in sorted(dir_path.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
-                item_type = "📁" if item.is_dir() else "📄"
-                size = ""
-                if item.is_file():
-                    try:
-                        size = f" ({item.stat().st_size:,} bytes)"
-                    except:
-                        pass
-                items.append(f"{item_type} {item.name}{size}")
+        if not dir_path.is_dir():
+            return f"错误: 不是目录: {path}"
 
-            if not items:
-                return "(空目录)"
+        # 在线程池中执行，避免阻塞事件循环
+        loop = asyncio.get_event_loop()
+        items = await loop.run_in_executor(
+            None,
+            lambda: self._list_items(dir_path, max_entries)
+        )
 
-            return "\n".join(items)
+        if not items:
+            return "(空目录)"
 
-        except Exception as e:
-            return f"列出目录时出错: {str(e)}"
+        result = "\n".join(items)
+        if len(items) > max_entries:
+            result += f"\n\n(已截断，显示前 {max_entries} 个，共 {self._total_count} 个)"
+
+        return result
+
+    def _list_items(self, dir_path: Path, max_entries: int) -> List[str]:
+        """列出目录项（在线程中执行）"""
+        items = []
+        self._total_count = 0
+
+        for item in sorted(dir_path.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
+            # 忽略噪声目录
+            if item.name in self._IGNORE_DIRS:
+                continue
+
+            self._total_count += 1
+            if len(items) >= max_entries:
+                break
+
+            item_type = "📁" if item.is_dir() else "📄"
+            size = ""
+            if item.is_file():
+                try:
+                    size = f" ({item.stat().st_size:,} bytes)"
+                except:
+                    pass
+            items.append(f"{item_type} {item.name}{size}")
+
+        return items
 
     def _resolve_path(self, path: str) -> Path:
         """解析路径"""

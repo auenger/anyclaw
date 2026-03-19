@@ -22,6 +22,7 @@ from anyclaw.tools.registry import ToolRegistry
 from anyclaw.tools.shell import ExecTool
 from anyclaw.tools.filesystem import ReadFileTool, WriteFileTool, ListDirTool
 from anyclaw.tools.memory import SaveMemoryTool, UpdatePersonaTool
+from anyclaw.bus.events import OutboundMessage  # 新增导入
 from .history import ConversationHistory
 from .context import ContextBuilder
 
@@ -37,11 +38,41 @@ class AgentLoop:
         self,
         enable_tools: bool = True,
         workspace: Optional[Path] = None,
+        enable_session_manager: bool = True,  # 新增：是否启用 SessionManager
+        enable_message_tool: bool = True,  # 新增：是否启用 MessageTool
     ):
         self.history = ConversationHistory(max_length=10)
         self.skills: Dict[str, SkillDefinition] = {}
         self.enable_tools = enable_tools
+        self.enable_message_tool = enable_message_tool  # 新增
         self.workspace = workspace or Path.cwd()
+        self._message_tool: Optional["MessageTool"] = None  # 新增：MessageTool 实例
+
+        # SessionManager（可选）
+        self.session_manager: Optional["SessionManager"] = None
+        if enable_session_manager:
+            from anyclaw.session.manager import SessionManager, SessionManagerConfig
+
+            # 检查是否启用 SessionManager
+            session_enabled = getattr(settings, 'session_enabled', True)
+
+            if session_enabled:
+                session_config = SessionManagerConfig(
+                    workspace=self.workspace,
+                    sessions_dir=self.workspace / settings.sessions_dir,
+                    max_history_messages=getattr(settings, 'max_history_messages', 500),
+                    enable_persistence=getattr(settings, 'enable_session_persistence', True),
+                    enable_memory_cache=getattr(settings, 'enable_session_cache', True)
+                )
+                try:
+                    from anyclaw.session.manager import SessionManager
+                    self.session_manager = SessionManager(session_config)
+                    logger.info("SessionManager enabled")
+                except ImportError as e:
+                    logger.warning(f"Failed to initialize SessionManager: {e}")
+                    self.session_manager = None
+            else:
+                logger.debug("SessionManager disabled")
 
         # MCP 连接管理
         self._mcp_stack: Optional[AsyncExitStack] = None
@@ -62,11 +93,24 @@ class AgentLoop:
             workspace=self.workspace,
             restrict_to_workspace=settings.restrict_to_workspace,
         ))
-        self.tools.register(ListDirTool(workspace=self.workspace))
+        # 添加 list_dir 超时配置
+        list_dir_timeout = getattr(settings, 'list_dir_timeout', 30)  # 默认 30 秒
+        list_dir_max_entries = getattr(settings, 'list_dir_max_entries', 200)  # 默认 200 条
+        self.tools.register(ListDirTool(
+            workspace=self.workspace,
+            timeout=list_dir_timeout,
+            max_entries=list_dir_max_entries
+        ))
 
         # 记忆工具
         self.tools.register(SaveMemoryTool(workspace_path=str(self.workspace)))
         self.tools.register(UpdatePersonaTool(workspace_path=str(self.workspace)))
+
+        # 新增：MessageTool（如果启用）
+        if self.enable_message_tool:
+            from anyclaw.agent.tools.message import MessageTool
+            self._message_tool = MessageTool()
+            self.tools.register(self._message_tool)
 
     async def connect_mcp_servers(self) -> None:
         """连接配置的 MCP Server 并注册工具
@@ -121,6 +165,50 @@ class AgentLoop:
             {"name": name, "description": skill.description}
             for name, skill in self.skills.items()
         ]
+
+    # SessionManager 适配器方法
+    def get_session(self, key: str) -> Optional["Session"]:
+        """获取会话（优先使用 SessionManager，向后兼容 History）"""
+        if self.session_manager:
+            return self.session_manager.get_or_create(key)
+        # 向后兼容：使用 history
+        return self.history
+
+    def add_message(self, key: str, role: str, content: Optional[str] = None, **kwargs) -> None:
+        """添加消息到会话（适配器模式）"""
+        if self.session_manager:
+            return self.session_manager.add_message(key, role, content, **kwargs)
+        # 向后兼容
+        return self.history.add(role, content)
+
+    def get_conversation_history(self, key: str, max_messages: int = None) -> List[Dict[str, Any]]:
+        """获取会话历史（适配器模式）"""
+        if self.session_manager:
+            return self.session_manager.get_history(key, max_messages)
+        # 向后兼容
+        return self.history.get_messages(max_messages)
+
+    # MessageTool 适配器方法
+    def set_message_callback(self, callback: Callable[[OutboundMessage], Awaitable[None]]) -> None:
+        """设置 MessageTool 的发送回调（由 Channel 调用）"""
+        if self._message_tool:
+            self._message_tool.set_send_callback(callback)
+
+    def set_message_context(self, channel: str, chat_id: str, message_id: Optional[str] = None) -> None:
+        """设置 MessageTool 的上下文（由 Channel 调用）"""
+        if self._message_tool:
+            self._message_tool.set_context(channel, chat_id, message_id)
+
+    def message_sent_in_turn(self) -> bool:
+        """检查当前回合是否通过 MessageTool 发送过消息"""
+        if self._message_tool:
+            return self._message_tool._sent_in_turn
+        return False
+
+    def start_turn(self) -> None:
+        """开始新回合（重置发送跟踪）"""
+        if self._message_tool:
+            self._message_tool.start_turn()
 
     async def process(self, user_input: str) -> str:
         """处理用户输入"""
