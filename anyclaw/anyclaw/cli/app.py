@@ -23,10 +23,13 @@ from .config_cmd import create_config_app
 from .skill_cmd import create_skill_app
 from .mcp_cmd import create_mcp_app
 from .security_cmd import create_security_app
-from .agents_cmd import create_agents_app
+from .sidecar_cmd import app as sidecar_app
 
-# 注册 agents 命令
-app.add_typer(create_agents_app, name="agents")
+# agents 命令使用 click，暂时注释掉
+# from .agents_cmd import create_agents_app
+
+# 注册 agents 命令（暂时注释）
+# app.add_typer(create_agents_app, name="agents")
 from .serve_cmd import serve
 
 app.add_typer(create_onboard_app(), name="onboard")
@@ -39,11 +42,11 @@ app.add_typer(create_config_app(), name="config")
 app.add_typer(create_skill_app(), name="skill")
 app.add_typer(create_mcp_app(), name="mcp")
 app.add_typer(create_security_app(), name="security")
+app.add_typer(sidecar_app, name="sidecar", help="Run as Tauri sidecar")
 
 # Register serve command directly
 
-app.command(name="agents")(agents)
-
+# app.command(name="agents")(agents)  # Temporarily commented out
 app.command(name="serve")(serve)
 
 

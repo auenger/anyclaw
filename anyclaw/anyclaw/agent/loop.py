@@ -206,14 +206,14 @@ class AgentLoop:
         return False
 
     def start_turn(self) -> None:
-    def set_spawn_context(self, channel: str, chat_id: str) -> None:
-        """设置 SpawnTool 的上下文（由 Channel 调用）"""
-        """
-        if self._spawn_tool and hasattr(self._spawn_tool, "set_context"):
-            self._spawn_tool.set_context(channel, chat_id)
         """开始新回合（重置发送跟踪）"""
         if self._message_tool:
             self._message_tool.start_turn()
+
+    def set_spawn_context(self, channel: str, chat_id: str) -> None:
+        """设置 SpawnTool 的上下文（由 Channel 调用）"""
+        if self._spawn_tool and hasattr(self._spawn_tool, "set_context"):
+            self._spawn_tool.set_context(channel, chat_id)
 
     async def process(self, user_input: str) -> str:
         """处理用户输入"""
