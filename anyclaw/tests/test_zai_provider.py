@@ -67,8 +67,8 @@ class TestZAIProvider:
     def test_get_base_url_auto_default(self):
         """测试 auto endpoint 默认值"""
         provider = ZAIProvider(api_key="test-key", endpoint="auto", auto_detect=False)
-        # auto 模式默认使用 coding-global
-        assert provider.get_base_url() == ZAI_ENDPOINTS["coding-global"]
+        # auto 模式默认使用 coding (GLM Coding Plan)
+        assert provider.get_base_url() == ZAI_ENDPOINTS["coding"]
 
     def test_is_configured(self):
         """测试配置检查"""

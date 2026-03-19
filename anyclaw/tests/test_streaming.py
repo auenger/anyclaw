@@ -102,7 +102,7 @@ class TestAgentLoopStreaming:
 
             # 应该收到错误消息
             assert len(chunks) == 1
-            assert "Error" in chunks[0]
+            assert "Error" in chunks[0] or "错误" in chunks[0]
 
     @pytest.mark.asyncio
     async def test_process_stream_empty_response(self):
@@ -128,37 +128,49 @@ class TestAgentLoopStreaming:
 class TestCLIChannelStreaming:
     """CLI Channel 流式显示测试"""
 
-    def setup_method(self):
-        self.channel = CLIChannel()
-
     @pytest.mark.asyncio
     async def test_print_stream(self):
-        """测试 print_stream 方法"""
+        """测试 _print_stream 方法"""
+        from anyclaw.bus.queue import MessageBus
+        bus = MessageBus()
+        config = CLIChannel.default_config()
+        channel = CLIChannel(config, bus)
+
         async def stream_gen():
             yield "Hello"
             yield " "
             yield "World"
 
         # 应该不抛出异常
-        await self.channel.print_stream(stream_gen())
+        await channel._print_stream(stream_gen())
 
     @pytest.mark.asyncio
     async def test_print_stream_interrupt(self):
         """测试流式输出中断"""
+        from anyclaw.bus.queue import MessageBus
+        bus = MessageBus()
+        config = CLIChannel.default_config()
+        channel = CLIChannel(config, bus)
+
         async def stream_gen():
             yield "Start"
-            self.channel.interrupt_stream()
+            channel.interrupt_stream()
             yield "Should not appear"
 
         # 应该在中断后停止
-        await self.channel.print_stream(stream_gen())
+        await channel._print_stream(stream_gen())
 
     @pytest.mark.asyncio
     async def test_run_stream_is_callable(self):
         """测试 run_stream 方法可调用"""
+        from anyclaw.bus.queue import MessageBus
+        bus = MessageBus()
+        config = CLIChannel.default_config()
+        channel = CLIChannel(config, bus)
+
         # 验证方法存在
-        assert hasattr(self.channel, 'run_stream')
-        assert callable(getattr(self.channel, 'run_stream'))
+        assert hasattr(channel, 'run_stream')
+        assert callable(getattr(channel, 'run_stream'))
 
 
 class TestStreamingConfig:

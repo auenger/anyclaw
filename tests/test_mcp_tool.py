@@ -7,7 +7,7 @@ import asyncio
 import sys
 from contextlib import AsyncExitStack, asynccontextmanager
 from types import ModuleType, SimpleNamespace
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import pytest
 
@@ -39,7 +39,7 @@ def _fake_mcp_module(
     mod.types = SimpleNamespace(TextContent=_FakeTextContent)
 
     class _FakeStdioServerParameters:
-        def __init__(self, command: str, args: list, env: dict | None = None) -> None:
+        def __init__(self, command: str, args: list, env: Optional[dict] = None) -> None:
             self.command = command
             self.args = args
             self.env = env

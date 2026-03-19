@@ -80,11 +80,11 @@ class DiscordChannel(BaseChannel):
         super().__init__(config, bus)
         self.config: DiscordConfig = config
         self._ws: Any = None
-        self._seq: int | None = None
-        self._heartbeat_task: asyncio.Task | None = None
+        self._seq: Optional[int] = None
+        self._heartbeat_task: Optional[asyncio.Task] = None
         self._typing_tasks: dict[str, asyncio.Task] = {}
         self._http: Any = None
-        self._bot_user_id: str | None = None
+        self._bot_user_id: Optional[str] = None
 
     @classmethod
     def default_config(cls) -> dict[str, Any]:
@@ -200,7 +200,7 @@ class DiscordChannel(BaseChannel):
         return False
 
     async def _send_file(
-        self, url: str, headers: dict, file_path: str, reply_to: str | None = None
+        self, url: str, headers: dict, file_path: str, reply_to: Optional[str] = None
     ) -> bool:
         """Send a file attachment via Discord REST API."""
         path = Path(file_path)

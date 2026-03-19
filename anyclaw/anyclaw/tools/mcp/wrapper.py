@@ -72,13 +72,23 @@ class MCPToolWrapper(Tool):
             # MCP SDK 的 anyio cancel scopes 可能在超时/失败时泄露 CancelledError
             # 只有当我们的任务被外部取消时才重新抛出（例如 /stop）
             task = asyncio.current_task()
-            if task is not None and task.cancelling() > 0:
-                raise
-            logger.warning(
-                "MCP tool '%s' was cancelled by server/SDK",
-                self._name
-            )
-            return "(MCP tool call was cancelled)"
+
+            # Python 3.11+ has task.cancelling() method that returns the count of
+            # cancel requests. If > 0, it's an external cancellation.
+            # For Python 3.9-3.10, we don't have a reliable way to distinguish,
+            # so we always re-raise to be safe (user cancellation is more important)
+            if task is not None and hasattr(task, 'cancelling'):
+                # Python 3.11+: can distinguish external vs internal cancellation
+                if task.cancelling() == 0:
+                    # Internal cancellation from MCP SDK
+                    logger.warning(
+                        "MCP tool '%s' was cancelled by server/SDK",
+                        self._name
+                    )
+                    return "(MCP tool call was cancelled)"
+
+            # For Python 3.9-3.10 or external cancellation: re-raise
+            raise
         except Exception as exc:
             logger.exception(
                 "MCP tool '%s' failed: %s: %s",

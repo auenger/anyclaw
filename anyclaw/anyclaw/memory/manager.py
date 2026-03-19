@@ -284,9 +284,12 @@ class MemoryManager:
                 matches=self._extract_matches(long_term, pattern),
             ))
 
-        # 搜索每日日志
+        # 搜索每日日志（排除长期记忆文件）
         if self.memory_dir.exists():
             for log_file in sorted(self.memory_dir.glob("*.md"), reverse=True):
+                # 排除 MEMORY.md 和 HISTORY.md
+                if log_file.name in (self.LONG_TERM_FILE, self.HISTORY_FILE):
+                    continue
                 content = log_file.read_text(encoding="utf-8")
                 if pattern.search(content):
                     results.append(SearchResult(
@@ -427,9 +430,12 @@ class MemoryManager:
             if content:
                 stats["long_term_chars"] = len(content)
 
-        # 每日日志统计
+        # 每日日志统计（排除长期记忆文件）
         if self.memory_dir.exists():
-            log_files = sorted(self.memory_dir.glob("*.md"))
+            log_files = [
+                f for f in sorted(self.memory_dir.glob("*.md"))
+                if f.name not in (self.LONG_TERM_FILE, self.HISTORY_FILE)
+            ]
             stats["daily_logs_count"] = len(log_files)
 
             if log_files:
