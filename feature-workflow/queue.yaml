@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-19T16:30:00"
-  version: 24
+  last_updated: "2026-03-19T18:00:00"
+  version: 25
 
 # 父需求（用于分组追踪)
 parents:
@@ -24,7 +24,7 @@ parents:
     description: 完善 Skill 系统，支持工具链、渐进式加载、动态加载
     priority: 85
     size: L
-    status: in_progress
+    status: completed
     children:
       - feat-skill-toolkit
       - feat-skill-dynamic-loader
@@ -39,28 +39,23 @@ parents:
       - feat-mcp-client
 
 # 正在开发的需求
-active: []
-
-# 等待中的需求（按优先级排序）
-pending:
-  - id: feat-skill-progressive-loading
-    name: Skill 渐进式加载
-    description: 实现渐进式加载、依赖检查、scripts执行、always skills
-    priority: 75
-    size: M
-    dependencies: []
-
-  - id: feat-mcp-client
-    name: MCP 客户端
-    description: MCP 协议客户端，支持 stdio/SSE/HTTP 连接，复用 MCP Server 生态
-    priority: 70
-    size: L
-    dependencies: []
-
+active:
   - id: feat-im-channels
     name: IM Channel 支持
     description: 添加飞书和 Discord 即时通讯渠道，实现 MessageBus 消息路由机制
     priority: 65
+    size: L
+    dependencies: []
+    branch: feature/im-channels
+    worktree: .
+    started_at: "2026-03-19T17:00:00"
+
+# 等待中的需求（按优先级排序）
+pending:
+  - id: feat-mcp-client
+    name: MCP 客户端
+    description: MCP 协议客户端，支持 stdio/SSE/HTTP 连接，复用 MCP Server 生态
+    priority: 70
     size: L
     dependencies: []
 
@@ -76,6 +71,20 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-skill-progressive-loading
+    name: Skill 渐进式加载
+    priority: 75
+    size: M
+    completed_at: "2026-03-19T18:00:00"
+    archive_path: features/archive/done-feat-skill-progressive-loading
+    value_points:
+      - XML 格式 skills summary (build_skills_summary)
+      - 批量加载技能内容 (load_skills_for_context)
+      - 依赖检查系统 (bins/env)
+      - Always skills 自动加载
+      - 脚本执行器 (SkillScriptExecutor)
+      - 参考文档读取 (references)
+
   - id: feat-skill-dynamic-loader
     name: Skill 动态加载修复
     priority: 80

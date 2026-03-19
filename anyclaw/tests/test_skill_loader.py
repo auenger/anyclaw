@@ -260,3 +260,314 @@ description: Test source tracking
         source = loader.get_skill_source("source-test")
         assert source is not None
         assert source.source_type == "managed"
+
+
+class TestProgressiveLoading:
+    """测试渐进式加载功能"""
+
+    def test_build_skills_summary(self, tmp_path):
+        """测试构建 XML 格式的 skills summary"""
+        # 创建 MD skill
+        skill_dir = tmp_path / "test-skill"
+        skill_dir.mkdir()
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text('''---
+name: summary-test
+description: Test skill summary
+---
+# Summary Test
+''')
+
+        loader = SkillLoader(skills_dirs=[str(tmp_path)])
+        loader.load_all()
+
+        summary = loader.build_skills_summary()
+
+        # 验证 XML 格式
+        assert "<skills>" in summary
+        assert "</skills>" in summary
+        assert "<name>summary-test</name>" in summary
+        assert "<description>Test skill summary</description>" in summary
+        assert 'available="true"' in summary
+
+    def test_load_skills_for_context(self, tmp_path):
+        """测试批量加载技能内容"""
+        skill_dir = tmp_path / "context-skill"
+        skill_dir.mkdir()
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text('''---
+name: context-test
+description: Test context loading
+---
+# Context Test
+
+This is the skill body.
+''')
+
+        loader = SkillLoader(skills_dirs=[str(tmp_path)])
+        loader.load_all()
+
+        content = loader.load_skills_for_context(["context-test"])
+
+        assert "## Skill: context-test" in content
+        assert "# Context Test" in content
+        assert "---" not in content  # frontmatter 应被去除
+
+    def test_strip_frontmatter(self, tmp_path):
+        """测试去除 frontmatter"""
+        loader = SkillLoader()
+
+        content_with_frontmatter = '''---
+name: test
+description: test
+---
+# Body
+Content here'''
+
+        result = loader._strip_frontmatter(content_with_frontmatter)
+
+        assert "---" not in result
+        assert "# Body" in result
+        assert "Content here" in result
+
+    def test_check_requirements_bins(self, tmp_path):
+        """测试二进制依赖检查"""
+        from anyclaw.skills.models import OpenClawRequires
+
+        loader = SkillLoader()
+        requires = OpenClawRequires(bins=["ls", "nonexistent_cmd_xyz"])
+
+        available, missing = loader._check_requirements(requires)
+
+        # ls 应该存在，nonexistent_cmd_xyz 不存在
+        assert available == False
+        assert len(missing) == 1
+        assert "nonexistent_cmd_xyz" in missing[0]
+
+    def test_check_requirements_env(self, tmp_path):
+        """测试环境变量依赖检查"""
+        from anyclaw.skills.models import OpenClawRequires
+
+        loader = SkillLoader()
+        requires = OpenClawRequires(env=["PATH", "NONEXISTENT_ENV_XYZ"])
+
+        available, missing = loader._check_requirements(requires)
+
+        # PATH 应该存在，NONEXISTENT_ENV_XYZ 不存在
+        assert available == False
+        assert len(missing) == 1
+        assert "NONEXISTENT_ENV_XYZ" in missing[0]
+
+    def test_get_always_skills(self, tmp_path):
+        """测试获取 always skills"""
+        # 创建 always skill
+        always_dir = tmp_path / "always-skill"
+        always_dir.mkdir()
+        always_md = always_dir / "SKILL.md"
+        always_md.write_text('''---
+name: always-test
+description: Always loaded skill
+metadata:
+  openclaw:
+    always: true
+---
+# Always Test
+''')
+
+        # 创建普通 skill
+        normal_dir = tmp_path / "normal-skill"
+        normal_dir.mkdir()
+        normal_md = normal_dir / "SKILL.md"
+        normal_md.write_text('''---
+name: normal-test
+description: Normal skill
+---
+# Normal Test
+''')
+
+        loader = SkillLoader(skills_dirs=[str(tmp_path)])
+        loader.load_all()
+
+        always_skills = loader.get_always_skills()
+
+        assert "always-test" in always_skills
+        assert "normal-test" not in always_skills
+
+    def test_always_skill_with_unmet_requirements(self, tmp_path):
+        """测试依赖不满足的 always skill 不被加载"""
+        skill_dir = tmp_path / "unmet-always"
+        skill_dir.mkdir()
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text('''---
+name: unmet-always
+description: Always skill with unmet requirements
+metadata:
+  openclaw:
+    always: true
+    requires:
+      bins: [nonexistent_cmd_xyz]
+---
+# Unmet Always
+''')
+
+        loader = SkillLoader(skills_dirs=[str(tmp_path)])
+        loader.load_all()
+
+        always_skills = loader.get_always_skills()
+
+        # 依赖不满足，不应被包含
+        assert "unmet-always" not in always_skills
+
+    def test_summary_marks_unavailable(self, tmp_path):
+        """测试 summary 正确标记不可用的 skill"""
+        skill_dir = tmp_path / "unavailable-skill"
+        skill_dir.mkdir()
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text('''---
+name: unavailable-test
+description: Skill with unmet requirements
+metadata:
+  openclaw:
+    requires:
+      bins: [nonexistent_cmd_xyz]
+---
+# Unavailable
+''')
+
+        loader = SkillLoader(skills_dirs=[str(tmp_path)])
+        loader.load_all()
+
+        summary = loader.build_skills_summary()
+
+        assert 'available="false"' in summary
+        assert "nonexistent_cmd_xyz" in summary
+
+
+class TestSkillScriptExecutor:
+    """测试脚本执行器"""
+
+    @pytest.fixture
+    def loader_with_scripts(self, tmp_path):
+        """创建带有脚本的 skill loader"""
+        skill_dir = tmp_path / "script-skill"
+        skill_dir.mkdir()
+
+        # 创建 SKILL.md
+        skill_md = skill_dir / "SKILL.md"
+        skill_md.write_text('''---
+name: script-test
+description: Skill with scripts
+---
+# Script Test
+''')
+
+        # 创建 scripts 目录
+        scripts_dir = skill_dir / "scripts"
+        scripts_dir.mkdir()
+
+        # 创建 Python 脚本
+        py_script = scripts_dir / "hello.py"
+        py_script.write_text('print("Hello from Python")')
+
+        # 创建 Shell 脚本
+        sh_script = scripts_dir / "hello.sh"
+        sh_script.write_text('''#!/bin/bash
+echo "Hello from Bash"
+''')
+
+        # 创建 references 目录
+        refs_dir = skill_dir / "references"
+        refs_dir.mkdir()
+        ref_file = refs_dir / "api.md"
+        ref_file.write_text("# API Reference\n\nThis is the API reference.")
+
+        loader = SkillLoader(skills_dirs=[str(tmp_path)])
+        loader.load_all()
+        return loader
+
+    @pytest.mark.asyncio
+    async def test_execute_python_script(self, loader_with_scripts):
+        """测试执行 Python 脚本"""
+        from anyclaw.skills.executor import SkillScriptExecutor
+
+        executor = SkillScriptExecutor(loader_with_scripts)
+        result = await executor.execute_script(
+            "script-test",
+            "scripts/hello.py"
+        )
+
+        assert "Hello from Python" in result
+
+    @pytest.mark.asyncio
+    async def test_execute_shell_script(self, loader_with_scripts):
+        """测试执行 Shell 脚本"""
+        from anyclaw.skills.executor import SkillScriptExecutor
+
+        executor = SkillScriptExecutor(loader_with_scripts)
+        result = await executor.execute_script(
+            "script-test",
+            "scripts/hello.sh"
+        )
+
+        assert "Hello from Bash" in result
+
+    @pytest.mark.asyncio
+    async def test_execute_nonexistent_script(self, loader_with_scripts):
+        """测试执行不存在的脚本"""
+        from anyclaw.skills.executor import SkillScriptExecutor
+
+        executor = SkillScriptExecutor(loader_with_scripts)
+        result = await executor.execute_script(
+            "script-test",
+            "scripts/nonexistent.py"
+        )
+
+        assert "Error" in result
+        assert "not found" in result
+
+    @pytest.mark.asyncio
+    async def test_execute_nonexistent_skill(self, loader_with_scripts):
+        """测试执行不存在的 skill 脚本"""
+        from anyclaw.skills.executor import SkillScriptExecutor
+
+        executor = SkillScriptExecutor(loader_with_scripts)
+        result = await executor.execute_script(
+            "nonexistent-skill",
+            "scripts/hello.py"
+        )
+
+        assert "Error" in result
+        assert "not found" in result
+
+    def test_list_scripts(self, loader_with_scripts):
+        """测试列出脚本"""
+        from anyclaw.skills.executor import SkillScriptExecutor
+
+        executor = SkillScriptExecutor(loader_with_scripts)
+        scripts = executor.list_scripts("script-test")
+
+        assert len(scripts) == 2
+        assert any("hello.py" in s for s in scripts)
+        assert any("hello.sh" in s for s in scripts)
+
+    def test_list_references(self, loader_with_scripts):
+        """测试列出参考文档"""
+        from anyclaw.skills.executor import SkillScriptExecutor
+
+        executor = SkillScriptExecutor(loader_with_scripts)
+        refs = executor.list_references("script-test")
+
+        assert len(refs) == 1
+        assert any("api.md" in r for r in refs)
+
+    def test_read_reference(self, loader_with_scripts):
+        """测试读取参考文档"""
+        from anyclaw.skills.executor import SkillScriptExecutor
+
+        executor = SkillScriptExecutor(loader_with_scripts)
+        content = executor.read_reference("script-test", "references/api.md")
+
+        assert content is not None
+        assert "API Reference" in content
+
+

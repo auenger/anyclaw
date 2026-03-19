@@ -346,6 +346,202 @@ class SkillLoader:
         logger.info(f"Reloaded all skills: {stats}")
         return stats
 
+    # ==================== 渐进式加载功能 ====================
+
+    def build_skills_summary(self) -> str:
+        """构建 XML 格式的技能摘要
+
+        Returns:
+            XML 格式的技能摘要字符串
+        """
+        lines = ['<skills>']
+
+        # 处理 Python skills
+        for name, skill in self.python_skills.items():
+            info = skill.get_info()
+            source = self._skill_sources.get(name)
+            available, missing = self._check_skill_requirements(name, info)
+
+            lines.append(f'  <skill available="{str(available).lower()}">')
+            lines.append(f'    <name>{info.get("name", name)}</name>')
+            lines.append(f'    <description>{info.get("description", "")}</description>')
+            if source:
+                lines.append(f'    <location>{source.path / "skill.py"}</location>')
+            if not available and missing:
+                lines.append(f'    <requires>{" ".join(missing)}</requires>')
+            lines.append('  </skill>')
+
+        # 处理 MD skills
+        for name, skill_def in self.md_skills.items():
+            source = self._skill_sources.get(name)
+            available, missing = self._check_skill_requirements(name, skill_def)
+
+            lines.append(f'  <skill available="{str(available).lower()}">')
+            lines.append(f'    <name>{skill_def.name}</name>')
+            lines.append(f'    <description>{skill_def.description}</description>')
+            if source:
+                lines.append(f'    <location>{source.path / "SKILL.md"}</location>')
+            if not available and missing:
+                lines.append(f'    <requires>{" ".join(missing)}</requires>')
+            lines.append('  </skill>')
+
+        lines.append('</skills>')
+        return '\n'.join(lines)
+
+    def load_skills_for_context(self, skill_names: List[str]) -> str:
+        """批量加载技能内容到上下文
+
+        Args:
+            skill_names: 要加载的技能名称列表
+
+        Returns:
+            合并后的技能内容
+        """
+        contents = []
+
+        for name in skill_names:
+            content = self.load_skill_content(name)
+            if content:
+                contents.append(f"## Skill: {name}\n\n{content}")
+
+        return "\n\n---\n\n".join(contents)
+
+    def load_skill_content(self, name: str) -> Optional[str]:
+        """加载单个技能的完整内容（不含 frontmatter）
+
+        Args:
+            name: 技能名称
+
+        Returns:
+            技能内容或 None
+        """
+        # 检查 Python skill
+        if name in self.python_skills:
+            info = self.python_skills[name].get_info()
+            return info.get("description", "")
+
+        # 检查 MD skill
+        if name in self.md_skills:
+            skill_def = self.md_skills[name]
+            return self._strip_frontmatter(skill_def.content)
+
+        return None
+
+    def _strip_frontmatter(self, content: str) -> str:
+        """去除 YAML frontmatter
+
+        Args:
+            content: 原始内容
+
+        Returns:
+            去除 frontmatter 后的内容
+        """
+        if not content.startswith('---'):
+            return content
+
+        # 找到第二个 ---
+        parts = content.split('---', 2)
+        if len(parts) >= 3:
+            return parts[2].strip()
+
+        return content
+
+    def _get_skill_description(self, skill_path: Path) -> str:
+        """从 SKILL.md 获取技能描述
+
+        Args:
+            skill_path: 技能目录路径
+
+        Returns:
+            技能描述
+        """
+        skill_md = skill_path / "SKILL.md"
+        if not skill_md.exists():
+            return ""
+
+        try:
+            from .parser import parse_skill_md
+            skill = parse_skill_md(skill_md)
+            return skill.description if skill else ""
+        except Exception:
+            return ""
+
+    def _check_skill_requirements(
+        self, name: str, skill_info: Any
+    ) -> tuple[bool, List[str]]:
+        """检查技能依赖是否满足
+
+        Args:
+            name: 技能名称
+            skill_info: 技能信息（Skill 实例或 SkillDefinition）
+
+        Returns:
+            (是否可用, 缺失的依赖列表)
+        """
+        # 获取 OpenClaw 元数据
+        requires = None
+
+        if isinstance(skill_info, dict):
+            # Python skill info dict
+            pass
+        elif hasattr(skill_info, 'get_openclaw_metadata'):
+            # SkillDefinition
+            metadata = skill_info.get_openclaw_metadata()
+            if metadata and metadata.requires:
+                requires = metadata.requires
+
+        if not requires:
+            return True, []
+
+        return self._check_requirements(requires)
+
+    def _check_requirements(self, requires: Any) -> tuple[bool, List[str]]:
+        """检查依赖项
+
+        Args:
+            requires: OpenClawRequires 对象
+
+        Returns:
+            (是否全部满足, 缺失项列表)
+        """
+        import shutil
+        import os
+
+        missing = []
+
+        # 检查二进制命令
+        if hasattr(requires, 'bins') and requires.bins:
+            for bin_name in requires.bins:
+                if not shutil.which(bin_name):
+                    missing.append(f"CLI: {bin_name}")
+
+        # 检查环境变量
+        if hasattr(requires, 'env') and requires.env:
+            for env_name in requires.env:
+                if not os.environ.get(env_name):
+                    missing.append(f"ENV: {env_name}")
+
+        return len(missing) == 0, missing
+
+    def get_always_skills(self) -> List[str]:
+        """获取所有标记为 always=true 的技能
+
+        Returns:
+            always 技能名称列表
+        """
+        always_skills = []
+
+        # 检查 MD skills
+        for name, skill_def in self.md_skills.items():
+            metadata = skill_def.get_openclaw_metadata()
+            if metadata and metadata.always:
+                # 检查依赖
+                available, _ = self._check_skill_requirements(name, skill_def)
+                if available:
+                    always_skills.append(name)
+
+        return always_skills
+
 
 class MultiDirectorySkillLoader(SkillLoader):
     """多目录技能加载器 - 支持优先级合并"""
