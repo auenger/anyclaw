@@ -19,4 +19,7 @@ export default defineConfig(async () => ({
     },
     hmr: false,
   },
+  css: {
+    postcss: './postcss.config.js',
+  },
 }));

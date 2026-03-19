@@ -39,7 +39,6 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_log::Builder::new().build())
         .setup(|app| {
             // 初始化状态
             let sidecar_status = Arc::new(Mutex::new(SidecarInfo {
@@ -77,6 +76,134 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
+/// 查找 Python 可执行文件路径
+fn find_python() -> Result<String, String> {
+    // 1. 检查 PYTHONPATH 环境变量
+    if let Ok(py) = std::env::var("PYTHONPATH") {
+        if !py.is_empty() {
+            return Ok(py);
+        }
+    }
+
+    // 2. 检查常见 Python 安装路径
+    let candidates = vec![
+        "python3",           // Unix
+        "python",            // Windows
+        "/usr/bin/python3", // macOS/Linux
+        "/usr/local/bin/python3",
+        "C:\\Python312\\python.exe",  // Windows
+        "C:\\Python311\\python.exe",
+    ];
+
+    for cmd in candidates {
+        if let Ok(output) = std::process::Command::new(cmd)
+            .arg("--version")
+            .output()
+        {
+            if output.status.success() {
+                return Ok(cmd.to_string());
+            }
+        }
+    }
+
+    Err("Python not found in PATH".to_string())
+}
+
+/// 启动 sidecar
+async fn spawn_sidecar(app: &AppHandle, port: u16) -> Result<u32, String> {
+    // 查找 Python
+    let python = find_python().map_err(|e| format!("Failed to find Python: {}", e))?;
+
+    // 准备环境变量
+    let mut env_vars: Vec<(String, String)> = vec![];
+    env_vars.push(("PORT".into(), port.to_string()));
+    env_vars.push(("PYTHONUNBUFFERED".into(), "1".into()));
+
+    // 设置数据目录
+    if let Ok(data_dir) = app.path().app_data_dir() {
+        env_vars.push(("DATA_DIR".into(), data_dir.to_string_lossy().to_string()));
+    }
+
+    // 启动进程
+    let mut cmd = tauri_plugin_shell::process::Command::new(&python);
+    cmd.args([
+        "-m",
+        "anyclaw.cli.sidecar_cmd",
+        "sidecar",
+        "--port",
+        &port.to_string(),
+    ]);
+
+    for (key, val) in env_vars {
+        cmd = cmd.env(key, val);
+    }
+
+    let child = cmd
+        .spawn()
+        .map_err(|e| format!("Failed to spawn sidecar: {}", e))?;
+
+    let pid = child.pid();
+    log::info!("Sidecar spawned with PID: {}", pid);
+
+    Ok(pid)
+}
+
+/// 等待后端健康检查
+async fn wait_for_health(port: u16, max_retries: u32) -> Result<(), String> {
+    let addr = format!("127.0.0.1:{}", port);
+
+    for i in 0..max_retries {
+        if let Ok(mut stream) = std::net::TcpStream::connect_timeout(
+            &addr.parse().unwrap(),
+            Duration::from_millis(500),
+        ) {
+            use std::io::{Read, Write};
+            let req = format!("GET /api/health HTTP/1.0\r\nHost: localhost:{}\r\n\r\n", port);
+            if stream.write_all(req.as_bytes()).is_ok() {
+                let mut buf = [0u8; 256];
+                if let Ok(n) = stream.read(&mut buf) {
+                    let resp = String::from_utf8_lossy(&buf[..n]);
+                    if resp.contains("200") || resp.contains("ok") {
+                        log::info!("Backend health check passed after {} attempts", i + 1);
+                        return Ok(());
+                    }
+                }
+            }
+        }
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+
+    Err("Backend health check failed after max retries".into())
+}
+
+/// 杀死 sidecar 进程
+fn kill_sidecar(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    let mut guard = state.sidecar_status.lock().unwrap();
+    
+    if let Some(pid) = guard.pid {
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            let _ = std::process::Command::new("taskkill")
+                .args(["/PID", &pid.to_string(), "/T", "/F"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .output();
+            log::info!("Sidecar process tree killed (PID: {})", pid);
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = std::process::Command::new("pkill")
+                .args(["-KILL", "-P", &pid.to_string()])
+                .output();
+            log::info!("Sidecar process tree killed (PID: {})", pid);
+        }
+        
+        guard.pid = None;
+    }
+}
+
 /// 获取 sidecar 状态
 #[tauri::command]
 pub fn get_sidecar_status(app: AppHandle) -> Result<SidecarInfo, String> {
@@ -102,19 +229,40 @@ pub async fn start_sidecar(app: AppHandle) -> Result<String, String> {
     status.message = "Starting sidecar...".to_string();
     app.emit("sidecar-status", &*status).unwrap();
 
-    // TODO: 启动 Python sidecar 进程
-    // 这里需要实现进程启动逻辑
+    // 获取配置
+    let store = app.store("settings.json").unwrap();
+    let port: u16 = store
+        .get("preferred_port")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(62601) as u16;
 
-    // 更新状态
+    // 启动 sidecar
+    let pid = spawn_sidecar(&app, port).await?;
+
+    // 等待健康检查
+    if let Err(e) = wait_for_health(port, 30).await {
+        log::error!("Health check failed: {}", e);
+        
+        status.status = SidecarStatus::Error;
+        status.message = format!("Health check failed: {}", e);
+        app.emit("sidecar-status", &*status).unwrap();
+        
+        // 杀死进程
+        kill_sidecar(&app);
+        
+        return Err(format!("Failed to start sidecar: {}", e));
+    }
+
+    // 更新状态为运行中
     status.status = SidecarStatus::Running;
-    status.port = 62601;
-    status.pid = None;
+    status.port = port;
+    status.pid = Some(pid);
     status.uptime_seconds = 0;
     status.message = "Sidecar is running".to_string();
 
     app.emit("sidecar-status", &*status).unwrap();
 
-    Ok(format!("Sidecar started on port {}", 62601))
+    Ok(format!("Sidecar started on port {}", port))
 }
 
 /// 停止 sidecar
@@ -133,9 +281,13 @@ pub async fn stop_sidecar(app: AppHandle) -> Result<String, String> {
     status.message = "Stopping sidecar...".to_string();
     app.emit("sidecar-status", &*status).unwrap();
 
-    // TODO: 停止 Python sidecar 进程
-    // 这里需要实现进程停止逻辑
+    // 杀死进程
+    kill_sidecar(&app);
 
+    // 等待 1 秒
+    tokio::time::sleep(Duration::from_secs(1)).await;
+
+    // 更新状态
     status.status = SidecarStatus::Stopped;
     status.pid = None;
     status.uptime_seconds = 0;
