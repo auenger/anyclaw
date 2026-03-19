@@ -248,6 +248,16 @@ class Settings(BaseSettings):
         default=True,
         description="是否限制文件写入到 workspace 内（提升安全性）"
     )
+
+    # ExecTool 安全配置
+    exec_deny_patterns: List[str] = Field(
+        default_factory=list,
+        description="用户自定义的命令黑名单模式（正则表达式）"
+    )
+    exec_allow_patterns: List[str] = Field(
+        default_factory=list,
+        description="用户自定义的命令白名单模式（设置后启用白名单模式）"
+    )
     stream_buffer_size: int = Field(
         default=10,
         ge=1,

@@ -7,10 +7,16 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .base import Tool
+from .guards import CommandGuard
 
 
 class ExecTool(Tool):
-    """Shell 命令执行工具"""
+    """Shell 命令执行工具
+
+    安全机制：
+    - 核心保护层：硬编码的危险命令拦截（不可绕过）
+    - 用户保护层：可配置的 deny/allow patterns
+    """
 
     _MAX_TIMEOUT = 300
     _MAX_OUTPUT = 10_000
@@ -20,16 +26,25 @@ class ExecTool(Tool):
         timeout: int = 60,
         working_dir: Optional[str] = None,
         deny_patterns: Optional[List[str]] = None,
+        allow_patterns: Optional[List[str]] = None,
         path_append: str = "",
     ):
         self.timeout = timeout
         self.working_dir = working_dir
         self.path_append = path_append
-        self.deny_patterns = deny_patterns or [
-            r"\brm\s+-[rf]{1,2}\b",
-            r"\b(shutdown|reboot|poweroff)\b",
-            r">\s*/dev/sd",
-        ]
+
+        # 用户自定义 deny/allow patterns（保留向后兼容）
+        self.user_deny_patterns = deny_patterns or []
+        self.user_allow_patterns = allow_patterns or []
+
+        # 初始化命令保护器
+        self.guard = CommandGuard(
+            user_deny_patterns=self.user_deny_patterns,
+            user_allow_patterns=self.user_allow_patterns,
+        )
+
+        # 向后兼容：保留 deny_patterns 属性
+        self.deny_patterns = self.user_deny_patterns
 
     @property
     def name(self) -> str:
@@ -133,11 +148,14 @@ class ExecTool(Tool):
             return f"执行命令时出错: {str(e)}"
 
     def _guard_command(self, command: str) -> Optional[str]:
-        """安全检查"""
-        cmd = command.strip().lower()
+        """安全检查（使用混合保护模式）
 
-        for pattern in self.deny_patterns:
-            if re.search(pattern, cmd):
-                return "错误: 命令被安全策略阻止（检测到危险模式）"
-
+        检查优先级：
+        1. 核心保护（不可绕过）
+        2. 用户 deny_patterns
+        3. 用户 allow_patterns（如果启用）
+        """
+        blocked, reason = self.guard.check(command)
+        if blocked:
+            return f"错误: 命令被安全策略阻止 - {reason}"
         return None
