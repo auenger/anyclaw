@@ -2,7 +2,9 @@
 
 import asyncio
 import json
+import logging
 import re
+from contextlib import AsyncExitStack
 from pathlib import Path
 from typing import Optional, Dict, List, Any, AsyncGenerator, Callable, Awaitable
 
@@ -22,6 +24,8 @@ from anyclaw.tools.memory import SaveMemoryTool, UpdatePersonaTool
 from .history import ConversationHistory
 from .context import ContextBuilder
 
+logger = logging.getLogger(__name__)
+
 
 class AgentLoop:
     """Agent 主处理循环"""
@@ -37,6 +41,9 @@ class AgentLoop:
         self.skills: Dict[str, SkillDefinition] = {}
         self.enable_tools = enable_tools
         self.workspace = workspace or Path.cwd()
+
+        # MCP 连接管理
+        self._mcp_stack: Optional[AsyncExitStack] = None
 
         # 初始化 Tool Registry
         self.tools = ToolRegistry()
@@ -56,6 +63,49 @@ class AgentLoop:
         # 记忆工具
         self.tools.register(SaveMemoryTool(workspace_path=str(self.workspace)))
         self.tools.register(UpdatePersonaTool(workspace_path=str(self.workspace)))
+
+    async def connect_mcp_servers(self) -> None:
+        """连接配置的 MCP Server 并注册工具
+
+        必须在使用前调用此方法来建立 MCP 连接。
+        使用 close_mcp_servers() 来清理连接。
+        """
+        if self._mcp_stack is not None:
+            return  # 已经连接
+
+        mcp_servers = settings.mcp_servers
+        if not mcp_servers:
+            return  # 没有配置 MCP servers
+
+        self._mcp_stack = AsyncExitStack()
+        await self._mcp_stack.__aenter__()
+
+        try:
+            from anyclaw.tools.mcp import connect_mcp_servers
+            await connect_mcp_servers(mcp_servers, self.tools, self._mcp_stack)
+            logger.info("MCP servers connected")
+        except Exception as e:
+            logger.error("Failed to connect MCP servers: %s", e)
+            await self._mcp_stack.aclose()
+            self._mcp_stack = None
+            raise
+
+    async def close_mcp_servers(self) -> None:
+        """关闭 MCP Server 连接"""
+        if self._mcp_stack is not None:
+            await self._mcp_stack.aclose()
+            self._mcp_stack = None
+            logger.info("MCP servers disconnected")
+
+    async def __aenter__(self):
+        """支持 async context manager"""
+        await self.connect_mcp_servers()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """支持 async context manager"""
+        await self.close_mcp_servers()
+        return False
 
     def set_skills(self, skills: Dict[str, SkillDefinition]) -> None:
         """设置可用技能（兼容旧接口）"""
