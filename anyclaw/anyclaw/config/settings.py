@@ -7,12 +7,14 @@
 """
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # 获取包内技能目录的绝对路径
 _BUILTIN_SKILLS_DIR = str(Path(__file__).parent.parent / "skills" / "builtin")
+_MANAGED_SKILLS_DIR = str(Path.home() / ".anyclaw" / "managed-skills")
+_WORKSPACE_SKILLS_DIR = str(Path.home() / ".anyclaw" / "workspace" / "skills")
 
 
 class Settings(BaseSettings):
@@ -99,7 +101,21 @@ class Settings(BaseSettings):
     # 技能配置（使用包内绝对路径）
     skills_dir: str = Field(
         default=_BUILTIN_SKILLS_DIR,
-        description="技能目录"
+        description="技能目录（向后兼容）"
+    )
+
+    # 多目录技能配置
+    skills_dirs: List[str] = Field(
+        default_factory=lambda: [_BUILTIN_SKILLS_DIR],
+        description="多个技能目录（按优先级顺序）"
+    )
+    skills_managed_dir: str = Field(
+        default=_MANAGED_SKILLS_DIR,
+        description="管理的技能目录（用户安装）"
+    )
+    skills_workspace_dir: str = Field(
+        default=_WORKSPACE_SKILLS_DIR,
+        description="工作空间技能目录（最高优先级）"
     )
 
     # 工作空间
