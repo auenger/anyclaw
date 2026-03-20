@@ -85,6 +85,7 @@ class DiscordChannel(BaseChannel):
         self._typing_tasks: dict[str, asyncio.Task] = {}
         self._http: Any = None
         self._bot_user_id: str | None = None
+        self._outbound_task: asyncio.Task | None = None
 
     @classmethod
     def default_config(cls) -> dict[str, Any]:
@@ -106,6 +107,9 @@ class DiscordChannel(BaseChannel):
         self._running = True
         self._http = httpx.AsyncClient(timeout=30.0)
 
+        # Start outbound message listener
+        self._outbound_task = asyncio.create_task(self._outbound_loop())
+
         while self._running:
             try:
                 logger.info("Connecting to Discord gateway...")
@@ -120,12 +124,33 @@ class DiscordChannel(BaseChannel):
                     logger.info("Reconnecting to Discord gateway in 5 seconds...")
                     await asyncio.sleep(5)
 
+    async def _outbound_loop(self) -> None:
+        """Listen for outbound messages from bus and send them."""
+        while self._running:
+            try:
+                msg = await asyncio.wait_for(
+                    self.bus.consume_outbound(),
+                    timeout=1.0
+                )
+                # Only handle messages for this channel
+                if msg.channel == self.name:
+                    await self.send(msg)
+            except asyncio.TimeoutError:
+                continue
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error in outbound loop: {e}")
+
     async def stop(self) -> None:
         """Stop the Discord channel."""
         self._running = False
         if self._heartbeat_task:
             self._heartbeat_task.cancel()
             self._heartbeat_task = None
+        if self._outbound_task:
+            self._outbound_task.cancel()
+            self._outbound_task = None
         for task in self._typing_tasks.values():
             task.cancel()
         self._typing_tasks.clear()

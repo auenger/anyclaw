@@ -103,3 +103,32 @@ class ChannelManager:
     def get_cron_service(self) -> Optional[CronService]:
         """获取 Cron 服务实例"""
         return self.cron_service
+
+    async def start_all(self) -> None:
+        """启动所有已注册的 Channel"""
+        if not self.channels:
+            logger.warning("No channels to start")
+            return
+
+        tasks = []
+        for name, channel in self.channels.items():
+            logger.info(f"Starting channel: {name}")
+            tasks.append(channel.start())
+
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+            logger.info(f"All {len(self.channels)} channels started")
+
+    async def stop_all(self) -> None:
+        """停止所有已注册的 Channel"""
+        if not self.channels:
+            return
+
+        tasks = []
+        for name, channel in self.channels.items():
+            logger.info(f"Stopping channel: {name}")
+            tasks.append(channel.stop())
+
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+            logger.info("All channels stopped")
