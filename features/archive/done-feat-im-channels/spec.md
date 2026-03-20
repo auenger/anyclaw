@@ -1,10 +1,12 @@
 # Feature: IM Channel 支持 (飞书 + Discord)
 
 > **ID**: feat-im-channels
-> **Status**: pending
+> **Status**: ✅ 已完成
 > **Priority**: 65
 > **Size**: L
 > **Created**: 2026-03-19
+> **Completed**: 2026-03-20
+> **Commits**: b8c5e27 (Channel 集成)
 
 ## 概述
 
