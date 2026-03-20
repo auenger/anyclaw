@@ -24,9 +24,15 @@ class SearchHeuristics:
         "Downloads",     # 下载文件默认位置
         "Desktop",       # 桌面临时文件
         "Documents",     # 文档目录
+        "mycode",        # 用户代码目录
+        "code",          # 代码目录
         "projects",      # 项目目录
+        "workspace",     # 工作区目录
         "",              # 用户主目录
     ]
+
+    # 代码目录别名（用于搜索 .py 等代码文件）
+    CODE_DIRS = ["mycode", "code", "projects", "workspace", "src", "repos"]
 
     # 文件类型 → 目录关联
     FILE_TYPE_DIRS: Dict[str, str] = {
@@ -135,6 +141,15 @@ class SearchHeuristics:
 
         # 2. 根据文件类型确定首选目录
         file_ext = self._get_extension(file_pattern)
+
+        # 2.1 对于代码文件，添加所有代码目录
+        if file_ext in [".py", ".js", ".ts", ".go", ".rs", ".java", ".tsx", ".jsx"]:
+            for code_dir in self.CODE_DIRS:
+                dir_path = self.home_dir / code_dir
+                if dir_path.exists() and dir_path not in paths:
+                    paths.append(dir_path)
+
+        # 2.2 根据文件类型映射添加首选目录
         if file_ext and file_ext in self.file_type_dirs:
             preferred_dir = self.file_type_dirs[file_ext]
             dir_path = self.home_dir / preferred_dir

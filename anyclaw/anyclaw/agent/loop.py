@@ -23,6 +23,7 @@ from anyclaw.tools.registry import ToolRegistry
 from anyclaw.tools.shell import ExecTool
 from anyclaw.tools.filesystem import ReadFileTool, WriteFileTool, ListDirTool
 from anyclaw.tools.memory import SaveMemoryTool, UpdatePersonaTool
+from anyclaw.tools.search import SearchFilesTool
 from anyclaw.bus.events import OutboundMessage  # 新增导入
 from anyclaw.security.sanitizers import ContentSanitizer
 from anyclaw.security.validators import ValidationError
@@ -139,6 +140,14 @@ class AgentLoop:
             from anyclaw.agent.tools.message import MessageTool
             self._message_tool = MessageTool()
             self.tools.register(self._message_tool)
+
+        # 智能文件搜索工具
+        self.tools.register(SearchFilesTool(
+            workspace=self.workspace,
+            timeout=getattr(settings, 'search_timeout', 5.0),
+            max_depth=getattr(settings, 'search_max_depth', 3),
+            max_results=getattr(settings, 'search_max_results', 50),
+        ))
 
     async def connect_mcp_servers(self) -> None:
         """连接配置的 MCP Server 并注册工具
@@ -311,8 +320,9 @@ class AgentLoop:
 
         self.history.add_assistant_message(response)
 
-        # 记录助手响应
-        agent_logger.log_assistant_response(response, settings.llm_model)
+        # 记录助手响应（检查是否是迭代摘要)
+        is_summary = "迭代摘要" in response or "工作进度汇报" in response
+        agent_logger.log_assistant_response(response, settings.llm_model, is_summary=is_summary)
 
         # 记录助手消息到归档
         if self.archive_manager:

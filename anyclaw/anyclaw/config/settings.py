@@ -330,6 +330,24 @@ class Settings(BaseSettings):
         description="是否允许工作区内的符号链接（目标必须在允许目录内）"
     )
 
+    # 搜索工具配置
+    search_allow_all_paths: bool = Field(
+        default=True,
+        description="搜索工具：是否允许搜索所有路径（非危险路径）。设为 false 时仅允许 workspace 和 extra_allowed_dirs"
+    )
+    search_extra_allowed_dirs: List[str] = Field(
+        default_factory=list,
+        description="搜索工具：额外允许搜索的目录列表"
+    )
+    search_max_depth: int = Field(
+        default=4,
+        description="搜索工具：默认最大搜索深度"
+    )
+    search_timeout: float = Field(
+        default=10.0,
+        description="搜索工具：默认搜索超时（秒）"
+    )
+
     # ExecTool 安全配置
     exec_deny_patterns: List[str] = Field(
         default_factory=list,
@@ -517,6 +535,15 @@ def _load_from_config_file(settings: Settings) -> Settings:
                 settings.exec_allow_patterns = sec.exec_allow_patterns
             if hasattr(sec, 'exec_unrestricted'):
                 settings.exec_unrestricted = sec.exec_unrestricted
+            # 搜索工具
+            if hasattr(sec, 'search_allow_all_paths'):
+                settings.search_allow_all_paths = sec.search_allow_all_paths
+            if hasattr(sec, 'search_extra_allowed_dirs'):
+                settings.search_extra_allowed_dirs = sec.search_extra_allowed_dirs
+            if hasattr(sec, 'search_max_depth'):
+                settings.search_max_depth = sec.search_max_depth
+            if hasattr(sec, 'search_timeout'):
+                settings.search_timeout = sec.search_timeout
 
     except Exception:
         pass

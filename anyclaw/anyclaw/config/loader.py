@@ -139,6 +139,16 @@ class SecurityConfig(BaseModel):
     # 是否允许执行任意命令（不限制路径）
     exec_unrestricted: bool = False
 
+    # 搜索工具配置
+    # 是否允许搜索所有路径（非危险路径）
+    search_allow_all_paths: bool = True
+    # 额外允许搜索的目录
+    search_extra_allowed_dirs: List[str] = Field(default_factory=list)
+    # 默认搜索深度
+    search_max_depth: int = 4
+    # 默认搜索超时（秒）
+    search_timeout: float = 10.0
+
 
 class MemoryConfig(BaseModel):
     """记忆系统配置"""

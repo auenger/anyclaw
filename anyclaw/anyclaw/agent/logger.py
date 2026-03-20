@@ -48,13 +48,33 @@ class AgentLogger:
             f"[USER] {self._truncate(content, 200)}"
         )
 
-    def log_assistant_response(self, content: str, model: str = None) -> None:
-        """记录助手响应"""
+    def log_assistant_response(self, content: str, model: str = None, is_summary: bool = False) -> None:
+        """记录助手响应
+
+        Args:
+            content: 响应内容
+            model: 模型名称
+            is_summary: 是否是迭代摘要（显示更多内容）
+        """
         model_info = f" ({model})" if model else ""
-        self.logger.log(
-            CONVERSATION,
-            f"[ASSISTANT]{model_info} {self._truncate(content, 300)}"
-        )
+
+        if not content:
+            self.logger.log(CONVERSATION, f"[ASSISTANT]{model_info} (empty)")
+            return
+
+        # 对于迭代摘要，显示更多内容（最多 2000 字符)
+        if is_summary:
+            if len(content) > 2000:
+                truncated = content[:2000] + "..."
+                self.logger.log(CONVERSATION, f"[ASSISTANT]{model_info}\n{truncated}")
+            else:
+                self.logger.log(CONVERSATION, f"[ASSISTANT]{model_info}\n{content}")
+        else:
+            # 普通响应，最多显示 300 字符
+            self.logger.log(
+                CONVERSATION,
+                f"[ASSISTANT]{model_info} {self._truncate(content, 300)}"
+            )
 
     def log_tool_call(
         self,

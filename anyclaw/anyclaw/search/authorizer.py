@@ -98,13 +98,82 @@ class PathAuthorizer:
         # 持久化授权（从配置加载）
         self._persistent_allowed_dirs: Set[Path] = persistent_allowed_dirs or set()
 
-        # 预解析危险路径
+        # 预解析危险路径（必须在 _preauthorize_common_dirs 之前）
         self._resolved_dangerous_paths: Set[Path] = set()
         for p in self.DANGEROUS_PATHS:
             try:
                 self._resolved_dangerous_paths.add(p.resolve())
             except OSError:
                 pass
+
+        # 从配置加载权限设置
+        self._load_from_config()
+
+        # 预授权常用目录（非危险路径）
+        self._preauthorize_common_dirs()
+
+    def _load_from_config(self) -> None:
+        """从配置加载权限设置"""
+        try:
+            from anyclaw.config.settings import settings
+
+            # 1. 检查 allow_all_access（全开放模式）
+            self._allow_all = getattr(settings, 'allow_all_access', False)
+
+            # 2. 加载 extra_allowed_dirs
+            extra_dirs = getattr(settings, 'path_extra_allowed_dirs', []) or []
+            if isinstance(extra_dirs, str):
+                extra_dirs = [extra_dirs]
+
+            for dir_str in extra_dirs:
+                try:
+                    path = Path(dir_str).expanduser().resolve()
+                    if not self.is_dangerous(path):
+                        self._persistent_allowed_dirs.add(path)
+                except OSError:
+                    continue
+
+            # 3. 加载搜索专用配置
+            search_allow_all = getattr(settings, 'search_allow_all_paths', None)
+            if search_allow_all is not None:
+                self._allow_all = search_allow_all
+
+            search_extra_dirs = getattr(settings, 'search_extra_allowed_dirs', [])
+            if search_extra_dirs:
+                for dir_str in search_extra_dirs:
+                    try:
+                        path = Path(dir_str).expanduser().resolve()
+                        if not self.is_dangerous(path):
+                            self._session_allowed_dirs.add(path)
+                    except OSError:
+                        continue
+
+        except Exception:
+            # 配置加载失败，使用默认值
+            self._allow_all = False
+
+    def _preauthorize_common_dirs(self) -> None:
+        """预授权常用目录"""
+        # 如果是全开放模式，不需要预授权
+        if self._allow_all:
+            return
+
+        home = Path.home()
+        common_dirs = [
+            home / "Downloads",
+            home / "Desktop",
+            home / "Documents",
+            home / "Projects",
+            home / "projects",
+            home / "mycode",
+            home / "code",
+            home / "workspace",
+            home,  # 用户主目录
+        ]
+
+        for dir_path in common_dirs:
+            if dir_path.exists() and not self.is_dangerous(dir_path):
+                self._session_allowed_dirs.add(dir_path.resolve())
 
     def authorize(self, dir_path: Path, persist: bool = False) -> bool:
         """授权目录访问
@@ -149,6 +218,14 @@ class PathAuthorizer:
             resolved_path = Path(path).expanduser().resolve()
         except OSError:
             return False
+
+        # 危险路径永远不允许
+        if self.is_dangerous(resolved_path):
+            return False
+
+        # 全开放模式：允许所有非危险路径
+        if self._allow_all:
+            return True
 
         with self._lock:
             # 检查会话授权

@@ -329,8 +329,16 @@ class IterationSummaryGenerator:
             if provider.is_configured():
                 kwargs.update(provider.get_completion_kwargs(model))
 
-        response = await acompletion(**kwargs)
-        return response.choices[0].message.content or ""
+        try:
+            response = await acompletion(**kwargs)
+            content = response.choices[0].message.content
+            if content is None:
+                logger.warning("LLM returned None for iteration summary")
+                return self._generate_simple_summary_fallback(max_iterations)
+            return content
+        except Exception as e:
+            logger.error(f"LLM call failed for iteration summary: {e}")
+            return self._generate_simple_summary_fallback(max_iterations)
 
     def _generate_simple_summary(
         self, max_iterations: int, messages: List[Dict[str, Any]]
