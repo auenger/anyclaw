@@ -56,10 +56,18 @@ class ReadFileTool(Tool):
             "required": ["path"],
         }
 
-    async def execute(self, path: str, offset: int = 0, limit: Optional[int] = None, **kwargs: Any) -> str:
+    async def execute(
+        self, path: str, offset: int = 0, limit: Optional[int] = None, **kwargs: Any
+    ) -> str:
+        from anyclaw.config.settings import settings
+
         try:
-            # 路径安全验证（使用 PathGuard）
-            if self.path_guard:
+            # 检查是否开放所有权限
+            if settings.allow_all_access:
+                # 开放模式：直接解析路径，不做安全验证
+                file_path = Path(path).expanduser().resolve()
+            elif self.path_guard:
+                # 路径安全验证（使用 PathGuard）
                 try:
                     file_path = self.path_guard.resolve_and_validate(path)
                 except PathSecurityError as e:
@@ -212,9 +220,19 @@ class ListDirTool(Tool):
 
     _DEFAULT_MAX = 200  # 默认最大条目数
     _IGNORE_DIRS = {  # 忽略常见噪声目录
-        ".git", "node_modules", "__pycache__", ".venv", "venv",
-        "dist", "build", ".tox", ".mypy_cache", ".pytest_cache",
-        ".ruff_cache", ".coverage", "htmlcov",
+        ".git",
+        "node_modules",
+        "__pycache__",
+        ".venv",
+        "venv",
+        "dist",
+        "build",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".coverage",
+        "htmlcov",
     }
 
     def __init__(
@@ -263,8 +281,7 @@ class ListDirTool(Tool):
         try:
             effective_max = max_entries or self.max_entries
             return await asyncio.wait_for(
-                self._list_directory(path, effective_max),
-                timeout=self.timeout
+                self._list_directory(path, effective_max), timeout=self.timeout
             )
         except asyncio.TimeoutError:
             return f"错误: 列出目录超时（{self.timeout}秒）"
@@ -288,10 +305,7 @@ class ListDirTool(Tool):
 
         # 在线程池中执行，避免阻塞事件循环
         loop = asyncio.get_event_loop()
-        items = await loop.run_in_executor(
-            None,
-            lambda: self._list_items(dir_path, max_entries)
-        )
+        items = await loop.run_in_executor(None, lambda: self._list_items(dir_path, max_entries))
 
         if not items:
             return "(空目录)"
