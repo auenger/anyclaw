@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-20T15:00:00"
-  version: 40
+  last_updated: "2026-03-20T16:30:00"
+  version: 41
 
 # 父需求（用于分组追踪)
 parents:
@@ -43,13 +43,6 @@ active: []
 
 # 等待中的需求（按优先级排序）
 pending:
-  - id: feat-ssrf-guard
-    name: SSRF 防护系统
-    description: 阻止对私有网络、云元数据端点、本地服务的访问
-    priority: 62
-    size: M
-    dependencies: []
-
   - id: feat-path-guard
     name: 路径遍历防护
     description: 阻止路径遍历攻击、符号链接绕过、工作区外访问
@@ -69,6 +62,21 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-ssrf-guard
+    name: SSRF 防护系统
+    priority: 62
+    size: M
+    completed_at: "2026-03-20T16:30:00"
+    archive_path: features/archive/done-feat-ssrf-guard
+    value_points:
+      - SSRFGuard 核心类 (check_url, is_safe_url, is_internal_url)
+      - RFC 1918 私有网络阻止 (10/8, 172.16/12, 192.168/16)
+      - 本地环回阻止 (127.0.0.0/8, ::1/128)
+      - 云元数据端点阻止 (169.254.0.0/16)
+      - DNS 解析后 IP 检查 (防止 DNS 重绑定攻击)
+      - 可配置白名单 (allowed_networks, allowed_private_domains)
+      - 完整测试套件 (30 tests, 100% pass)
+
   - id: feat-desktop-app-phase3
     name: 桌面应用 Phase 3
     priority: 75
