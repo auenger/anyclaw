@@ -2,10 +2,14 @@
 
 import asyncio
 import logging
-from typing import Any, Optional, Dict
+from typing import Any, Optional, Dict, List, TYPE_CHECKING
 
 from anyclaw.cron.service import CronService
 from anyclaw.cron.types import CronJob
+
+if TYPE_CHECKING:
+    from anyclaw.config.loader import Config
+    from anyclaw.bus.queue import MessageBus
 
 
 logger = logging.getLogger(__name__)
@@ -14,9 +18,55 @@ logger = logging.getLogger(__name__)
 class ChannelManager:
     """Channel Manager - 管理所有 Channel 和后台服务"""
 
-    def __init__(self):
+    def __init__(
+        self,
+        config: Optional["Config"] = None,
+        bus: Optional["MessageBus"] = None
+    ):
+        self.config = config
+        self.bus = bus
         self.channels: Dict[str, Any] = {}
         self.cron_service: Optional[CronService] = None
+
+        # 从 config 初始化 channels
+        if config and bus:
+            self._init_channels_from_config()
+
+    def _init_channels_from_config(self) -> None:
+        """从配置初始化所有启用的 channels"""
+        if not self.config or not self.bus:
+            return
+
+        # CLI Channel
+        if hasattr(self.config.channels, 'cli') and self.config.channels.cli.enabled:
+            from anyclaw.channels.cli import CLIChannel
+            cli_channel = CLIChannel(self.config.channels.cli, self.bus)
+            self.register_channel('cli', cli_channel)
+
+        # Discord Channel
+        if hasattr(self.config.channels, 'discord') and self.config.channels.discord.enabled:
+            try:
+                from anyclaw.channels.discord import DiscordChannel
+                discord_channel = DiscordChannel(self.config.channels.discord, self.bus)
+                self.register_channel('discord', discord_channel)
+            except ImportError as e:
+                logger.warning(f"Discord channel not available: {e}")
+
+        # Feishu Channel
+        if hasattr(self.config.channels, 'feishu') and self.config.channels.feishu.enabled:
+            try:
+                from anyclaw.channels.feishu import FeishuChannel
+                feishu_channel = FeishuChannel(self.config.channels.feishu, self.bus)
+                self.register_channel('feishu', feishu_channel)
+            except ImportError as e:
+                logger.warning(f"Feishu channel not available: {e}")
+
+        logger.info(f"Initialized {len(self.channels)} channels from config")
+
+    @property
+    def enabled_channels(self) -> List[str]:
+        """获取所有启用的 channel 名称"""
+        return list(self.channels.keys())
 
     def register_channel(self, name: str, channel: Any) -> None:
         """注册一个 Channel"""

@@ -74,17 +74,17 @@ class DiscordChannel(BaseChannel):
     name = "discord"
     display_name = "Discord"
 
-    def __init__(self, config: Any, bus: MessageBus, agent_loop: Any = None):
+    def __init__(self, config: Any, bus: MessageBus):
         if isinstance(config, dict):
             config = DiscordConfig(**config)
         super().__init__(config, bus)
         self.config: DiscordConfig = config
         self._ws: Any = None
-        self._seq: Optional[int] = None
-        self._heartbeat_task: Optional[asyncio.Task] = None
+        self._seq: int | None = None
+        self._heartbeat_task: asyncio.Task | None = None
         self._typing_tasks: dict[str, asyncio.Task] = {}
         self._http: Any = None
-        self._bot_user_id: Optional[str] = None
+        self._bot_user_id: str | None = None
 
     @classmethod
     def default_config(cls) -> dict[str, Any]:
@@ -200,7 +200,7 @@ class DiscordChannel(BaseChannel):
         return False
 
     async def _send_file(
-        self, url: str, headers: dict, file_path: str, reply_to: Optional[str] = None
+        self, url: str, headers: dict, file_path: str, reply_to: str | None = None
     ) -> bool:
         """Send a file attachment via Discord REST API."""
         path = Path(file_path)
@@ -386,46 +386,6 @@ class DiscordChannel(BaseChannel):
         if self.config.group_policy == "open":
             return True
 
-
-    # ✨ 新增：设置 MessageTool 上下文（用于跨会话消息发送）
-
-            return True
-
-    if self._agent_loop and hasattr(self._agent_loop, "set_message_context"):
-
-            return True
-
-        channel = payload.get("guild_id")
-
-            return True
-
-        message_id = payload.get("id")
-
-            return True
-
-        self._agent_loop.set_message_context(channel, message_id, message_id)
-
-            return True
-
-
-
-    # ✨ 新增：设置 SpawnTool 上下文（用于后台任务）
-
-            return True
-
-    if self._agent_loop and hasattr(self._agent_loop, "set_spawn_context"):
-
-            return True
-
-        # SpawnTool 使用相同的上下文
-
-            return True
-
-        self._agent_loop.set_spawn_context(channel, message_id)
-
-            return True
-
-
         if self.config.group_policy == "mention":
             if self._bot_user_id:
                 mentions = payload.get("mentions") or []
@@ -437,55 +397,6 @@ class DiscordChannel(BaseChannel):
             return False
 
         return True
-
-
-    # ✨ 新增：设置 MessageTool 上下文（用于跨会话消息发送）
-
-
-        return True
-
-    if self._agent_loop and hasattr(self._agent_loop, "set_message_context"):
-
-
-        return True
-
-        channel = payload.get("guild_id")
-
-
-        return True
-
-        message_id = payload.get("id")
-
-
-        return True
-
-        self._agent_loop.set_message_context(channel, message_id, message_id)
-
-
-        return True
-
-
-
-    # ✨ 新增：设置 SpawnTool 上下文（用于后台任务）
-
-
-        return True
-
-    if self._agent_loop and hasattr(self._agent_loop, "set_spawn_context"):
-
-
-        return True
-
-        # SpawnTool 使用相同的上下文
-
-
-        return True
-
-        self._agent_loop.set_spawn_context(channel, message_id)
-
-
-        return True
-
 
     async def _start_typing(self, channel_id: str) -> None:
         """Start periodic typing indicator."""
