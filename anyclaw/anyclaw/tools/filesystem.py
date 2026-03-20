@@ -1,13 +1,13 @@
 """文件系统工具"""
 
 import asyncio
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .base import Tool
-from anyclaw.security.validators import PathValidator, ValidationError
 from anyclaw.security.path import PathGuard, PathSecurityError
+from anyclaw.security.validators import PathValidator
+
+from .base import Tool
 
 
 class ReadFileTool(Tool):
@@ -161,9 +161,15 @@ class WriteFileTool(Tool):
         }
 
     async def execute(self, path: str, content: str, **kwargs: Any) -> str:
+        from anyclaw.config.settings import settings
+
         try:
-            # 路径安全验证（使用 PathGuard）
-            if self.path_guard:
+            # 检查是否开放所有权限（与 ReadFileTool 保持一致）
+            if settings.allow_all_access:
+                # 开放模式：直接解析路径，不做安全验证
+                file_path = Path(path).expanduser().resolve()
+            elif self.path_guard:
+                # 路径安全验证（使用 PathGuard）
                 try:
                     file_path = self.path_guard.resolve_and_validate(path, for_write=True)
                 except PathSecurityError as e:
@@ -288,8 +294,14 @@ class ListDirTool(Tool):
 
     async def _list_directory(self, path: str, max_entries: int) -> str:
         """异步列出目录内容（使用线程池）"""
-        # 路径安全验证（使用 PathGuard）
-        if self.path_guard:
+        from anyclaw.config.settings import settings
+
+        # 检查是否开放所有权限（与 ReadFileTool 保持一致）
+        if settings.allow_all_access:
+            # 开放模式：直接解析路径，不做安全验证
+            dir_path = Path(path).expanduser().resolve()
+        elif self.path_guard:
+            # 路径安全验证（使用 PathGuard）
             try:
                 dir_path = self.path_guard.resolve_and_validate(path)
             except PathSecurityError as e:

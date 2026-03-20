@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-21T01:00:00"
-  version: 53
+  last_updated: "2026-03-21T01:35:00"
+  version: 55
 
 # 父需求（用于分组追踪)
 parents:
@@ -44,6 +44,13 @@ active: []
 # 等待中的需求（按优先级排序）
 pending:
 
+  - id: feat-model-config-fix
+    name: /model 命令配置传递修复
+    description: 修复 cli.py 使用不存在的 self._config 导致 config 为 None；model.py 与 Settings 结构不兼容
+    priority: 75
+    size: S
+    dependencies: []
+
   - id: feat-task-interrupt
     name: 任务即时中断机制
     description: 参考 nanobot 使用 asyncio.Task + _active_tasks 模式，让 /stop 命令能够即时中断正在执行的 LLM 调用或工具执行
@@ -63,6 +70,21 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-session-cwd
+    name: 会话级工作目录 + 文件工具权限统一
+    description: Session 级 cwd 继承 + cd 命令智能检测 + ExecTool 描述优化 + 所有文件工具统一支持 allow_all_access 配置
+    priority: 70
+    size: M
+    completed_at: "2026-03-21T02:00:00"
+    archive_path: features/archive/done-feat-session-cwd
+    value_points:
+      - Session.get_cwd()/set_cwd() 方法（cwd 存储在 metadata）
+      - ExecTool._detect_cd_command() cd 命令检测（绝对/相对/~/&&组合）
+      - ExecTool 支持 session 参数，工作目录优先级（参数>session.cwd>working_dir>os.getcwd()）
+      - WriteFileTool/ListDirTool 统一支持 allow_all_access 配置
+      - AgentLoop/SubAgent 工具注册时传递 path_guard
+      - 完整测试套件（37 tests, 100% pass）
+
   - id: feat-llm-resilience
     name: LLM 响应韧性增强
     description: 解决 LLM（GLM-4.7）在工具调用后返回空响应的问题，增强 LLM 调用的稳定性和可观测性（空响应检测与恢复、LiteLLM 重试配置、诊断日志）

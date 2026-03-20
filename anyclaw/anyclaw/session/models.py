@@ -9,10 +9,11 @@
 
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List
-
 
 logger = logging.getLogger(__name__)
 
@@ -24,12 +25,13 @@ class SessionMessage:
 
     与 nanobot 兼容的数据结构
     """
-    role: str                              # "user" | "assistant" | "tool" | "system"
-    content: str = ""                    # 消息内容（默认空字符串）
-    timestamp: str = None             # ISO 格式时间戳
+
+    role: str  # "user" | "assistant" | "tool" | "system"
+    content: str = ""  # 消息内容（默认空字符串）
+    timestamp: str = None  # ISO 格式时间戳
     tool_calls: List[Dict[str, Any]] = field(default_factory=list)  # Tool 调用列表
-    tool_call_id: str = None           # Tool 调用关联 ID
-    name: str = None                   # Tool 名称（role="tool" 时）
+    tool_call_id: str = None  # Tool 调用关联 ID
+    name: str = None  # Tool 名称（role="tool" 时）
     _metadata: Dict[str, Any] = field(default_factory=dict)  # 内部元数据
     media: List[str] = field(default_factory=list)  # 媒体文件路径
     images: List[Dict[str, Any]] = field(default_factory=list)  # 图片数据
@@ -76,9 +78,21 @@ class SessionMessage:
             name=data.get("name"),
             media=data.get("media", []),
             images=data.get("images", []),
-            _metadata={k: v for k, v in data.items()
-                      if k not in {"role", "content", "timestamp", "tool_calls",
-                                "tool_call_id", "name", "media", "images"}}
+            _metadata={
+                k: v
+                for k, v in data.items()
+                if k
+                not in {
+                    "role",
+                    "content",
+                    "timestamp",
+                    "tool_calls",
+                    "tool_call_id",
+                    "name",
+                    "media",
+                    "images",
+                }
+            },
         )
 
 
@@ -93,25 +107,18 @@ class Session:
     - 工具调用边界检测
     - 支持会话元数据
     """
-    key: str                               # 会话唯一标识（channel:chat_id 或 session_key）
+
+    key: str  # 会话唯一标识（channel:chat_id 或 session_key）
     messages: List[SessionMessage] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
     metadata: Dict[str, Any] = field(default_factory=dict)
-    last_consolidated: int = 0              # 已整合到 MEMORY.md 的消息数
+    last_consolidated: int = 0  # 已整合到 MEMORY.md 的消息数
 
-    def add_message(
-        self,
-        role: str,
-        content: str = None,
-        **kwargs
-    ) -> None:
+    def add_message(self, role: str, content: str = None, **kwargs) -> None:
         """添加消息到会话（只追加，不修改历史）"""
         msg = SessionMessage(
-            role=role,
-            content=content,
-            timestamp=datetime.now().isoformat(),
-            **kwargs
+            role=role, content=content, timestamp=datetime.now().isoformat(), **kwargs
         )
         self.messages.append(msg)
         self.updated_at = datetime.now()
@@ -130,7 +137,9 @@ class Session:
             对齐后的消息列表（dict 格式）
         """
         # 获取最近的消息（不受 last_consolidated 影响）
-        sliced = self.messages[-max_messages:] if max_messages < len(self.messages) else self.messages
+        sliced = (
+            self.messages[-max_messages:] if max_messages < len(self.messages) else self.messages
+        )
 
         # 删除前导非用户消息（避免从中间开始）
         for i, message in enumerate(sliced):
@@ -196,7 +205,6 @@ class Session:
             第一个合法的起始索引
         """
         declared: set[str] = set()
-        start = 0
 
         for i, msg in enumerate(messages):
             role = msg.role
@@ -223,6 +231,37 @@ class Session:
         self.last_consolidated = 0
         self.updated_at = datetime.now()
 
+    def get_cwd(self) -> str:
+        """获取当前工作目录
+
+        Returns:
+            当前工作目录路径（默认为 os.getcwd()）
+        """
+        cwd = self.metadata.get("cwd")
+        if cwd and os.path.isdir(cwd):
+            return cwd
+        return os.getcwd()
+
+    def set_cwd(self, path: str) -> bool:
+        """设置工作目录（验证路径存在性）
+
+        Args:
+            path: 目标目录路径
+
+        Returns:
+            是否设置成功
+        """
+        try:
+            resolved = Path(path).expanduser().resolve()
+            if resolved.is_dir():
+                self.metadata["cwd"] = str(resolved)
+                self.updated_at = datetime.now()
+                logger.debug(f"Session cwd updated: {resolved}")
+                return True
+        except Exception as e:
+            logger.warning(f"Failed to set cwd to {path}: {e}")
+        return False
+
     def save(self, path) -> None:
         """保存会话到 JSONL 文件"""
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -238,7 +277,7 @@ class Session:
                 "created_at": self.created_at.isoformat(),
                 "updated_at": self.updated_at.isoformat(),
                 "metadata": self.metadata,
-                "last_consolidated": self.last_consolidated
+                "last_consolidated": self.last_consolidated,
             }
             f.write(json.dumps(metadata_line, ensure_ascii=False) + "\n")
 
@@ -273,8 +312,16 @@ class Session:
                     if data.get("_type") == "metadata":
                         session_key = data.get("key")  # key 在顶层
                         metadata = data.get("metadata", {})
-                        created_at = datetime.fromisoformat(data["created_at"]) if data.get("created_at") else None
-                        updated_at = datetime.fromisoformat(data["updated_at"]) if data.get("updated_at") else None
+                        created_at = (
+                            datetime.fromisoformat(data["created_at"])
+                            if data.get("created_at")
+                            else None
+                        )
+                        updated_at = (
+                            datetime.fromisoformat(data["updated_at"])
+                            if data.get("updated_at")
+                            else None
+                        )
                         last_consolidated = data.get("last_consolidated", 0)
                     else:
                         messages.append(SessionMessage.from_dict(data))
@@ -285,7 +332,7 @@ class Session:
                 created_at=created_at or datetime.now(),
                 updated_at=updated_at or datetime.now(),
                 metadata=metadata,
-                last_consolidated=last_consolidated
+                last_consolidated=last_consolidated,
             )
         except Exception as e:
             logger.error(f"Failed to load session from {path}: {e}")

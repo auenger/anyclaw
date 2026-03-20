@@ -1,13 +1,11 @@
 """Agent 主处理循环"""
 
-import asyncio
 import json
 import logging
-import re
 import time
 from contextlib import AsyncExitStack
 from pathlib import Path
-from typing import Optional, Dict, List, Any, AsyncGenerator, Callable, Awaitable
+from typing import Any, AsyncGenerator, Awaitable, Callable, Dict, List, Optional
 
 # 优化 litellm 性能
 import litellm
@@ -20,23 +18,25 @@ litellm.num_retries = 3  # 默认值，后续会根据 settings 更新
 
 from litellm import acompletion
 
-from anyclaw.config.settings import settings
-from anyclaw.skills.models import SkillDefinition
-from anyclaw.tools.registry import ToolRegistry
-from anyclaw.tools.shell import ExecTool
-from anyclaw.tools.filesystem import ReadFileTool, WriteFileTool, ListDirTool
-from anyclaw.tools.memory import SaveMemoryTool, UpdatePersonaTool
-from anyclaw.tools.search import SearchFilesTool
 from anyclaw.bus.events import OutboundMessage  # 新增导入
+from anyclaw.config.settings import settings
+from anyclaw.config.settings import settings as global_settings
+from anyclaw.security.path import create_path_guard_from_settings
 from anyclaw.security.sanitizers import ContentSanitizer
-from .history import ConversationHistory
+from anyclaw.skills.models import SkillDefinition
+from anyclaw.tools.filesystem import ListDirTool, ReadFileTool, WriteFileTool
+from anyclaw.tools.memory import SaveMemoryTool, UpdatePersonaTool
+from anyclaw.tools.registry import ToolRegistry
+from anyclaw.tools.search import SearchFilesTool
+from anyclaw.tools.shell import ExecTool
+
 from .context import ContextBuilder
-from .logger import get_agent_logger, TOOL_CALL, CONVERSATION
+from .history import ConversationHistory
+from .logger import get_agent_logger
 from .summary import (
     IterationSummaryCollector,
     IterationSummaryGenerator,
 )
-from anyclaw.config.settings import settings as global_settings
 
 logger = logging.getLogger(__name__)
 agent_logger = get_agent_logger()
@@ -95,7 +95,7 @@ class AgentLoop:
         self.archive_manager: Optional["SessionArchiveManager"] = None
         if enable_archive:
             try:
-                from anyclaw.session.archive import SessionArchiveManager, ArchiveConfig
+                from anyclaw.session.archive import ArchiveConfig, SessionArchiveManager
 
                 archive_config = ArchiveConfig(
                     enable_archive=getattr(settings, "enable_session_archive", True),
@@ -117,25 +117,42 @@ class AgentLoop:
 
     def _register_default_tools(self) -> None:
         """注册默认工具"""
+        # 创建 path_guard（自动处理 allow_all_access）
+        path_guard = create_path_guard_from_settings(self.workspace)
+
+        # ExecTool 支持 session cwd
         self.tools.register(
             ExecTool(
                 working_dir=str(self.workspace),
                 timeout=settings.tool_timeout if hasattr(settings, "tool_timeout") else 60,
+                session=self.session,
             )
         )
-        self.tools.register(ReadFileTool(workspace=self.workspace))
+
+        # 文件工具传递 path_guard
+        self.tools.register(
+            ReadFileTool(
+                workspace=self.workspace,
+                path_guard=path_guard,
+            )
+        )
         self.tools.register(
             WriteFileTool(
                 workspace=self.workspace,
                 restrict_to_workspace=settings.restrict_to_workspace,
+                path_guard=path_guard,
             )
         )
+
         # 添加 list_dir 超时配置
         list_dir_timeout = getattr(settings, "list_dir_timeout", 30)  # 默认 30 秒
         list_dir_max_entries = getattr(settings, "list_dir_max_entries", 200)  # 默认 200 条
         self.tools.register(
             ListDirTool(
-                workspace=self.workspace, timeout=list_dir_timeout, max_entries=list_dir_max_entries
+                workspace=self.workspace,
+                timeout=list_dir_timeout,
+                max_entries=list_dir_max_entries,
+                path_guard=path_guard,
             )
         )
 

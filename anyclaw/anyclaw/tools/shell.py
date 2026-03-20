@@ -1,15 +1,23 @@
 """Shell 执行工具"""
 
 import asyncio
+import logging
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from anyclaw.security.sanitizers import ContentSanitizer
+from anyclaw.security.validators import ValidationError, Validator
 
 from .base import Tool
 from .guards import CommandGuard
-from anyclaw.security.validators import Validator, ValidationError
-from anyclaw.security.sanitizers import ContentSanitizer
+
+if TYPE_CHECKING:
+    from anyclaw.session.models import Session
+
+
+logger = logging.getLogger(__name__)
 
 
 class ExecTool(Tool):
@@ -19,13 +27,23 @@ class ExecTool(Tool):
     - 输入验证：命令非空检查、超时范围验证
     - 核心保护层：硬编码的危险命令拦截（不可绕过）
     - 用户保护层：可配置的 deny/allow patterns
+
+    会话集成：
+    - 支持 session.cwd 作为默认工作目录
+    - 自动检测 cd 命令更新 session.cwd
     """
 
     _MAX_TIMEOUT = 600  # 从 300 增加到 600（与 nanobot 一致）
     _MAX_OUTPUT = 10_000
     # 超时处理时间（渐进式 kill 策略）
     _GRACEFUL_WAIT = 10  # SIGTERM 等待时间（优雅退出）
-    _FORCE_WAIT = 3     # SIGKILL 等待时间（强制终止）
+    _FORCE_WAIT = 3  # SIGKILL 等待时间（强制终止）
+
+    # cd 命令检测正则
+    # 匹配 "cd /path" 或 "cd /path && ..." 或 "cd /path; ..."
+    _CD_PATTERN = re.compile(
+        r'^cd\s+([^\s&;]+|\{.*?\}|"[^"]*"|\'[^\']*\')(?:\s*&&|\s*;|\s*$)', re.IGNORECASE
+    )
 
     def __init__(
         self,
@@ -34,10 +52,12 @@ class ExecTool(Tool):
         deny_patterns: Optional[List[str]] = None,
         allow_patterns: Optional[List[str]] = None,
         path_append: str = "",
+        session: Optional["Session"] = None,
     ):
         self.timeout = timeout
         self.working_dir = working_dir
         self.path_append = path_append
+        self.session = session
 
         # 用户自定义 deny/allow patterns（保留向后兼容）
         self.user_deny_patterns = deny_patterns or []
@@ -58,7 +78,13 @@ class ExecTool(Tool):
 
     @property
     def description(self) -> str:
-        return "执行 shell 命令并返回输出。谨慎使用."
+        return """执行 shell 命令并返回输出。
+
+使用建议：
+- 固定项目目录时，使用 working_dir 参数而非 cd && 组合
+- 示例: {"command": "cat config.ini", "working_dir": "/path/to/project"}
+- 设置 working_dir 后，后续命令可省略该参数（会话级继承）
+- cd 命令会自动更新会话工作目录，后续命令自动使用新目录"""
 
     @property
     def parameters(self) -> Dict[str, Any]:
@@ -71,13 +97,13 @@ class ExecTool(Tool):
                 },
                 "working_dir": {
                     "type": "string",
-                    "description": "工作目录（可选）",
+                    "description": "工作目录（推荐用于固定项目路径）。设置后，后续命令自动继承此目录。",
                 },
                 "timeout": {
                     "type": "integer",
-                    "description": "超时时间（秒），默认 60，最大 300",
+                    "description": "超时时间（秒），默认 60，最大 600",
                     "minimum": 1,
-                    "maximum": 300,
+                    "maximum": 600,
                 },
             },
             "required": ["command"],
@@ -104,7 +130,20 @@ class ExecTool(Tool):
             except ValidationError as e:
                 return f"错误: {e.message}"
 
-        cwd = working_dir or self.working_dir or os.getcwd()
+        # 确定工作目录（优先级: 参数 > session.cwd > self.working_dir > os.getcwd()）
+        cwd = working_dir
+        if cwd is None and self.session:
+            cwd = self.session.get_cwd()
+        if cwd is None:
+            cwd = self.working_dir
+        if cwd is None:
+            cwd = os.getcwd()
+
+        # 检测 cd 命令，更新 session cwd
+        new_cwd = self._detect_cd_command(command, cwd)
+        if new_cwd and self.session:
+            if self.session.set_cwd(new_cwd):
+                logger.debug(f"Session cwd updated via cd command: {new_cwd}")
 
         # 安全检查（传递 cwd）
         guard_error = self._guard_command(command, cwd)
@@ -139,21 +178,18 @@ class ExecTool(Tool):
                     # 等待进程退出（最多 10 秒）
                     try:
                         await asyncio.wait_for(
-                            process.wait(),
-                            timeout=10.0  # 给进程 10 秒时间优雅退出
+                            process.wait(), timeout=10.0  # 给进程 10 秒时间优雅退出
                         )
                         return f"错误: 命令在 {effective_timeout} 秒后超时，已终止"
                     except asyncio.TimeoutError:
                         # 2. 如果 SIGTERM 失败，尝试 SIGKILL（强制终止）
                         import signal
+
                         try:
                             process.kill()
                             # 再等待 3 秒
                             try:
-                                await asyncio.wait_for(
-                                    process.wait(),
-                                    timeout=3.0
-                                )
+                                await asyncio.wait_for(process.wait(), timeout=3.0)
                                 return f"错误: 命令在 {effective_timeout} 秒后超时，已强制终止"
                             except asyncio.TimeoutError:
                                 # 3. 如果还是没退出，杀死进程组
@@ -161,7 +197,9 @@ class ExecTool(Tool):
                                     os.killpg(os.getpgid(process.pid), signal.SIGKILL)
                                 except (ProcessLookupError, PermissionError):
                                     pass
-                                return f"错误: 命令在 {effective_timeout} 秒后超时，进程组已强制终止"
+                                return (
+                                    f"错误: 命令在 {effective_timeout} 秒后超时，进程组已强制终止"
+                                )
                         except (ProcessLookupError, PermissionError):
                             pass
                 except (ProcessLookupError, PermissionError):
@@ -207,6 +245,48 @@ class ExecTool(Tool):
 
             return f"执行命令时出错: {str(e)}"
 
+    def _detect_cd_command(self, command: str, cwd: str) -> Optional[str]:
+        """检测 cd 命令并返回新目录
+
+        支持模式：
+        - cd /absolute/path
+        - cd relative/path
+        - cd /path && other_command
+
+        Args:
+            command: 命令字符串
+            cwd: 当前工作目录
+
+        Returns:
+            解析后的绝对路径（如果有效），否则 None
+        """
+        match = self._CD_PATTERN.match(command.strip())
+        if not match:
+            return None
+
+        target = match.group(1).strip().strip('"').strip("'")
+
+        try:
+            # 先展开 ~ 和环境变量
+            expanded = os.path.expanduser(os.path.expandvars(target))
+
+            # 处理绝对路径
+            if os.path.isabs(expanded):
+                resolved = Path(expanded).resolve()
+            else:
+                # 相对于当前 cwd
+                resolved = (Path(cwd) / expanded).resolve()
+
+            # 验证目录存在
+            if resolved.is_dir():
+                return str(resolved)
+            else:
+                logger.debug(f"cd target is not a directory: {resolved}")
+                return None
+        except Exception as e:
+            logger.debug(f"Failed to resolve cd path: {target}, error: {e}")
+            return None
+
     def _guard_command(self, command: str, cwd: str) -> Optional[str]:
         """安全检查（使用混合保护模式）
 
@@ -222,8 +302,8 @@ class ExecTool(Tool):
         from anyclaw.config.settings import settings
 
         # 检查是否开放所有权限
-        allow_all = getattr(settings, 'allow_all_access', False)
-        exec_unrestricted = getattr(settings, 'exec_unrestricted', False)
+        allow_all = getattr(settings, "allow_all_access", False)
+        exec_unrestricted = getattr(settings, "exec_unrestricted", False)
 
         # 如果开放所有权限或执行不限制，跳过安全检查
         if allow_all or exec_unrestricted:
@@ -234,19 +314,19 @@ class ExecTool(Tool):
             return f"错误: 命令被安全策略阻止 - {reason}"
 
         cmd = command.strip()
-        lower = cmd.lower()
 
         # 路径遍历检查
         if "..\\" in cmd or "../" in cmd:
             return "错误: 命令被安全策略阻止 - 检测到路径遍历"
 
         # 内部 URL 检查（SSRF 防护）
-        ssrf_enabled = getattr(settings, 'ssrf_enabled', True)
+        ssrf_enabled = getattr(settings, "ssrf_enabled", True)
         if ssrf_enabled:
-            _URL_RE = re.compile(r'https?://[^\s\"\'`;|<>]+', re.IGNORECASE)
-            for m in _URL_RE.finditer(cmd):
+            url_re = re.compile(r"https?://[^\s\"\'`;|<>]+", re.IGNORECASE)
+            for m in url_re.finditer(cmd):
                 url = m.group(0)
                 from anyclaw.security.network import SSRFGuard
+
                 ssrf_guard = SSRFGuard(enabled=True)
                 if not ssrf_guard.is_safe_url(url):
                     return "错误: 命令被安全策略阻止 - 检测到内部/私有 URL"
@@ -261,7 +341,7 @@ class ExecTool(Tool):
                 except Exception:
                     continue
                 if p.is_absolute() and cwd_path not in p.parents and p != cwd_path:
-                    return f"错误: 命令被安全策略阻止 - 路径超出工作目录"
+                    return "错误: 命令被安全策略阻止 - 路径超出工作目录"
 
         return None
 

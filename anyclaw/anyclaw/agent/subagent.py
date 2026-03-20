@@ -8,16 +8,16 @@ import uuid
 from pathlib import Path
 from typing import Any, Optional
 
-from anyclaw.tools.filesystem import ReadFileTool, WriteFileTool, ListDirTool
-from anyclaw.tools.shell import ExecTool
-from anyclaw.tools.registry import ToolRegistry
-from anyclaw.bus.events import InboundMessage
-from anyclaw.config.settings import settings
 from anyclaw.agent.summary import (
     IterationSummaryCollector,
     IterationSummaryGenerator,
 )
-
+from anyclaw.bus.events import InboundMessage
+from anyclaw.config.settings import settings
+from anyclaw.security.path import create_path_guard_from_settings
+from anyclaw.tools.filesystem import ListDirTool, ReadFileTool, WriteFileTool
+from anyclaw.tools.registry import ToolRegistry
+from anyclaw.tools.shell import ExecTool
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class SubagentManager:
         self.provider = provider
         self.workspace = workspace
         self.bus = bus
-        self.model = model or getattr(settings, 'llm_model', 'gpt-4')
+        self.model = model or getattr(settings, "llm_model", "gpt-4")
         self.restrict_to_workspace = restrict_to_workspace
         self._running_tasks: dict[str, asyncio.Task[None]] = {}
         self._session_tasks: dict[str, set[str]] = {}  # session_key -> {task_id, ...}
@@ -54,9 +54,7 @@ class SubagentManager:
         display_label = label or task[:30] + ("..." if len(task) > 30 else "")
         origin = {"channel": origin_channel, "chat_id": origin_chat_id}
 
-        bg_task = asyncio.create_task(
-            self._run_subagent(task_id, task, display_label, origin)
-        )
+        bg_task = asyncio.create_task(self._run_subagent(task_id, task, display_label, origin))
         self._running_tasks[task_id] = bg_task
         if session_key:
             self._session_tasks.setdefault(session_key, set()).add(task_id)
@@ -86,20 +84,37 @@ class SubagentManager:
         try:
             # Build subagent tools (no message tool, no spawn tool)
             tools = ToolRegistry()
-            allowed_dir = self.workspace if self.restrict_to_workspace else None
 
-            # Register tools
-            tools.register(ReadFileTool(workspace=self.workspace))
-            tools.register(WriteFileTool(workspace=self.workspace))
-            tools.register(ListDirTool(
-                workspace=self.workspace,
-                timeout=getattr(settings, 'list_dir_timeout', 30),
-                max_entries=getattr(settings, 'list_dir_max_entries', 200),
-            ))
-            tools.register(ExecTool(
-                working_dir=str(self.workspace),
-                timeout=getattr(settings, 'tool_timeout', 60),
-            ))
+            # 创建 path_guard（自动处理 allow_all_access）
+            path_guard = create_path_guard_from_settings(self.workspace)
+
+            # Register tools with path_guard
+            tools.register(
+                ReadFileTool(
+                    workspace=self.workspace,
+                    path_guard=path_guard,
+                )
+            )
+            tools.register(
+                WriteFileTool(
+                    workspace=self.workspace,
+                    path_guard=path_guard,
+                )
+            )
+            tools.register(
+                ListDirTool(
+                    workspace=self.workspace,
+                    timeout=getattr(settings, "list_dir_timeout", 30),
+                    max_entries=getattr(settings, "list_dir_max_entries", 200),
+                    path_guard=path_guard,
+                )
+            )
+            tools.register(
+                ExecTool(
+                    working_dir=str(self.workspace),
+                    timeout=getattr(settings, "tool_timeout", 60),
+                )
+            )
 
             # Build system prompt
             system_prompt = self._build_subagent_prompt()
@@ -110,7 +125,7 @@ class SubagentManager:
             ]
 
             # Run agent loop (limited iterations)
-            max_iterations = getattr(settings, 'subagent_max_iterations', 15)
+            max_iterations = getattr(settings, "subagent_max_iterations", 15)
             iteration = 0
             final_result: Optional[str] = None
 
@@ -133,32 +148,38 @@ class SubagentManager:
                     break
 
                 # Check for tool calls
-                if hasattr(response, 'tool_calls') and response.tool_calls:
+                if hasattr(response, "tool_calls") and response.tool_calls:
                     # Build tool calls
                     tool_call_dicts = []
                     for tc in response.tool_calls:
-                        if hasattr(tc, 'to_dict'):
+                        if hasattr(tc, "to_dict"):
                             tool_call_dicts.append(tc.to_dict())
                         else:
-                            tool_call_dicts.append({
-                                "id": getattr(tc, 'id', ''),
-                                "type": "function",
-                                "function": {
-                                    "name": getattr(tc, 'name', ''),
-                                    "arguments": getattr(tc, 'arguments', {}),
-                                },
-                            })
+                            tool_call_dicts.append(
+                                {
+                                    "id": getattr(tc, "id", ""),
+                                    "type": "function",
+                                    "function": {
+                                        "name": getattr(tc, "name", ""),
+                                        "arguments": getattr(tc, "arguments", {}),
+                                    },
+                                }
+                            )
 
-                    messages.append({
-                        "role": "assistant",
-                        "content": response.content or "",
-                        "tool_calls": tool_call_dicts,
-                    })
+                    messages.append(
+                        {
+                            "role": "assistant",
+                            "content": response.content or "",
+                            "tool_calls": tool_call_dicts,
+                        }
+                    )
 
                     # Execute tools
                     for tool_call in response.tool_calls:
                         args_str = json.dumps(tool_call.arguments, ensure_ascii=False)
-                        logger.debug(f"Subagent [{task_id}] executing: {tool_call.name} with arguments: {args_str}")
+                        logger.debug(
+                            f"Subagent [{task_id}] executing: {tool_call.name} with arguments: {args_str}"
+                        )
 
                         start_time = time.time()
                         success = True
@@ -179,12 +200,14 @@ class SubagentManager:
                             success=success,
                         )
 
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": getattr(tool_call, 'id', ''),
-                            "name": tool_call.name,
-                            "content": str(result),
-                        })
+                        messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": getattr(tool_call, "id", ""),
+                                "name": tool_call.name,
+                                "content": str(result),
+                            }
+                        )
                 else:
                     final_result = response.content
                     break
@@ -210,8 +233,8 @@ class SubagentManager:
         max_iterations: int,
     ) -> str:
         """生成 SubAgent 迭代限制智能汇报"""
-        enabled = getattr(settings, 'iteration_summary_enabled', True)
-        max_tokens = getattr(settings, 'iteration_summary_max_tokens', 1000)
+        enabled = getattr(settings, "iteration_summary_enabled", True)
+        max_tokens = getattr(settings, "iteration_summary_max_tokens", 1000)
 
         generator = IterationSummaryGenerator(enabled=enabled, max_tokens=max_tokens)
         return await generator.generate(collector, messages, max_iterations)
@@ -247,19 +270,23 @@ Summarize this naturally for the user. Keep it brief (1-2 sentences). Do not men
 
         try:
             await self.bus.publish_inbound(msg)
-            logger.debug(f"Subagent [{task_id}] announced result to {origin['channel']}:{origin['chat_id']}")
+            logger.debug(
+                f"Subagent [{task_id}] announced result to {origin['channel']}:{origin['chat_id']}"
+            )
         except Exception as e:
             logger.error(f"Failed to announce result: {e}")
 
     def _build_subagent_prompt(self) -> str:
         """Build a focused system prompt for subagent."""
-        parts = [f"""# Subagent
+        parts = [
+            f"""# Subagent
 
 You are a subagent spawned by the main agent to complete a specific task.
 Stay focused on the assigned task. Your final response will be reported back to the main agent.
 
 ## Workspace
-{self.workspace}"""]
+{self.workspace}"""
+        ]
 
         return "\n\n".join(parts)
 
