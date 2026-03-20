@@ -50,18 +50,26 @@ pending:
     size: M
     dependencies: []
 
-  - id: feat-session-archive
-    name: 会话归档系统
-    description: 对话记录持久化、按项目隔离（Git root/cwd）、按日期归档、Tool/Skill 调用记录
-    priority: 45
-    size: L
-    dependencies: []
-
 # 阻塞中的需求
 blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-session-archive
+    name: 会话归档系统
+    priority: 45
+    size: L
+    completed_at: "2026-03-20T17:00:00"
+    archive_path: features/archive/done-feat-session-archive
+    value_points:
+      - SessionArchiveManager（按项目/日期归档、JSONL 格式）
+      - 完整记录类型（SessionStart/End、User/AssistantMessage、ToolCall/Result、SkillCall/Result）
+      - Git root 项目识别（子目录归属同一项目）
+      - Channel 隔离（cli/feishu/discord）
+      - CLI 命令（list/show/search/export/clean/path）
+      - AgentLoop 集成（自动记录消息和工具调用）
+      - 完整测试套件（72 tests, 100% pass）
+
   - id: feat-ssrf-guard
     name: SSRF 防护系统
     priority: 62
