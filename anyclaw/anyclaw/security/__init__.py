@@ -6,6 +6,7 @@
 - 日志敏感数据过滤 (SensitiveDataFilter)
 - 输入验证器 (Validator, URLValidator, PathValidator)
 - 内容清理器 (ContentSanitizer)
+- 路径遍历防护 (PathGuard)
 """
 
 from anyclaw.security.network import SSRFGuard
@@ -31,6 +32,11 @@ from anyclaw.security.sanitizers import (
     sanitize_command,
     sanitize_tool_output,
 )
+from anyclaw.security.path import (
+    PathGuard,
+    PathSecurityError,
+    create_path_guard_from_settings,
+)
 
 __all__ = [
     # Network
@@ -54,4 +60,8 @@ __all__ = [
     "sanitize_message",
     "sanitize_command",
     "sanitize_tool_output",
+    # Path Security
+    "PathGuard",
+    "PathSecurityError",
+    "create_path_guard_from_settings",
 ]

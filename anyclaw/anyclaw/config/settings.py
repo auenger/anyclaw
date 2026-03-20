@@ -302,6 +302,16 @@ class Settings(BaseSettings):
         description="是否限制文件写入到 workspace 内（提升安全性）"
     )
 
+    # 路径安全配置 (PathGuard)
+    path_extra_allowed_dirs: List[str] = Field(
+        default_factory=list,
+        description="额外允许访问的目录列表（在 workspace 之外）"
+    )
+    path_allow_symlinks_in_workspace: bool = Field(
+        default=True,
+        description="是否允许工作区内的符号链接（目标必须在允许目录内）"
+    )
+
     # ExecTool 安全配置
     exec_deny_patterns: List[str] = Field(
         default_factory=list,

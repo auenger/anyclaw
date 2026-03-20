@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from .base import Tool
 from anyclaw.security.validators import PathValidator, ValidationError
+from anyclaw.security.path import PathGuard, PathSecurityError
 
 
 class ReadFileTool(Tool):
@@ -14,9 +15,15 @@ class ReadFileTool(Tool):
 
     _MAX_SIZE = 100_000
 
-    def __init__(self, workspace: Optional[Path] = None, allowed_dir: Optional[Path] = None):
+    def __init__(
+        self,
+        workspace: Optional[Path] = None,
+        allowed_dir: Optional[Path] = None,
+        path_guard: Optional[PathGuard] = None,
+    ):
         self.workspace = workspace or Path.cwd()
         self.allowed_dir = allowed_dir or self.workspace
+        self.path_guard = path_guard
 
     @property
     def name(self) -> str:
@@ -51,10 +58,16 @@ class ReadFileTool(Tool):
 
     async def execute(self, path: str, offset: int = 0, limit: Optional[int] = None, **kwargs: Any) -> str:
         try:
-            # 验证路径
-            path = PathValidator.validate_path(path, self.workspace)
-
-            file_path = self._resolve_path(path)
+            # 路径安全验证（使用 PathGuard）
+            if self.path_guard:
+                try:
+                    file_path = self.path_guard.resolve_and_validate(path)
+                except PathSecurityError as e:
+                    return f"错误: {e}"
+            else:
+                # 回退到旧的验证逻辑
+                path = PathValidator.validate_path(path, self.workspace)
+                file_path = self._resolve_path(path)
 
             if not file_path.exists():
                 return f"错误: 文件不存在: {path}"
@@ -92,7 +105,7 @@ class ReadFileTool(Tool):
             return f"读取文件时出错: {str(e)}"
 
     def _resolve_path(self, path: str) -> Path:
-        """解析路径"""
+        """解析路径（向后兼容）"""
         p = Path(path)
         if p.is_absolute():
             return p
@@ -107,10 +120,12 @@ class WriteFileTool(Tool):
         workspace: Optional[Path] = None,
         allowed_dir: Optional[Path] = None,
         restrict_to_workspace: bool = True,
+        path_guard: Optional[PathGuard] = None,
     ):
         self.workspace = workspace or Path.cwd()
         self.allowed_dir = allowed_dir or self.workspace
         self.restrict_to_workspace = restrict_to_workspace
+        self.path_guard = path_guard
 
     @property
     def name(self) -> str:
@@ -139,14 +154,20 @@ class WriteFileTool(Tool):
 
     async def execute(self, path: str, content: str, **kwargs: Any) -> str:
         try:
-            # 验证路径
-            path = PathValidator.validate_path(path, self.workspace)
+            # 路径安全验证（使用 PathGuard）
+            if self.path_guard:
+                try:
+                    file_path = self.path_guard.resolve_and_validate(path, for_write=True)
+                except PathSecurityError as e:
+                    return f"错误: {e}"
+            else:
+                # 验证路径（旧逻辑）
+                path = PathValidator.validate_path(path, self.workspace)
+                file_path = self._resolve_path(path)
 
             # 验证内容非空
             if not content:
                 return "错误: 内容不能为空"
-
-            file_path = self._resolve_path(path)
 
             # 创建父目录
             file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -163,7 +184,7 @@ class WriteFileTool(Tool):
             return f"写入文件时出错: {str(e)}"
 
     def _resolve_path(self, path: str) -> Path:
-        """解析路径并进行权限检查"""
+        """解析路径并进行权限检查（向后兼容）"""
         p = Path(path)
         if p.is_absolute():
             resolved = p.resolve()
@@ -202,11 +223,13 @@ class ListDirTool(Tool):
         allowed_dir: Optional[Path] = None,
         timeout: int = 30,  # 添加超时参数（默认 30 秒）
         max_entries: int = 200,  # 添加最大条目数限制
+        path_guard: Optional[PathGuard] = None,
     ):
         self.workspace = workspace or Path.cwd()
         self.allowed_dir = allowed_dir or self.workspace
         self.timeout = timeout
         self.max_entries = max_entries
+        self.path_guard = path_guard
 
     @property
     def name(self) -> str:
@@ -248,7 +271,14 @@ class ListDirTool(Tool):
 
     async def _list_directory(self, path: str, max_entries: int) -> str:
         """异步列出目录内容（使用线程池）"""
-        dir_path = self._resolve_path(path)
+        # 路径安全验证（使用 PathGuard）
+        if self.path_guard:
+            try:
+                dir_path = self.path_guard.resolve_and_validate(path)
+            except PathSecurityError as e:
+                return f"错误: {e}"
+        else:
+            dir_path = self._resolve_path(path)
 
         if not dir_path.exists():
             return f"错误: 目录不存在: {path}"
@@ -298,7 +328,7 @@ class ListDirTool(Tool):
         return items
 
     def _resolve_path(self, path: str) -> Path:
-        """解析路径"""
+        """解析路径（向后兼容）"""
         p = Path(path)
         if p.is_absolute():
             return p
