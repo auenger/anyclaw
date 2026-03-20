@@ -1,5 +1,6 @@
 """Tool Calling 主循环 - 处理 LLM 返回的 tool_calls"""
 import json
+import time
 from typing import List, Dict, Any, Optional
 from litellm import acompletion
 
@@ -7,6 +8,10 @@ from ..skills.models import SkillDefinition
 from ..skills.executor import ToolExecutor
 from ..skills.converter import skills_to_tools
 from .history import ConversationHistory
+from .summary import (
+    IterationSummaryCollector,
+    IterationSummaryGenerator,
+)
 from ..config.settings import settings
 
 
@@ -54,6 +59,9 @@ class ToolCallingLoop:
 
         iteration = 0
 
+        # 初始化迭代摘要收集器
+        summary_collector = IterationSummaryCollector()
+
         while iteration < self.max_iterations:
             iteration += 1
 
@@ -76,7 +84,27 @@ class ToolCallingLoop:
 
             # 执行每个 tool call
             for tool_call in message.tool_calls:
-                result = await self._execute_tool_call(tool_call)
+                start_time = time.time()
+                success = True
+                try:
+                    result = await self._execute_tool_call(tool_call)
+                except Exception as e:
+                    result = f"Error: {e}"
+                    success = False
+                duration_ms = int((time.time() - start_time) * 1000)
+
+                # 记录到迭代摘要收集器
+                try:
+                    args = json.loads(tool_call.function.arguments)
+                except json.JSONDecodeError:
+                    args = {}
+                summary_collector.record_tool_call(
+                    name=tool_call.function.name,
+                    arguments=args,
+                    result=result,
+                    duration_ms=duration_ms,
+                    success=success,
+                )
 
                 messages.append({
                     "role": "tool",
@@ -84,8 +112,21 @@ class ToolCallingLoop:
                     "content": result
                 })
 
-        # 达到最大迭代次数
-        return "Error: Maximum tool calling iterations reached"
+        # 达到最大迭代次数，生成智能汇报
+        return await self._generate_iteration_summary(summary_collector, messages, self.max_iterations)
+
+    async def _generate_iteration_summary(
+        self,
+        collector: IterationSummaryCollector,
+        messages: List[Dict[str, Any]],
+        max_iterations: int,
+    ) -> str:
+        """生成迭代限制智能汇报"""
+        enabled = getattr(settings, 'iteration_summary_enabled', True)
+        max_tokens = getattr(settings, 'iteration_summary_max_tokens', 1000)
+
+        generator = IterationSummaryGenerator(enabled=enabled, max_tokens=max_tokens)
+        return await generator.generate(collector, messages, max_iterations)
 
     async def _call_llm_with_tools(
         self,

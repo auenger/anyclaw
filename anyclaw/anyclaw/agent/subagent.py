@@ -2,8 +2,9 @@
 
 import asyncio
 import json
-import uuid
 import logging
+import time
+import uuid
 from pathlib import Path
 from typing import Any, Optional
 
@@ -12,6 +13,10 @@ from anyclaw.tools.shell import ExecTool
 from anyclaw.tools.registry import ToolRegistry
 from anyclaw.bus.events import InboundMessage
 from anyclaw.config.settings import settings
+from anyclaw.agent.summary import (
+    IterationSummaryCollector,
+    IterationSummaryGenerator,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -105,9 +110,12 @@ class SubagentManager:
             ]
 
             # Run agent loop (limited iterations)
-            max_iterations = 15
+            max_iterations = getattr(settings, 'subagent_max_iterations', 15)
             iteration = 0
             final_result: Optional[str] = None
+
+            # 初始化迭代摘要收集器
+            summary_collector = IterationSummaryCollector()
 
             while iteration < max_iterations:
                 iteration += 1
@@ -151,28 +159,41 @@ class SubagentManager:
                     for tool_call in response.tool_calls:
                         args_str = json.dumps(tool_call.arguments, ensure_ascii=False)
                         logger.debug(f"Subagent [{task_id}] executing: {tool_call.name} with arguments: {args_str}")
+
+                        start_time = time.time()
+                        success = True
                         try:
                             result = await tools.execute(tool_call.name, tool_call.arguments)
-                            messages.append({
-                                "role": "tool",
-                                "tool_call_id": getattr(tool_call, 'id', ''),
-                                "name": tool_call.name,
-                                "content": str(result),
-                            })
                         except Exception as e:
                             logger.error(f"Tool execution failed: {e}")
-                            messages.append({
-                                "role": "tool",
-                                "tool_call_id": getattr(tool_call, 'id', ''),
-                                "name": tool_call.name,
-                                "content": f"Error: {str(e)}",
-                            })
+                            result = f"Error: {str(e)}"
+                            success = False
+                        duration_ms = int((time.time() - start_time) * 1000)
+
+                        # 记录到迭代摘要收集器
+                        summary_collector.record_tool_call(
+                            name=tool_call.name,
+                            arguments=tool_call.arguments,
+                            result=str(result),
+                            duration_ms=duration_ms,
+                            success=success,
+                        )
+
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": getattr(tool_call, 'id', ''),
+                            "name": tool_call.name,
+                            "content": str(result),
+                        })
                 else:
                     final_result = response.content
                     break
 
             if final_result is None:
-                final_result = "Task completed but no final response was generated."
+                # 达到最大迭代次数，生成智能汇报
+                final_result = await self._generate_subagent_summary(
+                    summary_collector, messages, max_iterations
+                )
 
             logger.info(f"Subagent [{task_id}] completed successfully")
             await self._announce_result(task_id, label, task, final_result, origin, "ok")
@@ -181,6 +202,19 @@ class SubagentManager:
             error_msg = f"Error: {str(e)}"
             logger.error(f"Subagent [{task_id}] failed: {e}")
             await self._announce_result(task_id, label, task, error_msg, origin, "error")
+
+    async def _generate_subagent_summary(
+        self,
+        collector: IterationSummaryCollector,
+        messages: list[dict[str, Any]],
+        max_iterations: int,
+    ) -> str:
+        """生成 SubAgent 迭代限制智能汇报"""
+        enabled = getattr(settings, 'iteration_summary_enabled', True)
+        max_tokens = getattr(settings, 'iteration_summary_max_tokens', 1000)
+
+        generator = IterationSummaryGenerator(enabled=enabled, max_tokens=max_tokens)
+        return await generator.generate(collector, messages, max_iterations)
 
     async def _announce_result(
         self,

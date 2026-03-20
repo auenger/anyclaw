@@ -29,6 +29,11 @@ from anyclaw.security.validators import ValidationError
 from .history import ConversationHistory
 from .context import ContextBuilder
 from .logger import get_agent_logger, TOOL_CALL, CONVERSATION
+from .summary import (
+    IterationSummaryCollector,
+    IterationSummaryGenerator,
+)
+from anyclaw.config.settings import settings as global_settings
 
 logger = logging.getLogger(__name__)
 agent_logger = get_agent_logger()
@@ -398,6 +403,9 @@ class AgentLoop:
         """运行带 tool calling 的循环"""
         iteration = 0
 
+        # 初始化迭代摘要收集器
+        summary_collector = IterationSummaryCollector()
+
         while iteration < max_iterations:
             iteration += 1
 
@@ -458,6 +466,15 @@ class AgentLoop:
                     agent_logger.log_error(f"Tool {tool_name}", e)
                 duration_ms = int((time.time() - start_time) * 1000)
 
+                # 记录到迭代摘要收集器
+                summary_collector.record_tool_call(
+                    name=tool_name,
+                    arguments=arguments,
+                    result=result,
+                    duration_ms=duration_ms,
+                    success=success,
+                )
+
                 # 记录工具调用日志
                 agent_logger.log_tool_call(tool_name, arguments, result, duration_ms)
 
@@ -486,7 +503,22 @@ class AgentLoop:
                         name=tool_name
                     )
 
-        return "达到最大迭代次数"
+        # 达到最大迭代次数，生成智能汇报
+        return await self._generate_iteration_summary(summary_collector, messages, max_iterations)
+
+    async def _generate_iteration_summary(
+        self,
+        collector: IterationSummaryCollector,
+        messages: List[Dict[str, Any]],
+        max_iterations: int,
+    ) -> str:
+        """生成迭代限制智能汇报"""
+        # 检查是否启用智能汇报
+        enabled = getattr(global_settings, 'iteration_summary_enabled', True)
+        max_tokens = getattr(global_settings, 'iteration_summary_max_tokens', 1000)
+
+        generator = IterationSummaryGenerator(enabled=enabled, max_tokens=max_tokens)
+        return await generator.generate(collector, messages, max_iterations)
 
     def _tool_hint(self, name: str, args: Dict[str, Any]) -> str:
         """生成工具调用提示"""

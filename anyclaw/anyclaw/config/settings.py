@@ -107,6 +107,18 @@ class Settings(BaseSettings):
         description="SubAgent 是否限制在工作区内"
     )
 
+    # 迭代摘要配置
+    iteration_summary_enabled: bool = Field(
+        default=True,
+        description="达到迭代限制时是否生成智能汇报"
+    )
+    iteration_summary_max_tokens: int = Field(
+        default=1000,
+        ge=100,
+        le=4000,
+        description="汇报生成的最大 token 数"
+    )
+
     # Cron 配置
     enable_cron: bool = Field(
         default=True,
