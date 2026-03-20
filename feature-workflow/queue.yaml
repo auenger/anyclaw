@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-20T23:15:00"
-  version: 51
+  last_updated: "2026-03-21T01:00:00"
+  version: 53
 
 # 父需求（用于分组追踪)
 parents:
@@ -39,10 +39,24 @@ parents:
       - feat-mcp-client
 
 # 正在开发的需求
-active: []
+active:
+  - id: feat-llm-resilience
+    name: LLM 响应韧性增强
+    description: 解决 LLM（GLM-4.7）在工具调用后返回空响应的问题，增强 LLM 调用的稳定性和可观测性（空响应检测与恢复、LiteLLM 重试配置、诊断日志）
+    priority: 80
+    size: M
+    dependencies: []
+    started_at: "2026-03-21T01:05:00"
 
 # 等待中的需求（按优先级排序）
 pending:
+
+  - id: feat-task-interrupt
+    name: 任务即时中断机制
+    description: 参考 nanobot 使用 asyncio.Task + _active_tasks 模式，让 /stop 命令能够即时中断正在执行的 LLM 调用或工具执行
+    priority: 75
+    size: M
+    dependencies: []
 
   - id: feat-path-guard
     name: 路径遍历防护
