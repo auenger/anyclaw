@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-20T12:00:00"
-  version: 38
+  last_updated: "2026-03-20T11:30:00"
+  version: 39
 
 # 父需求（用于分组追踪)
 parents:
@@ -64,13 +64,6 @@ pending:
     size: M
     dependencies: []
 
-  - id: feat-input-sanitizer
-    name: 输入验证与清理
-    description: 消息内容清理、工具参数验证、URL/路径格式验证
-    priority: 50
-    size: M
-    dependencies: []
-
   - id: feat-session-archive
     name: 会话归档系统
     description: 对话记录持久化、按项目隔离（Git root/cwd）、按日期归档、Tool/Skill 调用记录
@@ -83,6 +76,22 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-input-sanitizer
+    name: 输入验证与清理
+    priority: 50
+    size: M
+    completed_at: "2026-03-20T11:30:00"
+    archive_path: features/archive/done-feat-input-sanitizer
+    value_points:
+      - Validator 基类 (not_empty, max_length, min_length, in_range, pattern, one_of)
+      - URLValidator (协议白名单、危险协议阻止)
+      - PathValidator (文件名验证、路径遍历防护、Windows 保留名检测)
+      - ContentSanitizer (Unicode 清理、控制字符过滤、消息截断)
+      - 装饰器 (@validate_params, @sanitize_input, @require_params, @validate_and_sanitize)
+      - AgentLoop 消息清理集成
+      - 工具参数验证集成 (ExecTool, ReadFileTool, WriteFileTool)
+      - 完整测试套件 (91 tests, 93-100% coverage)
+
   - id: feat-credential-vault
     name: 凭证安全管理
     priority: 55
