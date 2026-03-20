@@ -4,11 +4,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-AnyClaw 是一个轻量级、可扩展的 AI 智能体框架。项目采用 Python 3.11+ 开发，使用 Poetry 管理依赖。
+AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot 和 OpenClaw 的核心优势。项目采用 Python 3.9+ 开发，使用 Poetry 管理依赖，同时提供 Tauri 跨平台桌面应用。
+
+### 核心特性
+
+- ✅ **Multi-Agent 系统** - 支持多 Agent 管理、Identity 人设、独立 Workspace
+- ✅ **SessionManager** - 会话持久化、工具调用边界检测
+- ✅ **SubAgent** - 后台异步任务执行
+- ✅ **MessageTool** - 跨会话消息发送
+- ✅ **Cron** - 定时任务调度 (at/every/cron)
+- ✅ **Channel 集成** - CLI、Discord、飞书
+- ✅ **Tauri 桌面应用** - 跨平台 GUI (开发中)
+- ✅ **TOML 配置** - 支持注释的配置格式
 
 ## 技术栈
 
-- **语言**: Python 3.11+
+### 后端 (Python)
+
+- **语言**: Python 3.9+
 - **依赖管理**: Poetry
 - **核心依赖**:
   - `pydantic` >= 2.12.0 (数据验证)
@@ -17,8 +30,18 @@ AnyClaw 是一个轻量级、可扩展的 AI 智能体框架。项目采用 Pyth
   - `rich` >= 14.0.0 (终端美化)
   - `litellm` >= 1.82.1 (LLM 统一接口)
   - `openai` >= 1.0.0 (OpenAI SDK)
+  - `fastapi` >= 0.115.0 (API 服务器)
+  - `uvicorn` >= 0.32.0 (ASGI 服务器)
+  - `sse-starlette` >= 2.1.0 (SSE 流式)
 - **测试框架**: pytest >= 8.0.0, pytest-asyncio >= 0.23.0
 - **代码质量**: Black (格式化), Ruff (检查)
+
+### 桌面应用 (Tauri + React)
+
+- **框架**: Tauri 2.0 (Rust Shell)
+- **前端**: React 18 + Vite + TypeScript
+- **样式**: Tailwind CSS + shadcn/ui
+- **状态**: Phase 1-2 完成 (80%)，Phase 3 进行中
 
 ## 核心架构
 
@@ -34,12 +57,31 @@ anyclaw/
 │   │   ├── context.py         # 上下文构建器
 │   │   ├── history.py         # 对话历史
 │   │   └── compression.py     # 上下文压缩
+│   ├── multi_agent/           # Multi-Agent 系统 (NEW)
+│   │   ├── manager.py         # Agent 管理器
+│   │   ├── identity.py        # Identity 管理
+│   │   └── workspace.py       # 独立 Workspace
+│   ├── session/               # 会话管理 (NEW)
+│   │   └── manager.py         # SessionManager
+│   ├── subagent/              # 子 Agent 系统 (NEW)
+│   │   └── executor.py        # SubAgent 执行器
+│   ├── tools/                 # 工具系统
+│   │   ├── base.py            # 工具基类
+│   │   ├── registry.py        # 工具注册表
+│   │   ├── shell.py           # Shell 执行工具
+│   │   ├── filesystem.py      # 文件系统工具
+│   │   ├── message.py         # MessageTool (NEW)
+│   │   └── cron.py            # Cron 定时任务 (NEW)
 │   ├── channels/              # 频道系统
 │   │   ├── cli.py             # CLI 频道
 │   │   ├── base.py            # 频道基类
 │   │   ├── feishu.py          # 飞书 Channel
 │   │   ├── discord.py         # Discord Channel
 │   │   └── bus.py             # 消息路由
+│   ├── api/                   # API 服务 (NEW)
+│   │   ├── server.py          # FastAPI 服务器
+│   │   ├── sse.py             # SSE 流式端点
+│   │   └── routes/            # API 路由
 │   ├── mcp/                   # MCP 客户端
 │   │   ├── client.py          # MCP 连接管理
 │   │   ├── wrapper.py         # MCPToolWrapper
@@ -52,11 +94,8 @@ anyclaw/
 │   │   ├── models.py          # 数据模型
 │   │   ├── parser.py          # SKILL.md 解析
 │   │   └── builtin/           # 内置技能
-│   ├── tools/                 # 工具系统
-│   │   ├── base.py            # 工具基类
-│   │   ├── registry.py        # 工具注册表
-│   │   ├── shell.py           # Shell 执行工具
-│   │   └── filesystem.py      # 文件系统工具
+│   ├── security/              # 安全模块 (NEW)
+│   │   └── network.py         # SSRF 防护
 │   ├── templates/             # 模板文件
 │   │   ├── SOUL.md            # Agent 人设模板
 │   │   ├── USER.md            # 用户档案模板
@@ -80,11 +119,26 @@ anyclaw/
 │   ├── utils/                 # 工具模块
 │   │   └── logging_config.py  # 日志配置
 │   ├── config/                # 配置系统
-│   │   └── settings.py        # Pydantic Settings
+│   │   ├── settings.py        # Pydantic Settings
+│   │   ├── loader.py          # TOML/JSON 加载器
+│   │   └── config.template.toml  # 配置模板
 │   └── cli/                   # CLI 应用
 │       ├── app.py             # Typer 应用
-│       └── serve_cmd.py       # serve 命令
+│       ├── serve_cmd.py       # serve 命令
+│       └── sidecar_cmd.py     # sidecar 命令 (NEW)
+├── tauri-app/                 # Tauri 桌面应用 (NEW)
+│   ├── src/                   # React 前端
+│   │   ├── App.tsx            # 主应用
+│   │   ├── components/        # UI 组件
+│   │   └── index.css          # 样式
+│   ├── src-tauri/             # Rust 后端
+│   │   ├── src/lib.rs         # Shell 实现
+│   │   └── tauri.conf.json    # Tauri 配置
+│   ├── package.json           # npm 依赖
+│   └── vite.config.ts         # Vite 配置
 ├── tests/                     # 测试目录
+├── docs/                      # 文档目录
+├── features/                  # Feature 归档
 ├── pyproject.toml             # 项目配置
 └── .env.example               # 环境变量示例
 ```
@@ -173,6 +227,25 @@ poetry run python -m anyclaw serve --daemon     # 后台守护进程
 poetry run python -m anyclaw serve --status     # 查看状态
 poetry run python -m anyclaw serve --stop       # 停止服务
 poetry run python -m anyclaw serve --logs       # 查看日志
+
+# API Sidecar 模式 (供桌面应用调用)
+poetry run python -m anyclaw sidecar --port 62601
+poetry run python -m anyclaw sidecar --help
+```
+
+### 桌面应用开发
+
+```bash
+cd tauri-app
+
+# 安装依赖
+npm install
+
+# 开发模式
+npm run tauri:dev
+
+# 构建生产版本
+npm run tauri:build
 ```
 
 ### 测试

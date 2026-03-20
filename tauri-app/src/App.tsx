@@ -60,6 +60,51 @@ export default function App() {
     }
   }, [messages]);
 
+  // SSE 流式接收消息
+  useEffect(() => {
+    if (sidecarStatus.status !== 'Running') return;
+
+    const eventSource = new EventSource(`http://127.0.0.1:${sidecarStatus.port}/api/stream`);
+    console.log('SSE connected to:', `http://127.0.0.1:${sidecarStatus.port}/api/stream`);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('SSE event:', data);
+
+        if (data.type === 'message:outbound') {
+          const assistantMessage: Message = {
+            id: data.payload.id || `assistant_${Date.now()}`,
+            role: 'assistant',
+            content: data.payload.content,
+            timestamp: data.payload.timestamp || Date.now(),
+          };
+          setMessages(prev => [...prev, assistantMessage]);
+          setIsLoading(false);
+        } else if (data.type === 'agent:thinking') {
+          console.log('Agent thinking:', data.payload);
+          setIsLoading(true);
+        } else if (data.type === 'tool:start') {
+          console.log('Tool started:', data.payload);
+        } else if (data.type === 'tool:complete') {
+          console.log('Tool completed:', data.payload);
+        }
+      } catch (error) {
+        console.error('Failed to parse SSE message:', error);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE error:', error);
+      eventSource.close();
+    };
+
+    return () => {
+      console.log('Closing SSE connection');
+      eventSource.close();
+    };
+  }, [sidecarStatus.status, sidecarStatus.port]);
+
   const handleStart = async () => {
     try {
       await invoke('start_sidecar');
@@ -108,18 +153,7 @@ export default function App() {
 
       const data = await response.json();
       console.log('Message sent:', data);
-
-      // 模拟 AI 响应（实际应该通过 SSE 接收）
-      setTimeout(() => {
-        const assistantMessage: Message = {
-          id: `assistant_${Date.now()}`,
-          role: 'assistant',
-          content: `I received your message: "${messageContent}". This is a placeholder response. Real responses will come through SSE streaming.`,
-          timestamp: Date.now(),
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-        setIsLoading(false);
-      }, 1000);
+      // 注意：响应会通过 SSE 流式接收，不在这里处理
 
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -214,22 +248,14 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleStart}
-              disabled={sidecarStatus.status === 'Running'}
-            >
-              Start
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleStop}
-              disabled={sidecarStatus.status !== 'Running'}
-            >
-              Stop
-            </Button>
+            <span className={cn(
+              "text-sm px-2 py-1 rounded-full",
+              sidecarStatus.status === 'Running' ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" :
+              sidecarStatus.status === 'Error' ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100" :
+              "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
+            )}>
+              {sidecarStatus.status}
+            </span>
           </div>
         </div>
 
@@ -254,7 +280,7 @@ export default function App() {
                     </div>
                     <h3 className="font-semibold text-lg mb-2">Start a conversation</h3>
                     <p className="text-muted-foreground max-w-md mx-auto">
-                      Send a message to start chatting with the AnyClaw agent.
+                      Send a message to start chatting with AnyClaw agent.
                     </p>
                   </div>
                 ) : (
