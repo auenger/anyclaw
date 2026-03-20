@@ -3,10 +3,32 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from anyclaw.bus.events import InboundMessage, OutboundMessage
 from anyclaw.bus.queue import MessageBus
+
+
+class AuthorizationRequiredError(Exception):
+    """需要授权异常 - 携带授权上下文
+
+    当 PathGuard 检测到路径访问越界时抛出此异常，
+    Channel 层应捕获此异常并请求用户授权。
+    """
+
+    def __init__(self, path: Path, suggested_dir: Path, message: Optional[str] = None):
+        """初始化授权异常
+
+        Args:
+            path: 请求访问的路径
+            suggested_dir: 建议授权的目录
+            message: 自定义错误消息
+        """
+        self.path = path
+        self.suggested_dir = suggested_dir
+        self.message = message or f"需要授权访问: {suggested_dir}"
+        super().__init__(self.message)
 
 
 class BaseChannel(ABC):
@@ -58,6 +80,33 @@ class BaseChannel(ABC):
             msg: The message to send.
         """
         pass
+
+    async def request_authorization(
+        self,
+        error: AuthorizationRequiredError,
+        chat_id: Optional[str] = None,
+        timeout: float = 60.0,
+    ) -> Optional[str]:
+        """请求用户授权访问目录
+
+        当 Agent 尝试访问受限目录时调用此方法。
+        子类应重写此方法以提供适合该渠道的授权交互方式。
+
+        Args:
+            error: 授权异常，包含路径信息
+            chat_id: 聊天 ID（用于发送授权请求）
+            timeout: 授权超时时间（秒）
+
+        Returns:
+            授权决策:
+            - "session": 临时授权（仅当前会话）
+            - "persist": 永久授权
+            - "deny": 拒绝
+            - None: 超时或取消
+        """
+        # 默认实现：回复式授权（回退方案）
+        # 子类应重写此方法以提供更好的用户体验
+        return None
 
     def is_allowed(self, sender_id: str) -> bool:
         """
