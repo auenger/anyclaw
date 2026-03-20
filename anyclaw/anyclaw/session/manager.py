@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .models import Session
+from .models import Session, SessionMessage
 
 
 logger = logging.getLogger(__name__)

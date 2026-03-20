@@ -129,8 +129,8 @@ class Session:
         Returns:
             对齐后的消息列表（dict 格式）
         """
-        unconsolidated = self.messages[self.last_consolidated:]
-        sliced = unconsolidated[-max_messages:]
+        # 获取最近的消息（不受 last_consolidated 影响）
+        sliced = self.messages[-max_messages:] if max_messages < len(self.messages) else self.messages
 
         # 删除前导非用户消息（避免从中间开始）
         for i, message in enumerate(sliced):
@@ -227,6 +227,9 @@ class Session:
         """保存会话到 JSONL 文件"""
         path.parent.mkdir(parents=True, exist_ok=True)
 
+        # 先更新 last_consolidated，再写入
+        self.last_consolidated = len(self.messages)
+
         with open(path, "w", encoding="utf-8") as f:
             # 写入元数据行
             metadata_line = {
@@ -243,7 +246,6 @@ class Session:
             for msg in self.messages:
                 f.write(json.dumps(msg.to_dict(), ensure_ascii=False) + "\n")
 
-        self.last_consolidated = len(self.messages)
         logger.debug(f"Session saved: {self.key} ({len(self.messages)} messages)")
 
     @staticmethod
@@ -255,6 +257,7 @@ class Session:
         try:
             messages = []
             metadata = {}
+            session_key = None
             created_at = None
             updated_at = None
             last_consolidated = 0
@@ -268,6 +271,7 @@ class Session:
                     data = json.loads(line)
 
                     if data.get("_type") == "metadata":
+                        session_key = data.get("key")  # key 在顶层
                         metadata = data.get("metadata", {})
                         created_at = datetime.fromisoformat(data["created_at"]) if data.get("created_at") else None
                         updated_at = datetime.fromisoformat(data["updated_at"]) if data.get("updated_at") else None
@@ -276,7 +280,7 @@ class Session:
                         messages.append(SessionMessage.from_dict(data))
 
             return Session(
-                key=metadata.get("key") or path.stem.replace("_", ":", 1),
+                key=session_key or path.stem.replace("_", ":", 1),
                 messages=messages,
                 created_at=created_at or datetime.now(),
                 updated_at=updated_at or datetime.now(),
