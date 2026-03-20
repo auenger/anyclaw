@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import re
+import time
 from contextlib import AsyncExitStack
 from pathlib import Path
 from typing import Optional, Dict, List, Any, AsyncGenerator, Callable, Awaitable
@@ -42,13 +43,16 @@ class AgentLoop:
         workspace: Optional[Path] = None,
         enable_session_manager: bool = True,  # 新增：是否启用 SessionManager
         enable_message_tool: bool = True,  # 新增：是否启用 MessageTool
+        enable_archive: bool = True,  # 新增：是否启用会话归档
     ):
         self.history = ConversationHistory(max_length=10)
         self.skills: Dict[str, SkillDefinition] = {}
         self.enable_tools = enable_tools
         self.enable_message_tool = enable_message_tool  # 新增
+        self.enable_archive = enable_archive
         self.workspace = workspace or Path.cwd()
         self._message_tool: Optional["MessageTool"] = None  # 新增：MessageTool 实例
+        self._session_key: str = "default"  # 当前会话 key
 
         # SessionManager（可选）
         self.session_manager: Optional["SessionManager"] = None
@@ -75,6 +79,21 @@ class AgentLoop:
                     self.session_manager = None
             else:
                 logger.debug("SessionManager disabled")
+
+        # SessionArchiveManager（会话归档）
+        self.archive_manager: Optional["SessionArchiveManager"] = None
+        if enable_archive:
+            try:
+                from anyclaw.session.archive import SessionArchiveManager, ArchiveConfig
+                archive_config = ArchiveConfig(
+                    enable_archive=getattr(settings, 'enable_session_archive', True),
+                    retention_days=getattr(settings, 'session_retention_days', 30),
+                )
+                self.archive_manager = SessionArchiveManager(archive_config)
+                logger.debug("SessionArchiveManager enabled")
+            except Exception as e:
+                logger.warning(f"Failed to initialize SessionArchiveManager: {e}")
+                self.archive_manager = None
 
         # MCP 连接管理
         self._mcp_stack: Optional[AsyncExitStack] = None
@@ -161,6 +180,43 @@ class AgentLoop:
         """设置可用技能（兼容旧接口）"""
         self.skills = skills
 
+    # ==================== 会话归档方法 ====================
+
+    def start_archive_session(
+        self,
+        channel: str = "cli",
+        channel_id: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        开始归档会话
+
+        Args:
+            channel: 渠道类型（cli/feishu/discord）
+            channel_id: 渠道 ID
+
+        Returns:
+            会话 ID，如果归档未启用则返回 None
+        """
+        if not self.archive_manager:
+            return None
+
+        version = getattr(settings, 'version', 'unknown')
+        return self.archive_manager.start_session(
+            cwd=self.workspace,
+            channel=channel,
+            channel_id=channel_id,
+            version=version,
+        )
+
+    def end_archive_session(self) -> None:
+        """结束归档会话"""
+        if self.archive_manager:
+            self.archive_manager.end_session()
+
+    def set_session_key(self, key: str) -> None:
+        """设置当前会话 key"""
+        self._session_key = key
+
     def _get_skills_info(self) -> List[Dict[str, Any]]:
         """获取技能信息列表"""
         return [
@@ -227,6 +283,10 @@ class AgentLoop:
 
         self.history.add_user_message(user_input)
 
+        # 记录用户消息到归档
+        if self.archive_manager:
+            self.archive_manager.record_user_message(user_input)
+
         context_builder = ContextBuilder(
             self.history,
             self._get_skills_info(),
@@ -240,6 +300,14 @@ class AgentLoop:
             response = await self._call_llm(messages)
 
         self.history.add_assistant_message(response)
+
+        # 记录助手消息到归档
+        if self.archive_manager:
+            self.archive_manager.record_assistant_message(
+                response,
+                model=settings.llm_model,
+            )
+
         return response
 
     async def process_stream(self, user_input: str) -> AsyncGenerator[str, None]:
@@ -252,6 +320,10 @@ class AgentLoop:
             return
 
         self.history.add_user_message(user_input)
+
+        # 记录用户消息到归档
+        if self.archive_manager:
+            self.archive_manager.record_user_message(user_input)
 
         context_builder = ContextBuilder(
             self.history,
@@ -276,7 +348,15 @@ class AgentLoop:
             full_response.append(error_msg)
             yield error_msg
 
-        self.history.add_assistant_message("".join(full_response))
+        response_text = "".join(full_response)
+        self.history.add_assistant_message(response_text)
+
+        # 记录助手消息到归档
+        if self.archive_manager:
+            self.archive_manager.record_assistant_message(
+                response_text,
+                model=settings.llm_model,
+            )
 
     async def _stream_with_tools(self, messages: List[Dict]) -> AsyncGenerator[str, None]:
         """流式处理（支持 tool calling）"""
@@ -339,13 +419,34 @@ class AgentLoop:
                 except json.JSONDecodeError:
                     arguments = {}
 
+                # 记录工具调用到归档
+                call_id = None
+                if self.archive_manager:
+                    call_id = self.archive_manager.record_tool_call(tool_name, arguments)
+
                 # 显示进度
                 if on_progress:
                     hint = self._tool_hint(tool_name, arguments)
                     await on_progress(hint, tool_hint=True)
 
                 # 执行工具
-                result = await self.tools.execute(tool_name, arguments)
+                start_time = time.time()
+                try:
+                    result = await self.tools.execute(tool_name, arguments)
+                    success = True
+                except Exception as e:
+                    result = f"Error: {e}"
+                    success = False
+                duration_ms = int((time.time() - start_time) * 1000)
+
+                # 记录工具结果到归档
+                if self.archive_manager and call_id:
+                    self.archive_manager.record_tool_result(
+                        call_id,
+                        result[:self._TOOL_RESULT_MAX_CHARS],
+                        duration_ms=duration_ms,
+                        success=success,
+                    )
 
                 messages.append({
                     "role": "tool",

@@ -24,6 +24,7 @@ from .skill_cmd import create_skill_app
 from .mcp_cmd import create_mcp_app
 from .security_cmd import create_security_app
 from .sidecar_cmd import app as sidecar_app
+from .session_cmd import create_session_app
 
 # agents 命令使用 click，暂时注释掉
 # from .agents_cmd import create_agents_app
@@ -43,6 +44,7 @@ app.add_typer(create_skill_app(), name="skill")
 app.add_typer(create_mcp_app(), name="mcp")
 app.add_typer(create_security_app(), name="security")
 app.add_typer(sidecar_app, name="sidecar", help="Run as Tauri sidecar")
+app.add_typer(create_session_app(), name="session", help="会话管理")
 
 # Register serve command directly
 
@@ -56,6 +58,7 @@ def chat(
     model: str = typer.Option(None, help="LLM model"),
     stream: bool = typer.Option(None, "--stream/--no-stream", help="Enable streaming output"),
     workspace: str = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
+    no_archive: bool = typer.Option(False, "--no-archive", help="Disable session archiving"),
 ):
     """Start interactive chat"""
     from anyclaw.workspace.manager import WorkspaceManager
@@ -81,7 +84,16 @@ def chat(
     console.print(f"[dim]Streaming: {'enabled' if settings.stream_enabled else 'disabled'}[/dim]\n")
 
     # 初始化组件
-    agent = AgentLoop(workspace=ws_manager.path)
+    agent = AgentLoop(
+        workspace=ws_manager.path,
+        enable_archive=not no_archive,  # 会话归档
+    )
+
+    # 开始会话归档
+    if not no_archive:
+        session_id = agent.start_archive_session(channel="cli")
+        if session_id:
+            console.print(f"[dim]Session: {session_id[:8]}...[/dim]\n")
 
     # 初始化 MessageBus 和 CLIChannel
     from anyclaw.bus.queue import MessageBus
@@ -105,19 +117,24 @@ def chat(
     # 运行 CLI
     import asyncio
 
-    if settings.stream_enabled:
-        # 流式模式
-        async def stream_process(user_input: str):
-            async for chunk in agent.process_stream(user_input):
-                yield chunk
+    try:
+        if settings.stream_enabled:
+            # 流式模式
+            async def stream_process(user_input: str):
+                async for chunk in agent.process_stream(user_input):
+                    yield chunk
 
-        asyncio.run(channel.run_stream(stream_process))
-    else:
-        # 非流式模式
-        async def process(user_input: str) -> str:
-            return await agent.process(user_input)
+            asyncio.run(channel.run_stream(stream_process))
+        else:
+            # 非流式模式
+            async def process(user_input: str) -> str:
+                return await agent.process(user_input)
 
-        asyncio.run(channel.run(process))
+            asyncio.run(channel.run(process))
+    finally:
+        # 结束会话归档
+        if not no_archive:
+            agent.end_archive_session()
 
 
 def show_zai_config() -> None:
