@@ -111,10 +111,33 @@ class MCPServerConfig(BaseModel):
 class SecurityConfig(BaseModel):
     """安全配置"""
 
+    # 快捷开关：开放所有权限（慎用！）
+    # 设置为 true 将自动：
+    #   - restrict_to_workspace = false
+    #   - ssrf_enabled = false
+    #   - allow_symlinks = true
+    #   - exec_unrestricted = true
+    allow_all_access: bool = False
+
+    # 路径限制
     restrict_to_workspace: bool = True
+    # 额外允许的目录（在 workspace 之外）
+    extra_allowed_dirs: List[str] = Field(default_factory=list)
+    # 是否允许符号链接
+    allow_symlinks: bool = True
+
+    # SSRF 防护
     ssrf_enabled: bool = True
+    # 允许的私有网络（CIDR 格式）
+    ssrf_allowed_networks: List[str] = Field(default_factory=list)
+    # 允许的私有域名
+    ssrf_allowed_domains: List[str] = Field(default_factory=list)
+
+    # 命令执行限制
     exec_deny_patterns: List[str] = Field(default_factory=list)
     exec_allow_patterns: List[str] = Field(default_factory=list)
+    # 是否允许执行任意命令（不限制路径）
+    exec_unrestricted: bool = False
 
 
 class MemoryConfig(BaseModel):

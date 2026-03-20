@@ -211,12 +211,24 @@ class ExecTool(Tool):
         """安全检查（使用混合保护模式）
 
         检查优先级：
-        1. 核心保护（不可绕过）
-        2. 用户 deny_patterns
-        3. 用户 allow_patterns（如果启用）
-        4. 路径遍历检查（新增）
-        5. 内部 URL 检查（新增）
+        1. 检查 allow_all_access（跳过所有检查）
+        2. 核心保护（不可绕过）
+        3. 用户 deny_patterns
+        4. 用户 allow_patterns（如果启用）
+        5. 路径遍历检查
+        6. 内部 URL 检查（SSRF）
+        7. 路径限制检查
         """
+        from anyclaw.config.settings import settings
+
+        # 检查是否开放所有权限
+        allow_all = getattr(settings, 'allow_all_access', False)
+        exec_unrestricted = getattr(settings, 'exec_unrestricted', False)
+
+        # 如果开放所有权限或执行不限制，跳过安全检查
+        if allow_all or exec_unrestricted:
+            return None
+
         blocked, reason = self.guard.check(command)
         if blocked:
             return f"错误: 命令被安全策略阻止 - {reason}"
@@ -229,16 +241,17 @@ class ExecTool(Tool):
             return "错误: 命令被安全策略阻止 - 检测到路径遍历"
 
         # 内部 URL 检查（SSRF 防护）
-        _URL_RE = re.compile(r'https?://[^\s\"\'`;|<>]+', re.IGNORECASE)
-        for m in _URL_RE.finditer(cmd):
-            url = m.group(0)
-            from anyclaw.security.network import SSRFGuard
-            ssrf_guard = SSRFGuard(enabled=True)
-            if not ssrf_guard.is_safe_url(url):
-                return "错误: 命令被安全策略阻止 - 检测到内部/私有 URL"
+        ssrf_enabled = getattr(settings, 'ssrf_enabled', True)
+        if ssrf_enabled:
+            _URL_RE = re.compile(r'https?://[^\s\"\'`;|<>]+', re.IGNORECASE)
+            for m in _URL_RE.finditer(cmd):
+                url = m.group(0)
+                from anyclaw.security.network import SSRFGuard
+                ssrf_guard = SSRFGuard(enabled=True)
+                if not ssrf_guard.is_safe_url(url):
+                    return "错误: 命令被安全策略阻止 - 检测到内部/私有 URL"
 
         # Workspace 限制
-        from anyclaw.config.settings import settings
         if settings.restrict_to_workspace:
             cwd_path = Path(cwd).resolve()
             for raw in self._extract_absolute_paths(cmd):

@@ -364,6 +364,18 @@ def create_path_guard_from_settings(
 
     ws = Path(workspace) if workspace else Path(settings.workspace).expanduser()
 
+    # 检查是否开放所有权限
+    allow_all = getattr(settings, 'allow_all_access', False)
+
+    # 如果开放所有权限，直接返回不限制的 PathGuard
+    if allow_all:
+        return PathGuard(
+            workspace=ws,
+            extra_allowed_dirs=[],  # 不需要，因为 restrict_to_workspace=False
+            allow_symlinks_in_workspace=True,
+            restrict_to_workspace=False,
+        )
+
     # 读取额外允许目录
     extra_dirs = getattr(settings, 'path_extra_allowed_dirs', [])
     if isinstance(extra_dirs, str):

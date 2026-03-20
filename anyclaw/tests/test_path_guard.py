@@ -378,6 +378,7 @@ class TestCreatePathGuardFromSettings:
             mock_settings.restrict_to_workspace = True
             mock_settings.path_extra_allowed_dirs = []
             mock_settings.path_allow_symlinks_in_workspace = True
+            mock_settings.allow_all_access = False  # 新增：关闭全开放模式
 
             guard = create_path_guard_from_settings(tmp_path)
             assert guard.workspace == tmp_path.resolve()
@@ -393,9 +394,20 @@ class TestCreatePathGuardFromSettings:
             mock_settings.restrict_to_workspace = True
             mock_settings.path_extra_allowed_dirs = [str(extra_dir)]
             mock_settings.path_allow_symlinks_in_workspace = True
+            mock_settings.allow_all_access = False  # 新增：关闭全开放模式
 
             guard = create_path_guard_from_settings(tmp_path)
             assert len(guard.extra_allowed_dirs) == 1
+
+    def test_create_from_settings_allow_all_access(self, tmp_path):
+        """测试 allow_all_access 模式"""
+        with patch("anyclaw.config.settings.settings") as mock_settings:
+            mock_settings.workspace = str(tmp_path)
+            mock_settings.allow_all_access = True  # 开启全开放模式
+
+            guard = create_path_guard_from_settings(tmp_path)
+            assert guard.restrict_to_workspace is False
+            assert guard.allow_symlinks_in_workspace is True
 
 
 class TestEdgeCases:

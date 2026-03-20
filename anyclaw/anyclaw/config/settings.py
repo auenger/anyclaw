@@ -297,6 +297,12 @@ class Settings(BaseSettings):
     )
 
     # 安全配置
+    # 快捷开关：开放所有权限（慎用！）
+    allow_all_access: bool = Field(
+        default=False,
+        description="开放所有权限（禁用所有限制，仅限开发/测试环境）"
+    )
+
     restrict_to_workspace: bool = Field(
         default=True,
         description="是否限制文件写入到 workspace 内（提升安全性）"
@@ -320,6 +326,10 @@ class Settings(BaseSettings):
     exec_allow_patterns: List[str] = Field(
         default_factory=list,
         description="用户自定义的命令白名单模式（设置后启用白名单模式）"
+    )
+    exec_unrestricted: bool = Field(
+        default=False,
+        description="是否允许执行任意命令（不限制路径）"
     )
 
     # SSRF 防护配置
@@ -471,6 +481,30 @@ def _load_from_config_file(settings: Settings) -> Settings:
             settings.anthropic_api_key = config.providers.anthropic.api_key
         if not os.environ.get("ZAI_API_KEY") and config.providers.zai.api_key:
             settings.zai_api_key = config.providers.zai.api_key
+
+        # 覆盖安全设置
+        if hasattr(config, 'security'):
+            sec = config.security
+            # 快捷开关
+            if hasattr(sec, 'allow_all_access'):
+                settings.allow_all_access = sec.allow_all_access
+            # 路径限制
+            if hasattr(sec, 'restrict_to_workspace'):
+                settings.restrict_to_workspace = sec.restrict_to_workspace
+            if hasattr(sec, 'extra_allowed_dirs'):
+                settings.path_extra_allowed_dirs = sec.extra_allowed_dirs
+            if hasattr(sec, 'allow_symlinks'):
+                settings.path_allow_symlinks_in_workspace = sec.allow_symlinks
+            # SSRF
+            if hasattr(sec, 'ssrf_enabled'):
+                settings.ssrf_enabled = sec.ssrf_enabled
+            # 命令执行
+            if hasattr(sec, 'exec_deny_patterns'):
+                settings.exec_deny_patterns = sec.exec_deny_patterns
+            if hasattr(sec, 'exec_allow_patterns'):
+                settings.exec_allow_patterns = sec.exec_allow_patterns
+            if hasattr(sec, 'exec_unrestricted'):
+                settings.exec_unrestricted = sec.exec_unrestricted
 
     except Exception:
         pass
