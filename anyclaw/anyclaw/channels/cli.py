@@ -13,7 +13,7 @@ from rich.text import Text
 
 from anyclaw.bus.events import InboundMessage, OutboundMessage
 from anyclaw.bus.queue import MessageBus
-from anyclaw.channels.base import BaseChannel
+from anyclaw.channels.base import BaseChannel, AuthorizationRequiredError
 from anyclaw.commands import CommandDispatcher, CommandContext
 from anyclaw.commands.handlers import register_builtin_commands
 
@@ -135,6 +135,47 @@ class CLIChannel(BaseChannel):
 
         # Print with agent name prefix
         self.console.print(f"\n[bold green]{self.config.agent_name}:[/bold green] {content}\n")
+
+    async def request_authorization(
+        self,
+        error: AuthorizationRequiredError,
+        chat_id: Optional[str] = None,
+        timeout: float = 60.0,
+    ) -> Optional[str]:
+        """请求用户授权访问目录（CLI 交互式实现）
+
+        显示交互式菜单让用户选择授权方式。
+
+        Args:
+            error: 授权异常
+            chat_id: 聊天 ID（CLI 忽略）
+            timeout: 超时时间（秒）
+
+        Returns:
+            授权决策: "session" / "persist" / "deny" / None
+        """
+        self.console.print()
+        self.console.print(f"[yellow]🔐 需要授权[/]")
+        self.console.print(f"   路径: [blue]{error.suggested_dir}[/]")
+        self.console.print()
+
+        try:
+            choice = Prompt.ask(
+                "选择授权方式",
+                choices=["y", "p", "n"],
+                default="y",
+                console=self.console,
+            )
+
+            return {
+                "y": "session",
+                "p": "persist",
+                "n": "deny",
+            }.get(choice.lower())
+
+        except (KeyboardInterrupt, EOFError):
+            self.console.print("\n[dim]授权已取消[/]")
+            return "deny"
 
     def _print_welcome(self) -> None:
         """Print welcome message."""
