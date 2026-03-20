@@ -4,6 +4,11 @@ Supports multiple log levels:
 - DEBUG: Detailed timestamps + module names
 - INFO: Standard format
 - WARNING: Minimal output
+
+Features:
+- Sensitive data masking (API keys, tokens)
+- Rotating file handler
+- Rich console output
 """
 
 from __future__ import annotations
@@ -49,6 +54,7 @@ def setup_logging(
     log_file: Optional[Path] = None,
     log_dir: Optional[Path] = None,
     rich_output: bool = True,
+    mask_sensitive: bool = True,
 ) -> logging.Logger:
     """Configure logging for AnyClaw.
 
@@ -57,6 +63,7 @@ def setup_logging(
         log_file: Optional log file path
         log_dir: Directory for log files (default: ~/.anyclaw/logs)
         rich_output: Use rich for console output
+        mask_sensitive: Mask sensitive data in logs (API keys, tokens)
 
     Returns:
         Configured root logger
@@ -67,6 +74,17 @@ def setup_logging(
 
     # Clear existing handlers
     root_logger.handlers.clear()
+
+    # Add sensitive data filter
+    if mask_sensitive:
+        try:
+            from anyclaw.security.credentials import SensitiveDataFilter
+
+            sensitive_filter = SensitiveDataFilter()
+            root_logger.addFilter(sensitive_filter)
+        except ImportError:
+            # If credentials module not available, skip filtering
+            pass
 
     # Console handler
     if rich_output:

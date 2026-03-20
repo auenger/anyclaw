@@ -25,9 +25,32 @@ app = typer.Typer(help="配置管理")
 console = Console()
 
 
+def _mask_api_key(key: str, visible_chars: int = 4) -> str:
+    """脱敏 API Key
+
+    Args:
+        key: 原始 API Key
+        visible_chars: 可见的末尾字符数
+
+    Returns:
+        脱敏后的 API Key
+    """
+    if not key:
+        return "(未设置)"
+    if len(key) <= visible_chars:
+        return "***"
+    return f"***{key[-visible_chars:]}"
+
+
 @app.command("show")
-def show_config():
-    """显示当前配置"""
+def show_config(
+    reveal: bool = typer.Option(False, "--reveal", "-r", help="显示完整的 API Key（慎用）")
+):
+    """显示当前配置
+
+    默认会脱敏显示敏感信息（API Key 等）。
+    使用 --reveal 选项可显示完整信息（慎用）。
+    """
     config = get_config()
 
     console.print("\n[bold]AnyClaw 配置[/bold]\n")
@@ -58,7 +81,10 @@ def show_config():
 
     for name in ["openai", "anthropic", "zai", "deepseek", "openrouter"]:
         provider: ProviderConfig = getattr(config.providers, name)
-        key = provider.api_key[:8] + "..." if provider.api_key else "(未设置)"
+        if reveal:
+            key = provider.api_key or "(未设置)"
+        else:
+            key = _mask_api_key(provider.api_key)
         base = provider.api_base or "(默认)"
         table.add_row(name, key, base)
 
@@ -83,7 +109,10 @@ def show_config():
     # Discord
     discord = config.channels.discord
     discord_status = "✓" if discord.enabled else "✗"
-    discord_configured = "已配置" if discord.token else "未配置"
+    if reveal:
+        discord_configured = discord.token or "未配置"
+    else:
+        discord_configured = "已配置" if discord.token else "未配置"
     table.add_row("Discord", discord_status, discord_configured)
 
     console.print(table)
@@ -91,6 +120,9 @@ def show_config():
     # 配置文件路径
     config_path = get_config_path()
     console.print(f"\n[dim]配置文件: {config_path}[/dim]")
+
+    if not reveal:
+        console.print("[dim]提示: 使用 --reveal 选项显示完整 API Key（慎用）[/dim]")
 
 
 @app.command("set")

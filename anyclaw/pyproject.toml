@@ -31,6 +31,8 @@ psutil = "^6.0.0"
 fastapi = "^0.115.0"
 uvicorn = {extras = ["standard"], version = "^0.32.0"}
 sse-starlette = "^2.1.0"
+# Credential encryption
+cryptography = "^42.0.0"
 
 [tool.poetry.extras]
 feishu = ["lark-oapi"]

@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-19T17:00:00"
-  version: 36
+  last_updated: "2026-03-20T12:00:00"
+  version: 38
 
 # 父需求（用于分组追踪)
 parents:
@@ -43,6 +43,13 @@ active: []
 
 # 等待中的需求（按优先级排序）
 pending:
+  - id: feat-desktop-app-phase3
+    name: 桌面应用 Phase 3
+    description: Tauri 桌面应用前端 UI 完善 (SSE/Settings/Skills/Tasks)
+    priority: 75
+    size: L
+    dependencies: []
+
   - id: feat-ssrf-guard
     name: SSRF 防护系统
     description: 阻止对私有网络、云元数据端点、本地服务的访问
@@ -54,13 +61,6 @@ pending:
     name: 路径遍历防护
     description: 阻止路径遍历攻击、符号链接绕过、工作区外访问
     priority: 61
-    size: M
-    dependencies: []
-
-  - id: feat-credential-vault
-    name: 凭证安全管理
-    description: API Key 加密存储、日志脱敏、凭证验证
-    priority: 55
     size: M
     dependencies: []
 
@@ -83,6 +83,19 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-credential-vault
+    name: 凭证安全管理
+    priority: 55
+    size: M
+    completed_at: "2026-03-20T12:00:00"
+    archive_path: features/archive/done-feat-credential-vault
+    value_points:
+      - CredentialManager 凭证加密存储（基于机器 ID）
+      - 敏感信息脱敏（OpenAI/GitHub/AWS/Anthropic 等）
+      - SensitiveDataFilter 日志过滤器
+      - config show --reveal 脱敏显示
+      - 完整测试套件 (33 tests)
+
   - id: feat-serve-mode
     name: 多通道服务模式
     priority: 80
