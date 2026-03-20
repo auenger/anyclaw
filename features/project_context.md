@@ -1,7 +1,7 @@
 ---
-last_updated: '2026-03-20'
-version: 8
-features_completed: 40
+last_updated: '2026-03-21'
+version: 9
+features_completed: 42
 tests_passing: 588
 ---
 
@@ -309,6 +309,7 @@ credential_encryption: bool = True
 
 | Date | Feature | Impact |
 |------|---------|--------|
+| 2026-03-21 | feat-smart-file-search | Intelligent file search with heuristics and context awareness |
 | 2026-03-20 | feat-security-config-enhancement | Enhanced security config with allow_all_access |
 | 2026-03-20 | feat-desktop-app-phase3 | Tauri desktop app Phase 3 complete |
 | 2026-03-20 | feat-session-archive | Session archiving system |
