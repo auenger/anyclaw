@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .base import Tool
+from anyclaw.security.validators import PathValidator, ValidationError
 
 
 class ReadFileTool(Tool):
@@ -50,6 +51,9 @@ class ReadFileTool(Tool):
 
     async def execute(self, path: str, offset: int = 0, limit: Optional[int] = None, **kwargs: Any) -> str:
         try:
+            # 验证路径
+            path = PathValidator.validate_path(path, self.workspace)
+
             file_path = self._resolve_path(path)
 
             if not file_path.exists():
@@ -135,6 +139,13 @@ class WriteFileTool(Tool):
 
     async def execute(self, path: str, content: str, **kwargs: Any) -> str:
         try:
+            # 验证路径
+            path = PathValidator.validate_path(path, self.workspace)
+
+            # 验证内容非空
+            if not content:
+                return "错误: 内容不能为空"
+
             file_path = self._resolve_path(path)
 
             # 创建父目录

@@ -8,12 +8,15 @@ from typing import Any, Dict, List, Optional
 
 from .base import Tool
 from .guards import CommandGuard
+from anyclaw.security.validators import Validator, ValidationError
+from anyclaw.security.sanitizers import ContentSanitizer
 
 
 class ExecTool(Tool):
     """Shell 命令执行工具
 
     安全机制：
+    - 输入验证：命令非空检查、超时范围验证
     - 核心保护层：硬编码的危险命令拦截（不可绕过）
     - 用户保护层：可配置的 deny/allow patterns
     """
@@ -55,7 +58,7 @@ class ExecTool(Tool):
 
     @property
     def description(self) -> str:
-        return "执行 shell 命令并返回输出。谨慎使用。"
+        return "执行 shell 命令并返回输出。谨慎使用."
 
     @property
     def parameters(self) -> Dict[str, Any]:
@@ -87,6 +90,20 @@ class ExecTool(Tool):
         timeout: Optional[int] = None,
         **kwargs: Any,
     ) -> str:
+        # === 输入验证 ===
+        try:
+            # 验证命令非空
+            command = ContentSanitizer.sanitize_command(command)
+        except ValueError as e:
+            return f"错误: {e}"
+
+        # 验证 timeout 范围
+        if timeout is not None:
+            try:
+                timeout = Validator.in_range(timeout, 1, self._MAX_TIMEOUT, "timeout")
+            except ValidationError as e:
+                return f"错误: {e.message}"
+
         cwd = working_dir or self.working_dir or os.getcwd()
 
         # 安全检查（传递 cwd）
@@ -212,8 +229,7 @@ class ExecTool(Tool):
             return "错误: 命令被安全策略阻止 - 检测到路径遍历"
 
         # 内部 URL 检查（SSRF 防护）
-        import re
-        _URL_RE = re.compile(r'https?://[^\s\"\'`;|<>]+', __import__('re').IGNORECASE)
+        _URL_RE = re.compile(r'https?://[^\s\"\'`;|<>]+', re.IGNORECASE)
         for m in _URL_RE.finditer(cmd):
             url = m.group(0)
             from anyclaw.security.network import SSRFGuard

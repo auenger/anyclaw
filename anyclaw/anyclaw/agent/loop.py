@@ -23,6 +23,8 @@ from anyclaw.tools.shell import ExecTool
 from anyclaw.tools.filesystem import ReadFileTool, WriteFileTool, ListDirTool
 from anyclaw.tools.memory import SaveMemoryTool, UpdatePersonaTool
 from anyclaw.bus.events import OutboundMessage  # 新增导入
+from anyclaw.security.sanitizers import ContentSanitizer
+from anyclaw.security.validators import ValidationError
 from .history import ConversationHistory
 from .context import ContextBuilder
 
@@ -217,6 +219,12 @@ class AgentLoop:
 
     async def process(self, user_input: str) -> str:
         """处理用户输入"""
+        # 清理和验证用户输入
+        try:
+            user_input = ContentSanitizer.sanitize_message(user_input)
+        except ValueError as e:
+            return f"错误: {e}"
+
         self.history.add_user_message(user_input)
 
         context_builder = ContextBuilder(
@@ -236,6 +244,13 @@ class AgentLoop:
 
     async def process_stream(self, user_input: str) -> AsyncGenerator[str, None]:
         """流式处理用户输入"""
+        # 清理和验证用户输入
+        try:
+            user_input = ContentSanitizer.sanitize_message(user_input)
+        except ValueError as e:
+            yield f"错误: {e}"
+            return
+
         self.history.add_user_message(user_input)
 
         context_builder = ContextBuilder(
