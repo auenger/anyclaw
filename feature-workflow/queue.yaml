@@ -39,14 +39,7 @@ parents:
       - feat-mcp-client
 
 # 正在开发的需求
-active:
-  - id: feat-llm-resilience
-    name: LLM 响应韧性增强
-    description: 解决 LLM（GLM-4.7）在工具调用后返回空响应的问题，增强 LLM 调用的稳定性和可观测性（空响应检测与恢复、LiteLLM 重试配置、诊断日志）
-    priority: 80
-    size: M
-    dependencies: []
-    started_at: "2026-03-21T01:05:00"
+active: []
 
 # 等待中的需求（按优先级排序）
 pending:
@@ -70,6 +63,20 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-llm-resilience
+    name: LLM 响应韧性增强
+    description: 解决 LLM（GLM-4.7）在工具调用后返回空响应的问题，增强 LLM 调用的稳定性和可观测性（空响应检测与恢复、LiteLLM 重试配置、诊断日志）
+    priority: 80
+    size: M
+    completed_at: "2026-03-21T01:15:00"
+    archive_path: features/archive/done-feat-llm-resilience
+    value_points:
+      - 空响应检测与恢复（_run_with_tools 空响应检测、自动重试、友好错误提示）
+      - LiteLLM 重试配置（litellm.num_retries 根据 settings 配置）
+      - 诊断日志（_log_llm_response_detail 方法、DEBUG 级别详情、空响应警告）
+      - 配置项（llm_max_retries, llm_retry_delay, llm_empty_response_retry, llm_log_response_detail）
+      - 完整测试套件（8 tests, 100% pass）
+
   - id: feat-iteration-summary
     name: 迭代限制智能汇报
     description: 达到最大迭代次数时，智能分析对话历史，生成包含工具摘要、进度分析、卡点诊断和下一步建议的工作进度汇报
