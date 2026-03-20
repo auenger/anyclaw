@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-20T20:30:00"
-  version: 47
+  last_updated: "2026-03-20T23:30:00"
+  version: 50
 
 # 父需求（用于分组追踪)
 parents:
@@ -43,20 +43,6 @@ active: []
 
 # 等待中的需求（按优先级排序）
 pending:
-  - id: feat-smart-file-search
-    name: Smart File Search
-    description: 智能文件搜索，优化 Agent 查找文件策略（启发式优先级、搜索缓存、动态授权）
-    priority: 75
-    size: M
-    dependencies: []
-
-  - id: feat-special-commands-advanced
-    name: Special Commands Advanced
-    description: 高级特殊指令（/compact /model /agent /session）+ 权限控制
-    priority: 65
-    size: M
-    dependencies:
-      - feat-special-commands-core
 
   - id: feat-iteration-summary
     name: 迭代限制智能汇报
@@ -77,6 +63,20 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-special-commands-advanced
+    name: Special Commands Advanced
+    description: 高级特殊指令（/compact /model /agent /session）+ 权限控制
+    priority: 65
+    size: M
+    completed_at: "2026-03-20T23:30:00"
+    archive_path: features/archive/done-feat-special-commands-advanced
+    value_points:
+      - CompactCommandHandler（上下文压缩、Token 统计）
+      - ModelCommandHandler（多 Provider 模型切换）
+      - AgentCommandHandler（Agent 管理和切换）
+      - SessionCommandHandler（空闲超时、最大存活时间）
+      - 完整测试套件（32 tests, 100% pass）
+
   - id: feat-special-commands-core
     name: Special Commands Core
     description: 用户对话特殊指令系统（/new /reset /stop /help /status /version 等核心命令）
