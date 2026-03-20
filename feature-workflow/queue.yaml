@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-20T11:30:00"
-  version: 39
+  last_updated: "2026-03-20T15:00:00"
+  version: 40
 
 # 父需求（用于分组追踪)
 parents:
@@ -43,13 +43,6 @@ active: []
 
 # 等待中的需求（按优先级排序）
 pending:
-  - id: feat-desktop-app-phase3
-    name: 桌面应用 Phase 3
-    description: Tauri 桌面应用前端 UI 完善 (SSE/Settings/Skills/Tasks)
-    priority: 75
-    size: L
-    dependencies: []
-
   - id: feat-ssrf-guard
     name: SSRF 防护系统
     description: 阻止对私有网络、云元数据端点、本地服务的访问
@@ -76,6 +69,22 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-desktop-app-phase3
+    name: 桌面应用 Phase 3
+    priority: 75
+    size: L
+    completed_at: "2026-03-20T15:00:00"
+    archive_path: features/archive/done-feat-desktop-app-phase3
+    value_points:
+      - SSE 客户端（自动重连、错误处理）
+      - useSSE/useSettings/useSkills/useTasks Hooks
+      - ChatWindow 组件（流式消息、停止按钮）
+      - Settings 页面（LLM/Provider 配置）
+      - Skills 管理页面（搜索、详情、重载）
+      - Tasks 页面（SubAgent/Cron 管理）
+      - Radix UI 组件（select, slider, switch, tabs, card, badge）
+      - TypeScript 构建成功
+
   - id: feat-input-sanitizer
     name: 输入验证与清理
     priority: 50
