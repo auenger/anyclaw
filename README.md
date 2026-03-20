@@ -1,12 +1,13 @@
 # AnyClaw 🐾
 
-**AnyClaw** 是一个轻量级、可扩展的 AI 智能体框架，让你可以快速构建自己的 AI 助手。
+**AnyClaw** 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot 和 OpenClaw 的核心优势。
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 特性
+## 核心特性
 
+### 基础功能
 - 🚀 **开箱即用** - 一行命令启动 AI 助手
 - 🔧 **Tool Calling** - 支持 OpenAI Function Calling
 - 🎯 **多 Provider** - 支持 OpenAI、Anthropic、ZAI/GLM 等
@@ -15,9 +16,16 @@
 - 📦 **技能系统** - 可扩展的技能框架，支持渐进式加载
 - 🌊 **流式输出** - 实时响应流
 - 🔌 **MCP 协议** - 连接 MCP Server 生态
-- 💬 **IM 集成** - 支持飞书、Discord 等即时通讯平台
-- 🖥️ **Serve 模式** - 多通道并行服务，支持后台守护进程
-- 🛡️ **安全限制** - Workspace 写入保护
+
+### 高级功能 (NEW)
+- 👥 **Multi-Agent 系统** - 多 Agent 管理、Identity 人设、独立 Workspace
+- 📋 **SessionManager** - 会话持久化、工具调用边界检测
+- 🤖 **SubAgent** - 后台异步任务执行 (SpawnTool)
+- 💬 **MessageTool** - 跨会话消息发送
+- ⏰ **Cron** - 定时任务调度 (at/every/cron)
+- 💬 **IM 集成** - 飞书、Discord 完整支持
+- 🖥️ **桌面应用** - Tauri 跨平台 GUI (开发中)
+- 🛡️ **SSRF 防护** - 网络安全保护
 
 ## 快速开始
 
@@ -234,12 +242,17 @@ anyclaw/
 - [x] 记忆系统
 - [x] 流式输出
 - [x] MCP 协议集成
-- [x] IM Channel 支持
+- [x] IM Channel 支持 (飞书 + Discord)
 - [x] Skill 工具链
 - [x] 多通道服务模式 (Serve Mode)
+- [x] SessionManager 会话管理
+- [x] SubAgent 后台任务
+- [x] MessageTool 跨会话消息
+- [x] Cron 定时任务
+- [x] Multi-Agent 系统
+- [ ] Tauri 桌面应用 (80%)
 - [ ] Web UI
 - [ ] 插件系统
-- [ ] 多 Agent 协作
 
 ## 许可证
 

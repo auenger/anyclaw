@@ -8,14 +8,25 @@ AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot
 
 ### 核心特性
 
-- ✅ **Multi-Agent 系统** - 支持多 Agent 管理、Identity 人设、独立 Workspace
+**基础功能**
+- ✅ **Tool Calling** - OpenAI Function Calling 支持
+- ✅ **多 Provider** - OpenAI、Anthropic、ZAI/GLM 等
+- ✅ **记忆系统** - 长期记忆和上下文管理
+- ✅ **技能系统** - 可扩展的技能框架，渐进式加载
+- ✅ **MCP 协议** - 连接 MCP Server 生态
+
+**nanobot 兼容** (NEW)
 - ✅ **SessionManager** - 会话持久化、工具调用边界检测
-- ✅ **SubAgent** - 后台异步任务执行
+- ✅ **SubAgent** - 后台异步任务执行 (SpawnTool)
 - ✅ **MessageTool** - 跨会话消息发送
 - ✅ **Cron** - 定时任务调度 (at/every/cron)
 - ✅ **Channel 集成** - CLI、Discord、飞书
-- ✅ **Tauri 桌面应用** - 跨平台 GUI (开发中)
-- ✅ **TOML 配置** - 支持注释的配置格式
+
+**OpenClaw 兼容** (NEW)
+- ✅ **Multi-Agent 系统** - 多 Agent 管理、Identity 人设、独立 Workspace
+
+**桌面应用** (NEW)
+- 🔄 **Tauri 桌面应用** - 跨平台 GUI (80% 完成)
 
 ## 技术栈
 
@@ -41,6 +52,7 @@ AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot
 - **框架**: Tauri 2.0 (Rust Shell)
 - **前端**: React 18 + Vite + TypeScript
 - **样式**: Tailwind CSS + shadcn/ui
+- **API**: FastAPI + SSE (13 个端点)
 - **状态**: Phase 1-2 完成 (80%)，Phase 3 进行中
 
 ## 核心架构

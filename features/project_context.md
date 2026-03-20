@@ -1,8 +1,8 @@
 ---
-last_updated: '2026-03-19'
-version: 5
-features_completed: 18
-tests_passing: 295
+last_updated: '2026-03-20'
+version: 6
+features_completed: 24
+tests_passing: 300+
 ---
 
 # Project Context: AnyClaw
@@ -15,11 +15,13 @@ tests_passing: 295
 
 | Category | Technology | Version | Notes |
 |----------|-----------|---------|-------|
-| Language | Python | 3.11+ | Type hints required |
+| Language | Python | 3.9+ | Type hints required |
 | Package Manager | Poetry | 2.x | pyproject.toml |
-| Config | Pydantic Settings | 2.x | .env file |
+| Config | Pydantic Settings | 2.x | .env / TOML file |
 | CLI | Typer + Rich | 0.20+ / 14+ | Beautiful terminal |
 | LLM | litellm | 1.82+ | Multi-provider |
+| API | FastAPI + SSE | 0.115+ | Sidecar mode |
+| Desktop | Tauri 2.0 | - | Rust + React |
 | Testing | pytest + pytest-asyncio | 8.x / 0.23+ | Async tests |
 | Code Style | Black + Ruff | - | line-length=100 |
 
@@ -33,56 +35,67 @@ anyclaw/
 │   │   ├── context.py         # Context builder
 │   │   ├── history.py         # Conversation history
 │   │   ├── tool_loop.py       # Tool calling loop
-│   │   └── persona.py         # Persona system
+│   │   ├── subagent.py        # SubAgent manager (NEW)
+│   │   └── tools/             # Agent tools (NEW)
+│   │       ├── message.py     # MessageTool
+│   │       └── spawn.py       # SpawnTool
+│   ├── agents/                # Multi-Agent system (NEW)
+│   │   ├── manager.py         # AgentManager
+│   │   ├── identity.py        # IdentityManager
+│   │   └── cli/               # Agent CLI commands
+│   ├── session/               # Session management (NEW)
+│   │   ├── manager.py         # SessionManager
+│   │   └── models.py          # Session models
+│   ├── cron/                  # Cron scheduling (NEW)
+│   │   ├── service.py         # CronService
+│   │   ├── tool.py            # CronTool
+│   │   └── types.py           # Cron types
 │   ├── channels/              # Channel plugins
 │   │   ├── cli.py             # CLI channel (sync + stream)
 │   │   ├── feishu.py          # Feishu channel
-│   │   └── discord.py         # Discord channel
+│   │   ├── discord.py         # Discord channel
+│   │   ├── manager.py         # ChannelManager (NEW)
+│   │   └── bus.py             # MessageBus (NEW)
+│   ├── api/                   # API server (NEW)
+│   │   ├── server.py          # FastAPI server
+│   │   ├── sse.py             # SSE streaming
+│   │   ├── deps.py            # Dependencies
+│   │   └── routes/            # API routes
+│   │       ├── health.py      # Health check
+│   │       ├── agents.py      # Agent management
+│   │       ├── messages.py    # Message handling
+│   │       ├── skills.py      # Skill management
+│   │       └── tasks.py       # Task management
+│   ├── security/              # Security module (NEW)
+│   │   └── network.py         # SSRF protection
 │   ├── core/                  # Core services
 │   │   ├── serve.py           # Multi-channel serve manager
 │   │   └── daemon.py          # Daemon process management
-│   ├── utils/                 # Utilities
-│   │   └── logging_config.py  # Logging configuration
 │   ├── skills/                # Skill system
 │   │   ├── base.py            # Skill base class
 │   │   ├── loader.py          # Skill loader
-│   │   ├── models.py          # Data models
-│   │   ├── parser.py          # Markdown parser
-│   │   ├── converter.py       # Tool converter
-│   │   ├── executor.py        # Tool executor
 │   │   └── builtin/           # Built-in skills (11 skills)
-│   │       ├── echo/          # Echo skill
-│   │       ├── time/          # Time skill
-│   │       ├── calc/          # Calculator skill
-│   │       ├── file/          # File operations
-│   │       ├── http/          # HTTP requests
-│   │       ├── weather/       # Weather query
-│   │       ├── code_exec/     # Code execution
-│   │       ├── process/       # Process management
-│   │       ├── text/          # Text processing
-│   │       ├── system/        # System information
-│   │       └── data/          # Data processing
 │   ├── providers/             # Provider system
-│   │   ├── base.py            # Provider base class
 │   │   ├── zai.py             # ZAI Provider
 │   │   └── zai_detect.py      # Endpoint detection
 │   ├── memory/                # Memory system
-│   │   ├── manager.py         # Memory manager
-│   │   └── automation.py      # Memory automation
 │   ├── workspace/             # Workspace system
-│   │   ├── manager.py         # Workspace manager
-│   │   └── bootstrap.py       # Bootstrap loader
-│   ├── config/                # Configuration
-│   │   └── settings.py        # Pydantic Settings (25+ fields)
+│   ├── config/                # Configuration (35+ fields)
 │   └── cli/                   # CLI application
 │       ├── app.py             # Typer app
-│       ├── onboard.py         # Onboard command
-│       ├── workspace.py       # Workspace commands
-│       ├── token.py           # Token commands
-│       ├── persona.py         # Persona commands
-│       ├── compress.py        # Compress commands
-│       └── memory.py          # Memory commands
-├── tests/                     # Test files (295 tests)
+│       ├── serve_cmd.py       # Serve command
+│       └── sidecar_cmd.py     # Sidecar command (NEW)
+├── tauri-app/                 # Tauri desktop app (NEW)
+│   ├── src/                   # React frontend
+│   │   ├── App.tsx            # Main app
+│   │   ├── components/        # UI components
+│   │   └── index.css          # Tailwind styles
+│   ├── src-tauri/             # Rust backend
+│   │   ├── src/lib.rs         # Shell implementation
+│   │   └── tauri.conf.json    # Tauri config
+│   └── package.json           # npm dependencies
+├── tests/                     # Test files (300+ tests)
+├── features/                  # Feature archive
 ├── pyproject.toml             # Project config
 └── .env                       # Environment vars
 ```
@@ -272,20 +285,16 @@ token_hard_limit: int = 200000
 
 | Date | Feature | Impact |
 |------|---------|--------|
+| 2026-03-20 | feat-desktop-app | Tauri desktop app (Phase 1-2, 80%) |
+| 2026-03-20 | feat-multi-agent | Multi-Agent system (OpenClaw-style) |
+| 2026-03-20 | feat-session-manager | SessionManager with JSONL persistence |
+| 2026-03-20 | feat-subagent | SubAgent background tasks (SpawnTool) |
+| 2026-03-20 | feat-message-tool | MessageTool for cross-session messaging |
+| 2026-03-20 | feat-cron | Cron scheduling (at/every/cron) |
+| 2026-03-20 | feat-im-channels | Channel integration (Discord/Feishu) |
 | 2026-03-19 | feat-serve-mode | Multi-channel serve mode with daemon support |
-| 2026-03-19 | feat-exec-security | ExecTool dangerous command protection |
-| 2026-03-19 | feat-skill-conversation-mode | Skill conversation mode with hot reload |
-| 2026-03-19 | feat-toml-config | TOML config file support (~/.anyclaw/config.toml) |
-| 2026-03-19 | feat-memory-persistence | save_memory and update_persona tools |
+| 2026-03-19 | feat-ssrf-guard | SSRF protection module |
 | 2026-03-18 | feat-streaming-output | Added streaming output support |
-| 2026-03-18 | feat-builtin-skills-v2 | Added 5 new skills (code_exec, process, text, system, data) |
-| 2026-03-18 | feat-memory-system | Added long-term memory and daily logs |
-| 2026-03-18 | feat-context-compression | Added context compression |
-| 2026-03-18 | feat-agent-persona | Added persona system |
-| 2026-03-18 | feat-token-counter | Added token counting |
-| 2026-03-18 | feat-workspace-init | Added workspace initialization |
-| 2026-03-18 | feat-zai-provider | Added ZAI/GLM Provider support |
-| 2026-03-18 | feat-tool-calling | Added Tool Calling framework |
 | 2026-03-18 | feat-mvp-* | MVP implementation complete |
 
 ## CLI Commands Reference
@@ -337,19 +346,14 @@ anyclaw compress run
 
 ## Update Log
 
-- 2026-03-19: Added feat-serve-mode - Multi-channel serve mode with daemon support
-- 2026-03-19: Added feat-exec-security - ExecTool dangerous command protection
-- 2026-03-19: Added feat-skill-conversation-mode - Skill conversation mode with hot reload
-- 2026-03-19: Added feat-toml-config - TOML config file support
-- 2026-03-19: Added feat-memory-persistence - Memory persistence tools
-- 2026-03-18: Added feat-streaming-output - Streaming output support
-- 2026-03-18: Added feat-builtin-skills-v2 - Extended builtin skills
-- 2026-03-18: Added feat-memory-system - Memory system
-- 2026-03-18: Added feat-context-compression - Context compression
-- 2026-03-18: Added feat-agent-persona - Persona system
-- 2026-03-18: Added feat-token-counter - Token counting
-- 2026-03-18: Added feat-workspace-init - Workspace initialization
-- 2026-03-18: Added feat-zai-provider - ZAI/GLM CodePlan Provider
-- 2026-03-18: Added feat-tool-calling - Tool Calling core framework
+- 2026-03-20: Added feat-desktop-app - Tauri desktop app (80%)
+- 2026-03-20: Added feat-multi-agent - Multi-Agent system (OpenClaw-style)
+- 2026-03-20: Added feat-session-manager - SessionManager (nanobot compatible)
+- 2026-03-20: Added feat-subagent - SubAgent background tasks
+- 2026-03-20: Added feat-message-tool - MessageTool cross-session messaging
+- 2026-03-20: Added feat-cron - Cron scheduling (at/every/cron)
+- 2026-03-20: Added feat-im-channels - Channel integration complete
+- 2026-03-19: Added feat-serve-mode - Multi-channel serve mode
+- 2026-03-19: Added feat-ssrf-guard - SSRF protection
 - 2026-03-18: Initial MVP features completed (5 features)
 - 2026-03-18: Project context created

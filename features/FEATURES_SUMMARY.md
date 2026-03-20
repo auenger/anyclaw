@@ -4,11 +4,11 @@
 
 **整体进度**: ████████████████████████ **100%** MVP + 扩展特性完成
 
-**最后更新**: 2026-03-19
+**最后更新**: 2026-03-20
 
-**测试状态**: 295 个测试通过 ✅
+**测试状态**: 300+ 个测试通过 ✅
 
-**完成特性数**: 18
+**完成特性数**: 24
 
 ## 特性列表
 
@@ -22,11 +22,33 @@
 | feat-mvp-skills | 技能系统 | ✅ completed | 90% | 85 |
 | feat-mvp-integration | 应用集成和测试 | ✅ completed | 85% | 80 |
 
+### nanobot 兼容特性 (NEW)
+
+| 特性 ID | 名称 | 状态 | 完成度 | 优先级 |
+|---------|------|------|--------|--------|
+| feat-session-manager | SessionManager 会话管理 | ✅ completed | 95% | 85 |
+| feat-subagent | SubAgent 后台任务 | ✅ completed | 95% | 80 |
+| feat-message-tool | MessageTool 跨会话消息 | ✅ completed | 95% | 75 |
+| feat-cron | Cron 定时任务调度 | ✅ completed | 95% | 70 |
+
+### OpenClaw 兼容特性 (NEW)
+
+| 特性 ID | 名称 | 状态 | 完成度 | 优先级 |
+|---------|------|------|--------|--------|
+| feat-multi-agent | Multi-Agent 系统 | ✅ completed | 95% | 90 |
+
+### 桌面应用 (NEW)
+
+| 特性 ID | 名称 | 状态 | 完成度 | 优先级 |
+|---------|------|------|--------|--------|
+| feat-desktop-app | Tauri 桌面应用 | 🔄 in_progress | 80% | 75 |
+
 ### 扩展特性
 
 | 特性 ID | 名称 | 状态 | 完成度 | 优先级 |
 |---------|------|------|--------|--------|
 | feat-serve-mode | 多通道服务模式 | ✅ completed | 95% | 80 |
+| feat-im-channels | IM Channel (飞书+Discord) | ✅ completed | 95% | 65 |
 | feat-tool-calling | Tool Calling 核心框架 | ✅ completed | 95% | 95 |
 | feat-zai-provider | ZAI/GLM CodePlan Provider | ✅ completed | 95% | 90 |
 | feat-workspace-init | Workspace 初始化和引导 | ✅ completed | 90% | 88 |
@@ -36,10 +58,8 @@
 | feat-context-compression | 智能上下文压缩 | ✅ completed | 90% | 80 |
 | feat-memory-system | 记忆系统 | ✅ completed | 90% | 78 |
 | feat-builtin-skills-v2 | 内置技能扩展 V2 | ✅ completed | 95% | 78 |
-| feat-bundled-skills | 内置 Skills 移植与扩展 | ✅ completed | 90% | 75 |
 | feat-streaming-output | 流式输出支持 | ✅ completed | 90% | 76 |
-| feat-config-system | JSON 配置文件系统 | ✅ completed | 95% | 85 |
-| feat-memory-persistence | 记忆持久化工具 | ✅ completed | 90% | 80 |
+| feat-ssrf-guard | SSRF 防护 | ✅ completed | 95% | 80 |
 
 ## 特性依赖关系
 
@@ -237,16 +257,36 @@ completed: 16 个特性
 
 | 指标 | 数值 |
 |------|------|
-| 完成特性数 | 18 |
+| 完成特性数 | 24 |
 | 内置技能数 | 11 |
-| 测试数量 | 295 |
-| 配置项数量 | 25+ |
-| CLI 命令数 | 15+ |
+| 测试数量 | 300+ |
+| 配置项数量 | 35+ |
+| CLI 命令数 | 20+ |
+| API 端点数 | 13 |
 
 ## 最近完成
 
 | 日期 | 特性 | 价值点 |
 |------|------|--------|
+| 2026-03-20 | feat-desktop-app | Tauri 桌面应用 (Phase 1-2 完成) |
+| 2026-03-20 | feat-multi-agent | Multi-Agent 系统 (OpenClaw-style) |
+| 2026-03-20 | feat-session-manager | SessionManager (nanobot 兼容) |
+| 2026-03-20 | feat-subagent | SubAgent 后台任务 (SpawnTool) |
+| 2026-03-20 | feat-message-tool | MessageTool 跨会话消息 |
+| 2026-03-20 | feat-cron | Cron 定时任务 (at/every/cron) |
+| 2026-03-20 | feat-im-channels | Channel 集成 (Discord/飞书) |
 | 2026-03-19 | feat-serve-mode | 多通道并行服务、守护进程、日志轮转 |
-| 2026-03-19 | feat-exec-security | ExecTool 危险命令防护 |
-| 2026-03-19 | feat-skill-conversation-mode | 技能对话模式、热重载 |
+| 2026-03-19 | feat-ssrf-guard | SSRF 防护模块 |
+
+## nanobot / OpenClaw 兼容性
+
+| 功能 | nanobot | OpenClaw | AnyClaw | 状态 |
+|------|---------|----------|---------|------|
+| SessionManager | ✅ | - | ✅ | 完全兼容 |
+| SubAgent/SpawnTool | ✅ | - | ✅ | 完全兼容 |
+| MessageTool | ✅ | - | ✅ | 完全兼容 |
+| Cron (at/every/cron) | ✅ | - | ✅ | 完全兼容 |
+| Multi-Agent | - | ✅ | ✅ | 完全兼容 |
+| Identity 管理 | - | ✅ | ✅ | 完全兼容 |
+| 独立 Workspace | - | ✅ | ✅ | 完全兼容 |
+| Channel (Discord/飞书) | ✅ | - | ✅ | 完全兼容 |
