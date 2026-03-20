@@ -59,11 +59,20 @@ def chat(
     stream: bool = typer.Option(None, "--stream/--no-stream", help="Enable streaming output"),
     workspace: str = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
     no_archive: bool = typer.Option(False, "--no-archive", help="Disable session archiving"),
+    log_level: str = typer.Option(
+        "info",
+        "--log-level", "-L",
+        help="Log level: debug, conversation, info, quiet"
+    ),
 ):
     """Start interactive chat"""
     from anyclaw.workspace.manager import WorkspaceManager
     from anyclaw.workspace import sync_workspace_templates
+    from anyclaw.utils.logging_config import setup_logging
     from pathlib import Path
+
+    # 设置日志级别
+    setup_logging(level=log_level)
 
     # 覆盖配置
     if agent_name:

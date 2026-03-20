@@ -28,8 +28,10 @@ from anyclaw.security.sanitizers import ContentSanitizer
 from anyclaw.security.validators import ValidationError
 from .history import ConversationHistory
 from .context import ContextBuilder
+from .logger import get_agent_logger, TOOL_CALL, CONVERSATION
 
 logger = logging.getLogger(__name__)
+agent_logger = get_agent_logger()
 
 
 class AgentLoop:
@@ -281,6 +283,9 @@ class AgentLoop:
         except ValueError as e:
             return f"错误: {e}"
 
+        # 记录用户输入
+        agent_logger.log_user_input(user_input)
+
         self.history.add_user_message(user_input)
 
         # 记录用户消息到归档
@@ -300,6 +305,9 @@ class AgentLoop:
             response = await self._call_llm(messages)
 
         self.history.add_assistant_message(response)
+
+        # 记录助手响应
+        agent_logger.log_assistant_response(response, settings.llm_model)
 
         # 记录助手消息到归档
         if self.archive_manager:
@@ -406,11 +414,21 @@ class AgentLoop:
                 return message.content or ""
 
             # 处理 tool calls
+            formatted_tool_calls = self._format_tool_calls(message.tool_calls)
             messages.append({
                 "role": "assistant",
                 "content": message.content,
-                "tool_calls": self._format_tool_calls(message.tool_calls)
+                "tool_calls": formatted_tool_calls
             })
+
+            # 记录 assistant 消息（包含 tool_calls）到 session
+            if self.session_manager:
+                self.session_manager.add_message(
+                    self._session_key,
+                    "assistant",
+                    content=message.content,
+                    tool_calls=formatted_tool_calls
+                )
 
             for tool_call in message.tool_calls:
                 tool_name = tool_call.function.name
@@ -437,7 +455,11 @@ class AgentLoop:
                 except Exception as e:
                     result = f"Error: {e}"
                     success = False
+                    agent_logger.log_error(f"Tool {tool_name}", e)
                 duration_ms = int((time.time() - start_time) * 1000)
+
+                # 记录工具调用日志
+                agent_logger.log_tool_call(tool_name, arguments, result, duration_ms)
 
                 # 记录工具结果到归档
                 if self.archive_manager and call_id:
@@ -453,6 +475,16 @@ class AgentLoop:
                     "tool_call_id": tool_call.id,
                     "content": result[:self._TOOL_RESULT_MAX_CHARS]
                 })
+
+                # 记录 tool 结果到 session
+                if self.session_manager:
+                    self.session_manager.add_message(
+                        self._session_key,
+                        "tool",
+                        content=result[:self._TOOL_RESULT_MAX_CHARS],
+                        tool_call_id=tool_call.id,
+                        name=tool_name
+                    )
 
         return "达到最大迭代次数"
 

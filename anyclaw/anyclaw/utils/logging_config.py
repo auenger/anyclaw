@@ -31,6 +31,9 @@ LOG_LEVELS = {
     "quiet": logging.WARNING,
     "warning": logging.WARNING,
     "error": logging.ERROR,
+    # 新增：对话级别（显示用户输入、助手响应、工具调用）
+    "conversation": 15,  # CONVERSATION 级别
+    "tool": 16,  # TOOL 级别
 }
 
 # Default log directory
@@ -59,7 +62,7 @@ def setup_logging(
     """Configure logging for AnyClaw.
 
     Args:
-        level: Log level (debug/verbose/quiet/info)
+        level: Log level (debug/conversation/verbose/quiet/info/warning/error)
         log_file: Optional log file path
         log_dir: Directory for log files (default: ~/.anyclaw/logs)
         rich_output: Use rich for console output
@@ -68,6 +71,10 @@ def setup_logging(
     Returns:
         Configured root logger
     """
+    # 注册自定义日志级别
+    logging.addLevelName(15, "CONVERSATION")
+    logging.addLevelName(16, "TOOL")
+
     log_level = get_log_level(level)
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
@@ -108,6 +115,19 @@ def setup_logging(
             console_handler.setFormatter(logging.Formatter("%(message)s"))
         elif level == "quiet":
             console_handler.setFormatter(logging.Formatter("[red]%(message)s[/red]"))
+        elif level == "conversation":
+            # 对话模式：显示时间戳和消息
+            show_time = True
+            console_handler = RichHandler(
+                console=console,
+                show_time=show_time,
+                show_path=False,
+                rich_tracebacks=False,
+                markup=True,
+                log_time_format="[%H:%M:%S]",
+            )
+            console_handler.setLevel(log_level)
+            console_handler.setFormatter(logging.Formatter("%(message)s"))
         else:
             console_handler.setFormatter(logging.Formatter("%(message)s"))
     else:

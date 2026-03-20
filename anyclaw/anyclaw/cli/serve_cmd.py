@@ -41,6 +41,9 @@ def serve(
     quiet: bool = typer.Option(
         False, "--quiet", "-q", help="Minimal output (warnings and errors only)"
     ),
+    conversation: bool = typer.Option(
+        False, "--conversation", "-c", help="Show conversation logs (user input, assistant response, tool calls)"
+    ),
     daemon: bool = typer.Option(
         False, "--daemon", "-D", help="Run as background daemon"
     ),
@@ -65,6 +68,7 @@ def serve(
     Examples:
         anyclaw serve                  # Start in foreground
         anyclaw serve --debug          # Debug mode with detailed logs
+        anyclaw serve --conversation   # Show conversation and tool calls
         anyclaw serve --daemon         # Run in background
         anyclaw serve --status         # Check if daemon is running
         anyclaw serve --stop           # Stop background daemon
@@ -73,6 +77,8 @@ def serve(
     # Determine log level
     if debug:
         log_level = "debug"
+    elif conversation:
+        log_level = "conversation"
     elif verbose:
         log_level = "verbose"
     elif quiet:
