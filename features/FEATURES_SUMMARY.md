@@ -8,7 +8,7 @@
 
 **测试状态**: 588 个测试通过 ✅
 
-**完成特性数**: 39
+**完成特性数**: 40
 
 ## 特性列表
 
@@ -54,6 +54,7 @@
 | feat-path-guard | 路径遍历防护 | ✅ completed | 95% | 80 |
 | feat-input-sanitizer | 输入验证和净化 | ✅ completed | 95% | 80 |
 | feat-credential-vault | 凭证安全管理 | ✅ completed | 95% | 85 |
+| feat-security-config-enhancement | 安全配置增强 | ✅ completed | 95% | 80 |
 
 ### 技能系统
 
@@ -187,6 +188,7 @@ feat-mvp-init (初始化) ✅
 - ✅ 输入验证和净化
 - ✅ 执行安全控制
 - ✅ 凭证安全管理 (加密存储、日志脱敏)
+- ✅ 安全配置增强 (allow_all_access, extra_allowed_dirs)
 
 ### 会话管理
 - ✅ SessionManager 会话持久化
@@ -292,14 +294,14 @@ anyclaw chat --no-stream
 ```yaml
 pending: []   # 无待开发需求
 active:  []   # 无活跃需求
-completed: 39 个特性
+completed: 40 个特性
 ```
 
 ## 统计
 
 | 指标 | 数值 |
 |------|------|
-| 完成特性数 | 39 |
+| 完成特性数 | 40 |
 | 内置技能数 | 11 |
 | 测试数量 | 588 |
 | 配置项数量 | 40+ |
@@ -310,6 +312,7 @@ completed: 39 个特性
 
 | 日期 | 特性 | 价值点 |
 |------|------|--------|
+| 2026-03-20 | feat-security-config-enhancement | 安全配置增强 (allow_all_access, extra_allowed_dirs) |
 | 2026-03-20 | feat-desktop-app-phase3 | Tauri 桌面应用 Phase 3 完成 |
 | 2026-03-20 | feat-session-archive | 会话归档系统 |
 | 2026-03-20 | feat-input-sanitizer | 输入验证和净化系统 |

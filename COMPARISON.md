@@ -162,6 +162,7 @@
 | **TOML 配置** | ✅ | ❌ | ❌ | ❌ |
 | **SSRF 防护** | ✅ | ⚠️ 基础 | ⚠️ 基础 | ❌ |
 | **执行安全** | ✅ | ✅ | ✅ | ❌ |
+| **灵活安全配置** | ✅ | ❌ | ❌ | ❌ |
 
 ### 用户界面
 
@@ -400,6 +401,7 @@ def _check_requirements(self, requires) -> tuple[bool, List[str]]:
 | **Session 计数追踪** | 独有的使用频率追踪功能 |
 | **渐进式技能加载** | 按需加载技能，优化上下文 |
 | **安全防护** | SSRF 防护、执行安全限制完善 |
+| **灵活安全配置** | allow_all_access、extra_allowed_dirs、exec_unrestricted |
 | **FastAPI Sidecar** | 支持 API 模式，可与桌面应用集成 |
 | **Tauri 桌面应用** | 跨平台 GUI，原生体验 (开发中) |
 | **SSE 流式** | 实时消息推送体验好 |

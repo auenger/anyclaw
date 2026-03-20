@@ -1,7 +1,7 @@
 ---
 last_updated: '2026-03-20'
-version: 7
-features_completed: 39
+version: 8
+features_completed: 40
 tests_passing: 588
 ---
 
@@ -309,6 +309,7 @@ credential_encryption: bool = True
 
 | Date | Feature | Impact |
 |------|---------|--------|
+| 2026-03-20 | feat-security-config-enhancement | Enhanced security config with allow_all_access |
 | 2026-03-20 | feat-desktop-app-phase3 | Tauri desktop app Phase 3 complete |
 | 2026-03-20 | feat-session-archive | Session archiving system |
 | 2026-03-20 | feat-input-sanitizer | Input validation and sanitization |
@@ -383,7 +384,8 @@ anyclaw agent switch <name>
 
 ## Update Log
 
-- 2026-03-20: Completed 39 features, 588 tests passing
+- 2026-03-20: Completed 40 features, 588 tests passing
+- 2026-03-20: Added feat-security-config-enhancement - Enhanced security config
 - 2026-03-20: Added feat-desktop-app-phase3 - Tauri desktop app Phase 3
 - 2026-03-20: Added feat-session-archive - Session archiving system
 - 2026-03-20: Added feat-input-sanitizer - Input validation and sanitization

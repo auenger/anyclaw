@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot 和 OpenClaw 的核心优势。项目采用 Python 3.9+ 开发，使用 Poetry 管理依赖，同时提供 Tauri 跨平台桌面应用。
 
-**项目状态**: 39 个特性完成，588 个测试通过 ✅
+**项目状态**: 40 个特性完成，588 个测试通过 ✅
 
 ### 核心特性
 
@@ -35,6 +35,7 @@ AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot
 - ✅ **路径防护** - 路径遍历攻击防护 (PathGuard)
 - ✅ **输入净化** - 输入验证和净化 (Input Sanitizer)
 - ✅ **凭证管理** - 安全凭证存储和日志脱敏 (Credential Vault)
+- ✅ **安全配置增强** - 灵活的安全策略配置 (allow_all_access, extra_allowed_dirs)
 
 ## 技术栈
 
@@ -454,6 +455,8 @@ anyclaw init
 - `restrict_to_workspace` 配置项（默认启用）
 - PathGuard 路径验证
 - 符号链接解析防绕过
+- `allow_all_access` 快捷开关（开发/测试环境）
+- `extra_allowed_dirs` 额外允许的目录配置
 
 ### 测试规范
 
