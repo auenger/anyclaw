@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-20T16:30:00"
-  version: 41
+  last_updated: "2026-03-20T20:30:00"
+  version: 47
 
 # 父需求（用于分组追踪)
 parents:
@@ -43,6 +43,28 @@ active: []
 
 # 等待中的需求（按优先级排序）
 pending:
+  - id: feat-smart-file-search
+    name: Smart File Search
+    description: 智能文件搜索，优化 Agent 查找文件策略（启发式优先级、搜索缓存、动态授权）
+    priority: 75
+    size: M
+    dependencies: []
+
+  - id: feat-special-commands-advanced
+    name: Special Commands Advanced
+    description: 高级特殊指令（/compact /model /agent /session）+ 权限控制
+    priority: 65
+    size: M
+    dependencies:
+      - feat-special-commands-core
+
+  - id: feat-iteration-summary
+    name: 迭代限制智能汇报
+    description: 达到最大迭代次数时，智能分析对话历史，生成包含工具摘要、进度分析、卡点诊断和下一步建议的工作进度汇报
+    priority: 70
+    size: M
+    dependencies: []
+
   - id: feat-path-guard
     name: 路径遍历防护
     description: 阻止路径遍历攻击、符号链接绕过、工作区外访问
@@ -55,6 +77,22 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-special-commands-core
+    name: Special Commands Core
+    description: 用户对话特殊指令系统（/new /reset /stop /help /status /version 等核心命令）
+    priority: 70
+    size: M
+    completed_at: "2026-03-20T20:30:00"
+    archive_path: features/archive/done-feat-special-commands-core
+    value_points:
+      - CommandParser（命令解析、大小写不敏感、支持别名）
+      - CommandRegistry（命令注册、别名管理、帮助文本生成）
+      - CommandDispatcher（命令分发、权限集成）
+      - PermissionManager（细粒度权限控制、默认开放）
+      - 内置命令（/new /reset /clear /stop /abort /help /status /version）
+      - CLI Channel 集成
+      - 完整测试套件（32 tests, 100% pass）
+
   - id: feat-session-archive
     name: 会话归档系统
     priority: 45
