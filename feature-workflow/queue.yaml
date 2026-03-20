@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-20T23:30:00"
-  version: 50
+  last_updated: "2026-03-20T23:15:00"
+  version: 51
 
 # 父需求（用于分组追踪)
 parents:
@@ -39,17 +39,19 @@ parents:
       - feat-mcp-client
 
 # 正在开发的需求
-active: []
-
-# 等待中的需求（按优先级排序）
-pending:
-
+active:
   - id: feat-iteration-summary
     name: 迭代限制智能汇报
     description: 达到最大迭代次数时，智能分析对话历史，生成包含工具摘要、进度分析、卡点诊断和下一步建议的工作进度汇报
     priority: 70
     size: M
     dependencies: []
+    branch: feature/iteration-summary
+    worktree: ../AnyClaw-iteration-summary
+    started_at: "2026-03-21T00:00:00"
+
+# 等待中的需求（按优先级排序）
+pending:
 
   - id: feat-path-guard
     name: 路径遍历防护
@@ -63,6 +65,23 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-smart-file-search
+    name: Smart File Search
+    description: 智能文件搜索，优化 Agent 查找文件策略（启发式优先级、搜索缓存、动态授权）
+    priority: 75
+    size: M
+    completed_at: "2026-03-20T23:15:00"
+    archive_path: features/archive/done-feat-smart-file-search
+    value_points:
+      - SearchHeuristics（优先级目录、文件类型关联）
+      - ContextPathExtractor（对话上下文路径提取、新鲜度排序）
+      - SearchQueryAnalyzer（信息充足判断、询问建议生成）
+      - SearchCache（LRU 缓存、持久化、常用目录追踪）
+      - PathAuthorizer（临时/持久授权、危险路径黑名单）
+      - AuthorizationRequiredError（跨渠道授权异常）
+      - CLI Channel 授权集成（rich.prompt 交互式菜单）
+      - 完整测试套件（5 test files）
+
   - id: feat-special-commands-advanced
     name: Special Commands Advanced
     description: 高级特殊指令（/compact /model /agent /session）+ 权限控制
