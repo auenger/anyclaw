@@ -1,8 +1,8 @@
 ---
 last_updated: '2026-03-20'
-version: 6
-features_completed: 24
-tests_passing: 300+
+version: 7
+features_completed: 39
+tests_passing: 588
 ---
 
 # Project Context: AnyClaw
@@ -35,18 +35,19 @@ anyclaw/
 │   │   ├── context.py         # Context builder
 │   │   ├── history.py         # Conversation history
 │   │   ├── tool_loop.py       # Tool calling loop
-│   │   ├── subagent.py        # SubAgent manager (NEW)
-│   │   └── tools/             # Agent tools (NEW)
+│   │   ├── subagent.py        # SubAgent manager
+│   │   └── tools/             # Agent tools
 │   │       ├── message.py     # MessageTool
 │   │       └── spawn.py       # SpawnTool
-│   ├── agents/                # Multi-Agent system (NEW)
+│   ├── agents/                # Multi-Agent system
 │   │   ├── manager.py         # AgentManager
 │   │   ├── identity.py        # IdentityManager
 │   │   └── cli/               # Agent CLI commands
-│   ├── session/               # Session management (NEW)
+│   ├── session/               # Session management
 │   │   ├── manager.py         # SessionManager
+│   │   ├── archive.py         # SessionArchiver
 │   │   └── models.py          # Session models
-│   ├── cron/                  # Cron scheduling (NEW)
+│   ├── cron/                  # Cron scheduling
 │   │   ├── service.py         # CronService
 │   │   ├── tool.py            # CronTool
 │   │   └── types.py           # Cron types
@@ -54,9 +55,9 @@ anyclaw/
 │   │   ├── cli.py             # CLI channel (sync + stream)
 │   │   ├── feishu.py          # Feishu channel
 │   │   ├── discord.py         # Discord channel
-│   │   ├── manager.py         # ChannelManager (NEW)
-│   │   └── bus.py             # MessageBus (NEW)
-│   ├── api/                   # API server (NEW)
+│   │   ├── manager.py         # ChannelManager
+│   │   └── bus.py             # MessageBus
+│   ├── api/                   # API server
 │   │   ├── server.py          # FastAPI server
 │   │   ├── sse.py             # SSE streaming
 │   │   ├── deps.py            # Dependencies
@@ -66,26 +67,31 @@ anyclaw/
 │   │       ├── messages.py    # Message handling
 │   │       ├── skills.py      # Skill management
 │   │       └── tasks.py       # Task management
-│   ├── security/              # Security module (NEW)
-│   │   └── network.py         # SSRF protection
+│   ├── security/              # Security module
+│   │   ├── network.py         # SSRF protection
+│   │   ├── path_guard.py      # Path traversal protection
+│   │   ├── sanitizer.py       # Input validation
+│   │   └── credentials.py     # Credential vault
 │   ├── core/                  # Core services
 │   │   ├── serve.py           # Multi-channel serve manager
 │   │   └── daemon.py          # Daemon process management
 │   ├── skills/                # Skill system
 │   │   ├── base.py            # Skill base class
-│   │   ├── loader.py          # Skill loader
+│   │   ├── loader.py          # Skill loader (dynamic + progressive)
+│   │   ├── toolkit.py         # Skill toolkit
+│   │   ├── conversation.py    # Skill conversation mode
 │   │   └── builtin/           # Built-in skills (11 skills)
 │   ├── providers/             # Provider system
 │   │   ├── zai.py             # ZAI Provider
 │   │   └── zai_detect.py      # Endpoint detection
 │   ├── memory/                # Memory system
 │   ├── workspace/             # Workspace system
-│   ├── config/                # Configuration (35+ fields)
+│   ├── config/                # Configuration (40+ fields)
 │   └── cli/                   # CLI application
 │       ├── app.py             # Typer app
 │       ├── serve_cmd.py       # Serve command
-│       └── sidecar_cmd.py     # Sidecar command (NEW)
-├── tauri-app/                 # Tauri desktop app (NEW)
+│       └── sidecar_cmd.py     # Sidecar command
+├── tauri-app/                 # Tauri desktop app
 │   ├── src/                   # React frontend
 │   │   ├── App.tsx            # Main app
 │   │   ├── components/        # UI components
@@ -94,7 +100,7 @@ anyclaw/
 │   │   ├── src/lib.rs         # Shell implementation
 │   │   └── tauri.conf.json    # Tauri config
 │   └── package.json           # npm dependencies
-├── tests/                     # Test files (300+ tests)
+├── tests/                     # Test files (588 tests)
 ├── features/                  # Feature archive
 ├── pyproject.toml             # Project config
 └── .env                       # Environment vars
@@ -110,6 +116,7 @@ anyclaw/
 - Rule 4: **Settings from Env** - Configuration via Pydantic Settings, env vars take precedence
 - Rule 5: **Model Prefix Routing** - Use provider prefix for model selection (zai/glm-5, gpt-4o)
 - Rule 6: **Streaming Support** - New features should support streaming when applicable
+- Rule 7: **Security First** - Validate inputs, sanitize outputs, protect credentials
 
 ### Must Avoid
 
@@ -117,6 +124,8 @@ anyclaw/
 - Anti-pattern 2: **Hardcoded API keys** - Use settings or environment variables
 - Anti-pattern 3: **Blocking I/O** - Use async httpx instead of requests
 - Anti-pattern 4: **Mutable default args** - Use None and create new instances
+- Anti-pattern 5: **Unvalidated paths** - Always use PathGuard for file operations
+- Anti-pattern 6: **Plaintext credentials** - Use CredentialVault for sensitive data
 
 ## Code Patterns
 
@@ -203,6 +212,16 @@ class MySkill(Skill):
         return result
 ```
 
+### Security Pattern
+
+```python
+# Path validation pattern
+from anyclaw.security.path_guard import PathGuard
+
+guard = PathGuard(workspace_path)
+safe_path = guard.validate(user_provided_path)  # Raises if invalid
+```
+
 ## Testing Patterns
 
 ### Unit Tests
@@ -279,12 +298,25 @@ memory_daily_load_days: int = 2
 # Token settings
 token_soft_limit: int = 100000
 token_hard_limit: int = 200000
+
+# Security settings
+restrict_to_workspace: bool = True
+ssrf_enabled: bool = True
+credential_encryption: bool = True
 ```
 
 ## Recent Changes
 
 | Date | Feature | Impact |
 |------|---------|--------|
+| 2026-03-20 | feat-desktop-app-phase3 | Tauri desktop app Phase 3 complete |
+| 2026-03-20 | feat-session-archive | Session archiving system |
+| 2026-03-20 | feat-input-sanitizer | Input validation and sanitization |
+| 2026-03-20 | feat-path-guard | Path traversal protection |
+| 2026-03-20 | feat-credential-vault | Secure credential management |
+| 2026-03-20 | feat-skill-conversation-mode | Skill conversation mode |
+| 2026-03-20 | feat-skill-progressive-loading | Progressive skill loading |
+| 2026-03-20 | feat-skill-dynamic-loader | Dynamic skill loading |
 | 2026-03-20 | feat-desktop-app | Tauri desktop app (Phase 1-2, 80%) |
 | 2026-03-20 | feat-multi-agent | Multi-Agent system (OpenClaw-style) |
 | 2026-03-20 | feat-session-manager | SessionManager with JSONL persistence |
@@ -342,10 +374,24 @@ anyclaw memory stats
 # Compress
 anyclaw compress status
 anyclaw compress run
+
+# Agent (Multi-Agent)
+anyclaw agent list
+anyclaw agent create <name>
+anyclaw agent switch <name>
 ```
 
 ## Update Log
 
+- 2026-03-20: Completed 39 features, 588 tests passing
+- 2026-03-20: Added feat-desktop-app-phase3 - Tauri desktop app Phase 3
+- 2026-03-20: Added feat-session-archive - Session archiving system
+- 2026-03-20: Added feat-input-sanitizer - Input validation and sanitization
+- 2026-03-20: Added feat-path-guard - Path traversal protection
+- 2026-03-20: Added feat-credential-vault - Secure credential management
+- 2026-03-20: Added feat-skill-conversation-mode - Skill conversation mode
+- 2026-03-20: Added feat-skill-progressive-loading - Progressive skill loading
+- 2026-03-20: Added feat-skill-dynamic-loader - Dynamic skill loading
 - 2026-03-20: Added feat-desktop-app - Tauri desktop app (80%)
 - 2026-03-20: Added feat-multi-agent - Multi-Agent system (OpenClaw-style)
 - 2026-03-20: Added feat-session-manager - SessionManager (nanobot compatible)

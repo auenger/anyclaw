@@ -17,15 +17,26 @@
 - 🌊 **流式输出** - 实时响应流
 - 🔌 **MCP 协议** - 连接 MCP Server 生态
 
-### 高级功能 (NEW)
+### 高级功能
 - 👥 **Multi-Agent 系统** - 多 Agent 管理、Identity 人设、独立 Workspace
-- 📋 **SessionManager** - 会话持久化、工具调用边界检测
+- 📋 **SessionManager** - 会话持久化、归档、工具调用边界检测
 - 🤖 **SubAgent** - 后台异步任务执行 (SpawnTool)
 - 💬 **MessageTool** - 跨会话消息发送
 - ⏰ **Cron** - 定时任务调度 (at/every/cron)
 - 💬 **IM 集成** - 飞书、Discord 完整支持
-- 🖥️ **桌面应用** - Tauri 跨平台 GUI (开发中)
-- 🛡️ **SSRF 防护** - 网络安全保护
+- 🖥️ **桌面应用** - Tauri 跨平台 GUI
+
+### 安全功能
+- 🛡️ **SSRF 防护** - 网络请求安全保护
+- 🔐 **路径防护** - 路径遍历攻击防护 (PathGuard)
+- 🧹 **输入净化** - 输入验证和净化 (Input Sanitizer)
+- 🔑 **凭证管理** - 安全凭证存储和日志脱敏 (Credential Vault)
+
+## 项目状态
+
+- **完成特性**: 39 个
+- **测试数量**: 588 个
+- **测试状态**: ✅ 全部通过
 
 ## 快速开始
 
@@ -96,11 +107,12 @@ anyclaw chat --stream
 | `anyclaw skill reload [name]` | 热重载技能 |
 | `anyclaw mcp list` | 列出 MCP 服务器 |
 | `anyclaw mcp test <name>` | 测试 MCP 连接 |
-| `anyclaw serve` | 多通道服务模式 (前台) |
-| `anyclaw serve --daemon` | 后台守护进程模式 |
-| `anyclaw serve --status` | 查看服务状态 |
-| `anyclaw serve --stop` | 停止后台服务 |
-| `anyclaw serve --logs` | 查看服务日志 |
+| `anyclaw agent list` | 列出所有 Agent |
+| `anyclaw agent create <name>` | 创建新 Agent |
+| `anyclaw agent switch <name>` | 切换 Agent |
+| `anyclaw token status` | Token 使用状态 |
+| `anyclaw memory show` | 显示记忆内容 |
+| `anyclaw compress status` | 上下文压缩状态 |
 | `anyclaw version` | 显示版本 |
 
 ## 工作区结构
@@ -195,6 +207,23 @@ anyclaw serve --logs
 
 日志文件位置: `~/.anyclaw/logs/serve.log`
 
+## 桌面应用
+
+AnyClaw 提供 Tauri 跨平台桌面应用：
+
+```bash
+cd tauri-app
+
+# 安装依赖
+npm install
+
+# 开发模式
+npm run tauri:dev
+
+# 构建生产版本
+npm run tauri:build
+```
+
 ## 开发
 
 ### 环境设置
@@ -223,12 +252,17 @@ poetry run ruff check anyclaw/
 ```
 anyclaw/
 ├── agent/        # Agent 核心引擎
+├── agents/       # Multi-Agent 系统
+├── session/      # 会话管理
+├── cron/         # 定时任务
 ├── tools/        # 工具系统 (Tool Calling)
 ├── skills/       # 技能系统
 ├── channels/     # 交互频道 (CLI, Feishu, Discord)
+├── api/          # FastAPI 服务端
 ├── mcp/          # MCP 客户端
+├── security/     # 安全模块 (SSRF, PathGuard, Sanitizer, Credentials)
 ├── workspace/    # 工作区管理
-├── templates/    # 模板文件
+├── memory/       # 记忆系统
 ├── providers/    # LLM Provider
 ├── config/       # 配置系统
 └── cli/          # CLI 应用
@@ -250,7 +284,8 @@ anyclaw/
 - [x] MessageTool 跨会话消息
 - [x] Cron 定时任务
 - [x] Multi-Agent 系统
-- [ ] Tauri 桌面应用 (80%)
+- [x] 安全模块 (SSRF/PathGuard/Sanitizer/Credentials)
+- [x] Tauri 桌面应用
 - [ ] Web UI
 - [ ] 插件系统
 

@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot 和 OpenClaw 的核心优势。项目采用 Python 3.9+ 开发，使用 Poetry 管理依赖，同时提供 Tauri 跨平台桌面应用。
 
+**项目状态**: 39 个特性完成，588 个测试通过 ✅
+
 ### 核心特性
 
 **基础功能**
@@ -15,18 +17,24 @@ AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot
 - ✅ **技能系统** - 可扩展的技能框架，渐进式加载
 - ✅ **MCP 协议** - 连接 MCP Server 生态
 
-**nanobot 兼容** (NEW)
-- ✅ **SessionManager** - 会话持久化、工具调用边界检测
+**nanobot 兼容**
+- ✅ **SessionManager** - 会话持久化、归档、工具调用边界检测
 - ✅ **SubAgent** - 后台异步任务执行 (SpawnTool)
 - ✅ **MessageTool** - 跨会话消息发送
 - ✅ **Cron** - 定时任务调度 (at/every/cron)
 - ✅ **Channel 集成** - CLI、Discord、飞书
 
-**OpenClaw 兼容** (NEW)
+**OpenClaw 兼容**
 - ✅ **Multi-Agent 系统** - 多 Agent 管理、Identity 人设、独立 Workspace
 
-**桌面应用** (NEW)
-- 🔄 **Tauri 桌面应用** - 跨平台 GUI (80% 完成)
+**桌面应用**
+- ✅ **Tauri 桌面应用** - 跨平台 GUI (Phase 1-3 完成)
+
+**安全功能**
+- ✅ **SSRF 防护** - 网络请求安全保护
+- ✅ **路径防护** - 路径遍历攻击防护 (PathGuard)
+- ✅ **输入净化** - 输入验证和净化 (Input Sanitizer)
+- ✅ **凭证管理** - 安全凭证存储和日志脱敏 (Credential Vault)
 
 ## 技术栈
 
@@ -53,7 +61,7 @@ AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot
 - **前端**: React 18 + Vite + TypeScript
 - **样式**: Tailwind CSS + shadcn/ui
 - **API**: FastAPI + SSE (13 个端点)
-- **状态**: Phase 1-2 完成 (80%)，Phase 3 进行中
+- **状态**: Phase 1-3 完成
 
 ## 核心架构
 
@@ -68,46 +76,68 @@ anyclaw/
 │   │   ├── loop.py            # 主处理循环
 │   │   ├── context.py         # 上下文构建器
 │   │   ├── history.py         # 对话历史
-│   │   └── compression.py     # 上下文压缩
-│   ├── multi_agent/           # Multi-Agent 系统 (NEW)
-│   │   ├── manager.py         # Agent 管理器
-│   │   ├── identity.py        # Identity 管理
-│   │   └── workspace.py       # 独立 Workspace
-│   ├── session/               # 会话管理 (NEW)
-│   │   └── manager.py         # SessionManager
-│   ├── subagent/              # 子 Agent 系统 (NEW)
-│   │   └── executor.py        # SubAgent 执行器
+│   │   ├── tool_loop.py       # 工具调用循环
+│   │   ├── subagent.py        # SubAgent 管理器
+│   │   └── tools/             # Agent 工具
+│   │       ├── message.py     # MessageTool
+│   │       └── spawn.py       # SpawnTool
+│   ├── agents/                # Multi-Agent 系统
+│   │   ├── manager.py         # AgentManager
+│   │   ├── identity.py        # IdentityManager
+│   │   └── cli/               # Agent CLI 命令
+│   ├── session/               # 会话管理
+│   │   ├── manager.py         # SessionManager
+│   │   ├── archive.py         # SessionArchiver
+│   │   └── models.py          # 会话模型
+│   ├── cron/                  # 定时任务
+│   │   ├── service.py         # CronService
+│   │   ├── tool.py            # CronTool
+│   │   └── types.py           # Cron 类型
 │   ├── tools/                 # 工具系统
 │   │   ├── base.py            # 工具基类
 │   │   ├── registry.py        # 工具注册表
 │   │   ├── shell.py           # Shell 执行工具
 │   │   ├── filesystem.py      # 文件系统工具
-│   │   ├── message.py         # MessageTool (NEW)
-│   │   └── cron.py            # Cron 定时任务 (NEW)
+│   │   ├── message.py         # MessageTool
+│   │   └── cron.py            # Cron 定时任务
 │   ├── channels/              # 频道系统
 │   │   ├── cli.py             # CLI 频道
 │   │   ├── base.py            # 频道基类
 │   │   ├── feishu.py          # 飞书 Channel
 │   │   ├── discord.py         # Discord Channel
+│   │   ├── manager.py         # ChannelManager
 │   │   └── bus.py             # 消息路由
-│   ├── api/                   # API 服务 (NEW)
+│   ├── api/                   # API 服务
 │   │   ├── server.py          # FastAPI 服务器
 │   │   ├── sse.py             # SSE 流式端点
+│   │   ├── deps.py            # 依赖注入
 │   │   └── routes/            # API 路由
+│   │       ├── health.py      # 健康检查
+│   │       ├── agents.py      # Agent 管理
+│   │       ├── messages.py    # 消息处理
+│   │       ├── skills.py      # 技能管理
+│   │       └── tasks.py       # 任务管理
 │   ├── mcp/                   # MCP 客户端
 │   │   ├── client.py          # MCP 连接管理
 │   │   ├── wrapper.py         # MCPToolWrapper
 │   │   └── config.py          # MCP 配置
 │   ├── skills/                # 技能系统
 │   │   ├── base.py            # 技能基类
-│   │   ├── loader.py          # 技能加载器 (渐进式)
+│   │   ├── loader.py          # 技能加载器 (动态+渐进式)
 │   │   ├── executor.py        # 脚本执行器
 │   │   ├── toolkit.py         # 技能工具链
+│   │   ├── conversation.py    # 技能对话模式
 │   │   ├── models.py          # 数据模型
 │   │   ├── parser.py          # SKILL.md 解析
-│   │   └── builtin/           # 内置技能
-│   ├── security/              # 安全模块 (NEW)
-│   │   └── network.py         # SSRF 防护
+│   │   └── builtin/           # 内置技能 (11 个)
+│   ├── security/              # 安全模块
+│   │   ├── network.py         # SSRF 防护
+│   │   ├── path_guard.py      # 路径遍历防护
+│   │   ├── sanitizer.py       # 输入净化
+│   │   └── credentials.py     # 凭证管理
+│   ├── core/                  # 核心服务
+│   │   ├── serve.py           # 多通道服务管理
+│   │   └── daemon.py          # 守护进程管理
 │   ├── templates/             # 模板文件
 │   │   ├── SOUL.md            # Agent 人设模板
 │   │   ├── USER.md            # 用户档案模板
@@ -124,33 +154,31 @@ anyclaw/
 │   │   ├── manager.py         # 记忆管理器
 │   │   └── automation.py      # 记忆自动化
 │   ├── providers/             # LLM Provider
-│   │   └── zai.py             # ZAI/GLM Provider
-│   ├── core/                  # 核心服务
-│   │   ├── serve.py           # 多通道服务管理
-│   │   └── daemon.py          # 守护进程管理
+│   │   ├── zai.py             # ZAI/GLM Provider
+│   │   └── zai_detect.py      # Endpoint 检测
 │   ├── utils/                 # 工具模块
 │   │   └── logging_config.py  # 日志配置
-│   ├── config/                # 配置系统
+│   ├── config/                # 配置系统 (40+ 字段)
 │   │   ├── settings.py        # Pydantic Settings
 │   │   ├── loader.py          # TOML/JSON 加载器
 │   │   └── config.template.toml  # 配置模板
 │   └── cli/                   # CLI 应用
 │       ├── app.py             # Typer 应用
 │       ├── serve_cmd.py       # serve 命令
-│       └── sidecar_cmd.py     # sidecar 命令 (NEW)
-├── tauri-app/                 # Tauri 桌面应用 (NEW)
+│       └── sidecar_cmd.py     # sidecar 命令
+├── tauri-app/                 # Tauri 桌面应用
 │   ├── src/                   # React 前端
 │   │   ├── App.tsx            # 主应用
 │   │   ├── components/        # UI 组件
-│   │   └── index.css          # 样式
+│   │   └── index.css          # Tailwind 样式
 │   ├── src-tauri/             # Rust 后端
 │   │   ├── src/lib.rs         # Shell 实现
 │   │   └── tauri.conf.json    # Tauri 配置
 │   ├── package.json           # npm 依赖
 │   └── vite.config.ts         # Vite 配置
-├── tests/                     # 测试目录
+├── tests/                     # 测试目录 (588 个测试)
 ├── docs/                      # 文档目录
-├── features/                  # Feature 归档
+├── features/                  # Feature 归档 (39 个特性)
 ├── pyproject.toml             # 项目配置
 └── .env.example               # 环境变量示例
 ```
@@ -198,6 +226,7 @@ cp anyclaw/.env.example anyclaw/.env
 
 # 编辑 .env 文件，设置必要的 API Key
 # OPENAI_API_KEY=sk-your-key-here
+# ZAI_API_KEY=your-zai-key
 ```
 
 ### 运行应用
@@ -243,6 +272,11 @@ poetry run python -m anyclaw serve --logs       # 查看日志
 # API Sidecar 模式 (供桌面应用调用)
 poetry run python -m anyclaw sidecar --port 62601
 poetry run python -m anyclaw sidecar --help
+
+# Agent 管理 (Multi-Agent)
+poetry run python -m anyclaw agent list
+poetry run python -m anyclaw agent create <name>
+poetry run python -m anyclaw agent switch <name>
 ```
 
 ### 桌面应用开发
@@ -273,6 +307,10 @@ poetry run pytest tests/test_config.py -v
 poetry run pytest tests/test_agent.py -v
 poetry run pytest tests/test_skills.py -v
 poetry run pytest tests/test_skill_loader.py -v
+poetry run pytest tests/test_security.py -v
+poetry run pytest tests/test_session.py -v
+poetry run pytest tests/test_subagent.py -v
+poetry run pytest tests/test_cron.py -v
 
 # 运行带覆盖率的测试
 poetry run pytest --cov=anyclaw tests/
@@ -414,7 +452,7 @@ anyclaw init
 ### Workspace 安全限制
 
 - `restrict_to_workspace` 配置项（默认启用）
-- WriteFileTool 路径检查
+- PathGuard 路径验证
 - 符号链接解析防绕过
 
 ### 测试规范
@@ -429,3 +467,4 @@ anyclaw init
 2. **保持依赖同步**: 修改依赖后更新 `pyproject.toml` 和 `poetry.lock`
 3. **异步优先**: Agent 处理、LLM 调用、技能执行都应使用异步
 4. **配置优先级**: 环境变量 > 配置文件 > 默认值
+5. **安全第一**: 使用 PathGuard 验证路径，使用 CredentialVault 保护凭证
