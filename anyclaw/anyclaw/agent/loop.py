@@ -11,9 +11,12 @@ from typing import Optional, Dict, List, Any, AsyncGenerator, Callable, Awaitabl
 
 # 优化 litellm 性能
 import litellm
+
 litellm.drop_params = True
 litellm.set_verbose = False
 litellm.suppress_debug_info = True  # 禁用 "Give Feedback / Get Help" 提示
+# 重试配置（将在 Settings 加载后更新）
+litellm.num_retries = 3  # 默认值，后续会根据 settings 更新
 
 from litellm import acompletion
 
@@ -26,7 +29,6 @@ from anyclaw.tools.memory import SaveMemoryTool, UpdatePersonaTool
 from anyclaw.tools.search import SearchFilesTool
 from anyclaw.bus.events import OutboundMessage  # 新增导入
 from anyclaw.security.sanitizers import ContentSanitizer
-from anyclaw.security.validators import ValidationError
 from .history import ConversationHistory
 from .context import ContextBuilder
 from .logger import get_agent_logger, TOOL_CALL, CONVERSATION
@@ -68,18 +70,19 @@ class AgentLoop:
             from anyclaw.session.manager import SessionManager, SessionManagerConfig
 
             # 检查是否启用 SessionManager
-            session_enabled = getattr(settings, 'session_enabled', True)
+            session_enabled = getattr(settings, "session_enabled", True)
 
             if session_enabled:
                 session_config = SessionManagerConfig(
                     workspace=self.workspace,
                     sessions_dir=self.workspace / settings.sessions_dir,
-                    max_history_messages=getattr(settings, 'max_history_messages', 500),
-                    enable_persistence=getattr(settings, 'enable_session_persistence', True),
-                    enable_memory_cache=getattr(settings, 'enable_session_cache', True)
+                    max_history_messages=getattr(settings, "max_history_messages", 500),
+                    enable_persistence=getattr(settings, "enable_session_persistence", True),
+                    enable_memory_cache=getattr(settings, "enable_session_cache", True),
                 )
                 try:
                     from anyclaw.session.manager import SessionManager
+
                     self.session_manager = SessionManager(session_config)
                     logger.info("SessionManager enabled")
                 except ImportError as e:
@@ -93,9 +96,10 @@ class AgentLoop:
         if enable_archive:
             try:
                 from anyclaw.session.archive import SessionArchiveManager, ArchiveConfig
+
                 archive_config = ArchiveConfig(
-                    enable_archive=getattr(settings, 'enable_session_archive', True),
-                    retention_days=getattr(settings, 'session_retention_days', 30),
+                    enable_archive=getattr(settings, "enable_session_archive", True),
+                    retention_days=getattr(settings, "session_retention_days", 30),
                 )
                 self.archive_manager = SessionArchiveManager(archive_config)
                 logger.debug("SessionArchiveManager enabled")
@@ -113,23 +117,27 @@ class AgentLoop:
 
     def _register_default_tools(self) -> None:
         """注册默认工具"""
-        self.tools.register(ExecTool(
-            working_dir=str(self.workspace),
-            timeout=settings.tool_timeout if hasattr(settings, 'tool_timeout') else 60,
-        ))
+        self.tools.register(
+            ExecTool(
+                working_dir=str(self.workspace),
+                timeout=settings.tool_timeout if hasattr(settings, "tool_timeout") else 60,
+            )
+        )
         self.tools.register(ReadFileTool(workspace=self.workspace))
-        self.tools.register(WriteFileTool(
-            workspace=self.workspace,
-            restrict_to_workspace=settings.restrict_to_workspace,
-        ))
+        self.tools.register(
+            WriteFileTool(
+                workspace=self.workspace,
+                restrict_to_workspace=settings.restrict_to_workspace,
+            )
+        )
         # 添加 list_dir 超时配置
-        list_dir_timeout = getattr(settings, 'list_dir_timeout', 30)  # 默认 30 秒
-        list_dir_max_entries = getattr(settings, 'list_dir_max_entries', 200)  # 默认 200 条
-        self.tools.register(ListDirTool(
-            workspace=self.workspace,
-            timeout=list_dir_timeout,
-            max_entries=list_dir_max_entries
-        ))
+        list_dir_timeout = getattr(settings, "list_dir_timeout", 30)  # 默认 30 秒
+        list_dir_max_entries = getattr(settings, "list_dir_max_entries", 200)  # 默认 200 条
+        self.tools.register(
+            ListDirTool(
+                workspace=self.workspace, timeout=list_dir_timeout, max_entries=list_dir_max_entries
+            )
+        )
 
         # 记忆工具
         self.tools.register(SaveMemoryTool(workspace_path=str(self.workspace)))
@@ -138,16 +146,19 @@ class AgentLoop:
         # 新增：MessageTool（如果启用）
         if self.enable_message_tool:
             from anyclaw.agent.tools.message import MessageTool
+
             self._message_tool = MessageTool()
             self.tools.register(self._message_tool)
 
         # 智能文件搜索工具
-        self.tools.register(SearchFilesTool(
-            workspace=self.workspace,
-            timeout=getattr(settings, 'search_timeout', 5.0),
-            max_depth=getattr(settings, 'search_max_depth', 3),
-            max_results=getattr(settings, 'search_max_results', 50),
-        ))
+        self.tools.register(
+            SearchFilesTool(
+                workspace=self.workspace,
+                timeout=getattr(settings, "search_timeout", 5.0),
+                max_depth=getattr(settings, "search_max_depth", 3),
+                max_results=getattr(settings, "search_max_results", 50),
+            )
+        )
 
     async def connect_mcp_servers(self) -> None:
         """连接配置的 MCP Server 并注册工具
@@ -167,6 +178,7 @@ class AgentLoop:
 
         try:
             from anyclaw.tools.mcp import connect_mcp_servers
+
             await connect_mcp_servers(mcp_servers, self.tools, self._mcp_stack)
             logger.info("MCP servers connected")
         except Exception as e:
@@ -216,7 +228,7 @@ class AgentLoop:
         if not self.archive_manager:
             return None
 
-        version = getattr(settings, 'version', 'unknown')
+        version = getattr(settings, "version", "unknown")
         return self.archive_manager.start_session(
             cwd=self.workspace,
             channel=channel,
@@ -236,8 +248,7 @@ class AgentLoop:
     def _get_skills_info(self) -> List[Dict[str, Any]]:
         """获取技能信息列表"""
         return [
-            {"name": name, "description": skill.description}
-            for name, skill in self.skills.items()
+            {"name": name, "description": skill.description} for name, skill in self.skills.items()
         ]
 
     # SessionManager 适配器方法
@@ -268,7 +279,9 @@ class AgentLoop:
         if self._message_tool:
             self._message_tool.set_send_callback(callback)
 
-    def set_message_context(self, channel: str, chat_id: str, message_id: Optional[str] = None) -> None:
+    def set_message_context(
+        self, channel: str, chat_id: str, message_id: Optional[str] = None
+    ) -> None:
         """设置 MessageTool 的上下文（由 Channel 调用）"""
         if self._message_tool:
             self._message_tool.set_context(channel, chat_id, message_id)
@@ -412,9 +425,13 @@ class AgentLoop:
     ) -> str:
         """运行带 tool calling 的循环"""
         iteration = 0
+        empty_response_count = 0  # 空响应计数器
 
         # 初始化迭代摘要收集器
         summary_collector = IterationSummaryCollector()
+
+        # 更新 LiteLLM 重试配置
+        litellm.num_retries = settings.llm_max_retries
 
         while iteration < max_iterations:
             iteration += 1
@@ -427,17 +444,42 @@ class AgentLoop:
 
             message = response.choices[0].message
 
+            # 记录 LLM 响应详情（可选）
+            if settings.llm_log_response_detail:
+                self._log_llm_response_detail(response, message)
+
             # 检查是否有 tool calls
-            if not hasattr(message, 'tool_calls') or not message.tool_calls:
-                return message.content or ""
+            if not hasattr(message, "tool_calls") or not message.tool_calls:
+                content = message.content or ""
+
+                # 空响应检测与恢复
+                if not content:
+                    empty_response_count += 1
+                    logger.warning(
+                        f"LLM returned empty content (attempt {empty_response_count}/"
+                        f"{settings.llm_empty_response_retry + 1})"
+                    )
+
+                    if empty_response_count <= settings.llm_empty_response_retry:
+                        # 追加提示消息，重新请求
+                        messages.append({"role": "user", "content": "请继续完成任务。"})
+                        continue  # 继续循环，重新调用 LLM
+                    else:
+                        # 达到最大重试次数
+                        logger.error("Max empty response retries reached")
+                        return "抱歉，模型响应异常，请稍后重试。"
+
+                return content
 
             # 处理 tool calls
             formatted_tool_calls = self._format_tool_calls(message.tool_calls)
-            messages.append({
-                "role": "assistant",
-                "content": message.content,
-                "tool_calls": formatted_tool_calls
-            })
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": message.content,
+                    "tool_calls": formatted_tool_calls,
+                }
+            )
 
             # 记录 assistant 消息（包含 tool_calls）到 session
             if self.session_manager:
@@ -445,7 +487,7 @@ class AgentLoop:
                     self._session_key,
                     "assistant",
                     content=message.content,
-                    tool_calls=formatted_tool_calls
+                    tool_calls=formatted_tool_calls,
                 )
 
             for tool_call in message.tool_calls:
@@ -492,25 +534,27 @@ class AgentLoop:
                 if self.archive_manager and call_id:
                     self.archive_manager.record_tool_result(
                         call_id,
-                        result[:self._TOOL_RESULT_MAX_CHARS],
+                        result[: self._TOOL_RESULT_MAX_CHARS],
                         duration_ms=duration_ms,
                         success=success,
                     )
 
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": result[:self._TOOL_RESULT_MAX_CHARS]
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": result[: self._TOOL_RESULT_MAX_CHARS],
+                    }
+                )
 
                 # 记录 tool 结果到 session
                 if self.session_manager:
                     self.session_manager.add_message(
                         self._session_key,
                         "tool",
-                        content=result[:self._TOOL_RESULT_MAX_CHARS],
+                        content=result[: self._TOOL_RESULT_MAX_CHARS],
                         tool_call_id=tool_call.id,
-                        name=tool_name
+                        name=tool_name,
                     )
 
         # 达到最大迭代次数，生成智能汇报
@@ -524,8 +568,8 @@ class AgentLoop:
     ) -> str:
         """生成迭代限制智能汇报"""
         # 检查是否启用智能汇报
-        enabled = getattr(global_settings, 'iteration_summary_enabled', True)
-        max_tokens = getattr(global_settings, 'iteration_summary_max_tokens', 1000)
+        enabled = getattr(global_settings, "iteration_summary_enabled", True)
+        max_tokens = getattr(global_settings, "iteration_summary_max_tokens", 1000)
 
         generator = IterationSummaryGenerator(enabled=enabled, max_tokens=max_tokens)
         return await generator.generate(collector, messages, max_iterations)
@@ -620,6 +664,7 @@ class AgentLoop:
         # ZAI Provider (使用 OpenAI 兼容接口)
         if model.startswith("openai/") and settings.llm_provider == "zai":
             from anyclaw.providers.zai import get_zai_provider
+
             provider = get_zai_provider()
             if provider.is_configured():
                 kwargs.update(provider.get_completion_kwargs(model))
@@ -628,6 +673,7 @@ class AgentLoop:
         # ZAI Provider (旧格式)
         if model.startswith("zai/"):
             from anyclaw.providers.zai import get_zai_provider
+
             provider = get_zai_provider()
             if provider.is_configured():
                 kwargs.update(provider.get_completion_kwargs(model))
@@ -661,12 +707,49 @@ class AgentLoop:
         """格式化 tool calls 为消息格式"""
         formatted = []
         for tc in tool_calls:
-            formatted.append({
-                "id": tc.id,
-                "type": "function",
-                "function": {
-                    "name": tc.function.name,
-                    "arguments": tc.function.arguments
+            formatted.append(
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
                 }
-            })
+            )
         return formatted
+
+    def _log_llm_response_detail(self, response, message) -> None:
+        """记录 LLM 响应详情（DEBUG 级别）
+
+        Args:
+            response: LLM 响应对象
+            message: 响应消息对象
+        """
+        has_content = bool(message.content)
+        has_tool_calls = hasattr(message, "tool_calls") and bool(message.tool_calls)
+        tool_calls_count = len(message.tool_calls) if has_tool_calls else 0
+
+        # 提取 usage 信息
+        usage = None
+        if hasattr(response, "usage") and response.usage:
+            usage = {
+                "prompt": getattr(response.usage, "prompt_tokens", "?"),
+                "completion": getattr(response.usage, "completion_tokens", "?"),
+                "total": getattr(response.usage, "total_tokens", "?"),
+            }
+
+        # 提取 finish_reason
+        finish_reason = (
+            getattr(response.choices[0], "finish_reason", None) if response.choices else None
+        )
+
+        logger.debug(
+            f"[LLM] Response detail: model={settings.llm_model}, "
+            f"content={has_content}, tool_calls={has_tool_calls}({tool_calls_count}), "
+            f"usage={usage}, finish_reason={finish_reason}"
+        )
+
+        # 如果是空响应，记录更详细的信息
+        if not has_content and not has_tool_calls:
+            logger.warning(
+                f"[LLM] Empty response detected: finish_reason={finish_reason}, "
+                f"response_type={type(response).__name__}"
+            )

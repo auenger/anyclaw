@@ -23,403 +23,214 @@ class Settings(BaseSettings):
     """AnyClaw 配置"""
 
     # Agent 配置
-    agent_name: str = Field(
-        default="AnyClaw",
-        description="Agent 显示名称"
-    )
+    agent_name: str = Field(default="AnyClaw", description="Agent 显示名称")
     agent_role: str = Field(
-        default="You are a helpful AI assistant named {name}.",
-        description="Agent 系统提示词"
+        default="You are a helpful AI assistant named {name}.", description="Agent 系统提示词"
     )
 
     # LLM 配置
-    llm_provider: str = Field(
-        default="openai",
-        description="LLM 提供商"
+    llm_provider: str = Field(default="openai", description="LLM 提供商")
+    llm_model: str = Field(default="gpt-4o-mini", description="LLM 模型")
+    llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="LLM 温度参数")
+    llm_max_tokens: int = Field(default=2000, ge=1, description="LLM 最大生成分数")
+    llm_timeout: int = Field(default=60, ge=1, description="LLM 请求超时时间（秒）")
+
+    # LLM 重试与韧性配置
+    llm_max_retries: int = Field(default=3, ge=0, le=10, description="LiteLLM 最大重试次数")
+    llm_retry_delay: float = Field(
+        default=1.0, ge=0.0, le=30.0, description="LiteLLM 重试延迟（秒）"
     )
-    llm_model: str = Field(
-        default="gpt-4o-mini",
-        description="LLM 模型"
-    )
-    llm_temperature: float = Field(
-        default=0.7,
-        ge=0.0,
-        le=2.0,
-        description="LLM 温度参数"
-    )
-    llm_max_tokens: int = Field(
-        default=2000,
-        ge=1,
-        description="LLM 最大生成分数"
-    )
-    llm_timeout: int = Field(
-        default=60,
-        ge=1,
-        description="LLM 请求超时时间（秒）"
+    llm_empty_response_retry: int = Field(default=2, ge=0, le=5, description="空响应最大重试次数")
+    llm_log_response_detail: bool = Field(
+        default=False, description="是否记录 LLM 响应详情（DEBUG 级别）"
     )
 
     # Tool Calling 配置
-    tool_timeout: int = Field(
-        default=60,
-        ge=1,
-        description="Tool 执行超时时间（秒）"
-    )
-    tool_max_iterations: int = Field(
-        default=10,
-        ge=1,
-        description="Tool Calling 最大迭代次数"
-    )
+    tool_timeout: int = Field(default=60, ge=1, description="Tool 执行超时时间（秒）")
+    tool_max_iterations: int = Field(default=10, ge=1, description="Tool Calling 最大迭代次数")
 
     # 工具超时配置
     list_dir_timeout: int = Field(
-        default=30,
-        ge=1,
-        le=300,
-        description="list_dir 工具超时时间（秒）"
+        default=30, ge=1, le=300, description="list_dir 工具超时时间（秒）"
     )
 
     list_dir_max_entries: int = Field(
-        default=200,
-        ge=1,
-        le=10000,
-        description="list_dir 最大返回条目数"
+        default=200, ge=1, le=10000, description="list_dir 最大返回条目数"
     )
 
     # MessageTool 配置
     enable_message_tool: bool = Field(
-        default=True,
-        description="是否启用 MessageTool（跨会话消息发送）"
+        default=True, description="是否启用 MessageTool（跨会话消息发送）"
     )
 
     # SubAgent 配置
-    enable_subagent: bool = Field(
-        default=True,
-        description="是否启用 SubAgent（后台任务管理）"
-    )
+    enable_subagent: bool = Field(default=True, description="是否启用 SubAgent（后台任务管理）")
     subagent_max_iterations: int = Field(
-        default=15,
-        ge=1,
-        le=50,
-        description="SubAgent 最大迭代次数"
+        default=15, ge=1, le=50, description="SubAgent 最大迭代次数"
     )
     subagent_restrict_workspace: bool = Field(
-        default=False,
-        description="SubAgent 是否限制在工作区内"
+        default=False, description="SubAgent 是否限制在工作区内"
     )
 
     # 迭代摘要配置
     iteration_summary_enabled: bool = Field(
-        default=True,
-        description="达到迭代限制时是否生成智能汇报"
+        default=True, description="达到迭代限制时是否生成智能汇报"
     )
     iteration_summary_max_tokens: int = Field(
-        default=1000,
-        ge=100,
-        le=4000,
-        description="汇报生成的最大 token 数"
+        default=1000, ge=100, le=4000, description="汇报生成的最大 token 数"
     )
 
     # Cron 配置
-    enable_cron: bool = Field(
-        default=True,
-        description="是否启用 Cron 调度（定时任务）"
-    )
+    enable_cron: bool = Field(default=True, description="是否启用 Cron 调度（定时任务）")
     cron_jobs_file: str = Field(
-        default="~/.anyclaw/cron/jobs.json",
-        description="Cron 任务存储文件路径"
+        default="~/.anyclaw/cron/jobs.json", description="Cron 任务存储文件路径"
     )
-    cron_max_jobs: int = Field(
-        default=100,
-        ge=1,
-        le=1000,
-        description="Cron 最大任务数"
-    )
+    cron_max_jobs: int = Field(default=100, ge=1, le=1000, description="Cron 最大任务数")
 
     # API Keys（优先从配置文件读取）
-    openai_api_key: str = Field(
-        default="",
-        description="OpenAI API Key"
-    )
-    anthropic_api_key: str = Field(
-        default="",
-        description="Anthropic API Key"
-    )
+    openai_api_key: str = Field(default="", description="OpenAI API Key")
+    anthropic_api_key: str = Field(default="", description="Anthropic API Key")
 
     # ZAI Provider 配置
-    zai_api_key: str = Field(
-        default="",
-        description="ZAI API Key"
-    )
+    zai_api_key: str = Field(default="", description="ZAI API Key")
     zai_endpoint: str = Field(
         default="coding",
-        description="ZAI endpoint: coding/global/cn (默认使用 coding 即 GLM Coding Plan)"
+        description="ZAI endpoint: coding/global/cn (默认使用 coding 即 GLM Coding Plan)",
     )
-    zai_base_url: str = Field(
-        default="",
-        description="自定义 ZAI base URL (覆盖 endpoint 设置)"
-    )
+    zai_base_url: str = Field(default="", description="自定义 ZAI base URL (覆盖 endpoint 设置)")
 
     # CLI 配置
-    cli_prompt: str = Field(
-        default="You: ",
-        description="CLI 输入提示符"
-    )
+    cli_prompt: str = Field(default="You: ", description="CLI 输入提示符")
 
     # 技能配置（使用包内绝对路径）
-    skills_dir: str = Field(
-        default=_BUILTIN_SKILLS_DIR,
-        description="技能目录（向后兼容）"
-    )
+    skills_dir: str = Field(default=_BUILTIN_SKILLS_DIR, description="技能目录（向后兼容）")
 
     # 多目录技能配置
     skills_dirs: List[str] = Field(
-        default_factory=lambda: [_BUILTIN_SKILLS_DIR],
-        description="多个技能目录（按优先级顺序）"
+        default_factory=lambda: [_BUILTIN_SKILLS_DIR], description="多个技能目录（按优先级顺序）"
     )
     skills_managed_dir: str = Field(
-        default=_MANAGED_SKILLS_DIR,
-        description="管理的技能目录（用户安装）"
+        default=_MANAGED_SKILLS_DIR, description="管理的技能目录（用户安装）"
     )
     skills_workspace_dir: str = Field(
-        default=_WORKSPACE_SKILLS_DIR,
-        description="工作空间技能目录（最高优先级）"
+        default=_WORKSPACE_SKILLS_DIR, description="工作空间技能目录（最高优先级）"
     )
 
     # 工作空间
-    workspace_dir: str = Field(
-        default="workspace",
-        description="工作空间目录"
-    )
+    workspace_dir: str = Field(default="workspace", description="工作空间目录")
 
     # Workspace 配置
-    workspace: str = Field(
-        default="~/.anyclaw/workspace",
-        description="工作区路径"
-    )
-    skip_bootstrap: bool = Field(
-        default=False,
-        description="跳过引导文件创建"
-    )
-    bootstrap_max_chars: int = Field(
-        default=20000,
-        ge=1000,
-        description="单个引导文件最大字符数"
-    )
+    workspace: str = Field(default="~/.anyclaw/workspace", description="工作区路径")
+    skip_bootstrap: bool = Field(default=False, description="跳过引导文件创建")
+    bootstrap_max_chars: int = Field(default=20000, ge=1000, description="单个引导文件最大字符数")
     bootstrap_total_max_chars: int = Field(
-        default=150000,
-        ge=10000,
-        description="引导文件总最大字符数"
+        default=150000, ge=10000, description="引导文件总最大字符数"
     )
 
     # Token 管理配置
-    token_soft_limit: int = Field(
-        default=100000,
-        ge=1000,
-        description="Token 软限制（触发警告）"
-    )
-    token_hard_limit: int = Field(
-        default=200000,
-        ge=1000,
-        description="Token 硬限制（阻止输入）"
-    )
+    token_soft_limit: int = Field(default=100000, ge=1000, description="Token 软限制（触发警告）")
+    token_hard_limit: int = Field(default=200000, ge=1000, description="Token 硬限制（阻止输入）")
     token_warning_threshold: float = Field(
-        default=0.8,
-        ge=0.5,
-        le=1.0,
-        description="Token 警告阈值（相对于软限制）"
+        default=0.8, ge=0.5, le=1.0, description="Token 警告阈值（相对于软限制）"
     )
-    token_warning_enabled: bool = Field(
-        default=True,
-        description="是否启用 token 警告"
-    )
+    token_warning_enabled: bool = Field(default=True, description="是否启用 token 警告")
 
     # Persona 人设配置
-    persona_enabled: bool = Field(
-        default=True,
-        description="是否启用人设系统"
-    )
-    persona_max_chars: int = Field(
-        default=10000,
-        ge=1000,
-        description="单个人设文件最大字符数"
-    )
+    persona_enabled: bool = Field(default=True, description="是否启用人设系统")
+    persona_max_chars: int = Field(default=10000, ge=1000, description="单个人设文件最大字符数")
 
     # 压缩配置
-    compress_enabled: bool = Field(
-        default=True,
-        description="是否启用自动压缩"
-    )
-    compress_threshold: int = Field(
-        default=10,
-        ge=2,
-        description="触发压缩的消息数阈值"
-    )
-    compress_keep_recent: int = Field(
-        default=5,
-        ge=1,
-        description="压缩时保留的最近消息数"
-    )
+    compress_enabled: bool = Field(default=True, description="是否启用自动压缩")
+    compress_threshold: int = Field(default=10, ge=2, description="触发压缩的消息数阈值")
+    compress_keep_recent: int = Field(default=5, ge=1, description="压缩时保留的最近消息数")
     compress_strategy: str = Field(
-        default="truncate",
-        description="压缩策略: summary/truncate/key_points"
+        default="truncate", description="压缩策略: summary/truncate/key_points"
     )
 
     # 滑动窗口配置
-    window_enabled: bool = Field(
-        default=True,
-        description="是否启用滑动窗口"
-    )
-    window_size: int = Field(
-        default=20,
-        ge=5,
-        description="滑动窗口大小"
-    )
+    window_enabled: bool = Field(default=True, description="是否启用滑动窗口")
+    window_size: int = Field(default=20, ge=5, description="滑动窗口大小")
 
     # 检查点配置
-    checkpoint_dir: str = Field(
-        default="~/.anyclaw/checkpoints",
-        description="检查点存储目录"
-    )
+    checkpoint_dir: str = Field(default="~/.anyclaw/checkpoints", description="检查点存储目录")
 
     # 记忆系统配置
-    memory_enabled: bool = Field(
-        default=True,
-        description="是否启用记忆系统"
-    )
-    memory_max_chars: int = Field(
-        default=10000,
-        ge=1000,
-        description="长期记忆最大字符数"
-    )
-    memory_daily_load_days: int = Field(
-        default=2,
-        ge=1,
-        le=30,
-        description="加载最近几天的日志"
-    )
-    memory_auto_update: bool = Field(
-        default=False,
-        description="是否自动更新记忆（无需确认）"
-    )
+    memory_enabled: bool = Field(default=True, description="是否启用记忆系统")
+    memory_max_chars: int = Field(default=10000, ge=1000, description="长期记忆最大字符数")
+    memory_daily_load_days: int = Field(default=2, ge=1, le=30, description="加载最近几天的日志")
+    memory_auto_update: bool = Field(default=False, description="是否自动更新记忆（无需确认）")
 
     # 流式输出配置
-    stream_enabled: bool = Field(
-        default=True,
-        description="是否启用流式输出"
-    )
+    stream_enabled: bool = Field(default=True, description="是否启用流式输出")
 
     # 安全配置
     # 快捷开关：开放所有权限（慎用！）
     allow_all_access: bool = Field(
-        default=False,
-        description="开放所有权限（禁用所有限制，仅限开发/测试环境）"
+        default=False, description="开放所有权限（禁用所有限制，仅限开发/测试环境）"
     )
 
     restrict_to_workspace: bool = Field(
-        default=True,
-        description="是否限制文件写入到 workspace 内（提升安全性）"
+        default=True, description="是否限制文件写入到 workspace 内（提升安全性）"
     )
 
     # 路径安全配置 (PathGuard)
     path_extra_allowed_dirs: List[str] = Field(
-        default_factory=list,
-        description="额外允许访问的目录列表（在 workspace 之外）"
+        default_factory=list, description="额外允许访问的目录列表（在 workspace 之外）"
     )
     path_allow_symlinks_in_workspace: bool = Field(
-        default=True,
-        description="是否允许工作区内的符号链接（目标必须在允许目录内）"
+        default=True, description="是否允许工作区内的符号链接（目标必须在允许目录内）"
     )
 
     # 搜索工具配置
     search_allow_all_paths: bool = Field(
         default=True,
-        description="搜索工具：是否允许搜索所有路径（非危险路径）。设为 false 时仅允许 workspace 和 extra_allowed_dirs"
+        description="搜索工具：是否允许搜索所有路径（非危险路径）。设为 false 时仅允许 workspace 和 extra_allowed_dirs",
     )
     search_extra_allowed_dirs: List[str] = Field(
-        default_factory=list,
-        description="搜索工具：额外允许搜索的目录列表"
+        default_factory=list, description="搜索工具：额外允许搜索的目录列表"
     )
-    search_max_depth: int = Field(
-        default=4,
-        description="搜索工具：默认最大搜索深度"
-    )
-    search_timeout: float = Field(
-        default=10.0,
-        description="搜索工具：默认搜索超时（秒）"
-    )
+    search_max_depth: int = Field(default=4, description="搜索工具：默认最大搜索深度")
+    search_timeout: float = Field(default=10.0, description="搜索工具：默认搜索超时（秒）")
 
     # ExecTool 安全配置
     exec_deny_patterns: List[str] = Field(
-        default_factory=list,
-        description="用户自定义的命令黑名单模式（正则表达式）"
+        default_factory=list, description="用户自定义的命令黑名单模式（正则表达式）"
     )
     exec_allow_patterns: List[str] = Field(
-        default_factory=list,
-        description="用户自定义的命令白名单模式（设置后启用白名单模式）"
+        default_factory=list, description="用户自定义的命令白名单模式（设置后启用白名单模式）"
     )
-    exec_unrestricted: bool = Field(
-        default=False,
-        description="是否允许执行任意命令（不限制路径）"
-    )
+    exec_unrestricted: bool = Field(default=False, description="是否允许执行任意命令（不限制路径）")
 
     # SSRF 防护配置
-    ssrf_enabled: bool = Field(
-        default=True,
-        description="是否启用 SSRF 防护"
-    )
+    ssrf_enabled: bool = Field(default=True, description="是否启用 SSRF 防护")
     ssrf_allowed_networks: List[str] = Field(
-        default_factory=list,
-        description="允许访问的私有网络（CIDR 格式）"
+        default_factory=list, description="允许访问的私有网络（CIDR 格式）"
     )
     ssrf_allowed_private_domains: List[str] = Field(
-        default_factory=list,
-        description="允许访问的私有域名"
+        default_factory=list, description="允许访问的私有域名"
     )
-    stream_buffer_size: int = Field(
-        default=10,
-        ge=1,
-        description="流式输出缓冲块数"
-    )
+    stream_buffer_size: int = Field(default=10, ge=1, description="流式输出缓冲块数")
 
     # MCP Server 配置
     mcp_servers: Dict[str, MCPServerConfig] = Field(
-        default_factory=dict,
-        description="MCP Server 配置字典"
+        default_factory=dict, description="MCP Server 配置字典"
     )
 
     # SessionManager 配置
-    session_enabled: bool = Field(
-        default=True,
-        description="是否启用 SessionManager（默认启用）"
-    )
+    session_enabled: bool = Field(default=True, description="是否启用 SessionManager（默认启用）")
 
-    sessions_dir: str = Field(
-        default="sessions",
-        description="会话存储目录（相对于 workspace）"
-    )
+    sessions_dir: str = Field(default="sessions", description="会话存储目录（相对于 workspace）")
 
-    max_history_messages: int = Field(
-        default=500,
-        ge=1,
-        le=10000,
-        description="会话历史最大消息数"
-    )
+    max_history_messages: int = Field(default=500, ge=1, le=10000, description="会话历史最大消息数")
 
     enable_session_persistence: bool = Field(
-        default=True,
-        description="是否启用会话持久化（JSONL 文件）"
+        default=True, description="是否启用会话持久化（JSONL 文件）"
     )
 
-    enable_session_cache: bool = Field(
-        default=True,
-        description="是否启用会话内存缓存"
-    )
+    enable_session_cache: bool = Field(default=True, description="是否启用会话内存缓存")
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="allow"
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="allow"
     )
 
     def get_system_prompt(self) -> str:
@@ -460,6 +271,7 @@ class Settings(BaseSettings):
         # 2. 尝试从配置文件加载
         try:
             from anyclaw.config.loader import get_api_key as load_api_key
+
             key = load_api_key(provider)
             if key:
                 return key
@@ -505,6 +317,7 @@ def _load_from_config_file(settings: Settings) -> Settings:
 
         # 覆盖 API Keys（只有当环境变量为空时）
         import os
+
         if not os.environ.get("OPENAI_API_KEY") and config.providers.openai.api_key:
             settings.openai_api_key = config.providers.openai.api_key
         if not os.environ.get("ANTHROPIC_API_KEY") and config.providers.anthropic.api_key:
@@ -513,36 +326,36 @@ def _load_from_config_file(settings: Settings) -> Settings:
             settings.zai_api_key = config.providers.zai.api_key
 
         # 覆盖安全设置
-        if hasattr(config, 'security'):
+        if hasattr(config, "security"):
             sec = config.security
             # 快捷开关
-            if hasattr(sec, 'allow_all_access'):
+            if hasattr(sec, "allow_all_access"):
                 settings.allow_all_access = sec.allow_all_access
             # 路径限制
-            if hasattr(sec, 'restrict_to_workspace'):
+            if hasattr(sec, "restrict_to_workspace"):
                 settings.restrict_to_workspace = sec.restrict_to_workspace
-            if hasattr(sec, 'extra_allowed_dirs'):
+            if hasattr(sec, "extra_allowed_dirs"):
                 settings.path_extra_allowed_dirs = sec.extra_allowed_dirs
-            if hasattr(sec, 'allow_symlinks'):
+            if hasattr(sec, "allow_symlinks"):
                 settings.path_allow_symlinks_in_workspace = sec.allow_symlinks
             # SSRF
-            if hasattr(sec, 'ssrf_enabled'):
+            if hasattr(sec, "ssrf_enabled"):
                 settings.ssrf_enabled = sec.ssrf_enabled
             # 命令执行
-            if hasattr(sec, 'exec_deny_patterns'):
+            if hasattr(sec, "exec_deny_patterns"):
                 settings.exec_deny_patterns = sec.exec_deny_patterns
-            if hasattr(sec, 'exec_allow_patterns'):
+            if hasattr(sec, "exec_allow_patterns"):
                 settings.exec_allow_patterns = sec.exec_allow_patterns
-            if hasattr(sec, 'exec_unrestricted'):
+            if hasattr(sec, "exec_unrestricted"):
                 settings.exec_unrestricted = sec.exec_unrestricted
             # 搜索工具
-            if hasattr(sec, 'search_allow_all_paths'):
+            if hasattr(sec, "search_allow_all_paths"):
                 settings.search_allow_all_paths = sec.search_allow_all_paths
-            if hasattr(sec, 'search_extra_allowed_dirs'):
+            if hasattr(sec, "search_extra_allowed_dirs"):
                 settings.search_extra_allowed_dirs = sec.search_extra_allowed_dirs
-            if hasattr(sec, 'search_max_depth'):
+            if hasattr(sec, "search_max_depth"):
                 settings.search_max_depth = sec.search_max_depth
-            if hasattr(sec, 'search_timeout'):
+            if hasattr(sec, "search_timeout"):
                 settings.search_timeout = sec.search_timeout
 
     except Exception:
