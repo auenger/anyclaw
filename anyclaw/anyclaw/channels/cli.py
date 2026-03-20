@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, AsyncGenerator, Callable
+import os
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Callable, Optional
 
 from rich.console import Console
 from rich.prompt import Prompt
@@ -13,6 +14,11 @@ from rich.text import Text
 from anyclaw.bus.events import InboundMessage, OutboundMessage
 from anyclaw.bus.queue import MessageBus
 from anyclaw.channels.base import BaseChannel
+from anyclaw.commands import CommandDispatcher, CommandContext
+from anyclaw.commands.handlers import register_builtin_commands
+
+if TYPE_CHECKING:
+    from anyclaw.commands.dispatcher import CommandResult
 
 
 class CLIConfig:
@@ -29,7 +35,13 @@ class CLIConfig:
 
 
 class CLIChannel(BaseChannel):
-    """CLI channel with streaming output support."""
+    """CLI channel with streaming output support.
+
+    Features:
+    - Streaming output for LLM responses
+    - Special command support (/help, /new, /reset, /stop, /clear, etc.)
+    - Interrupt handling with Ctrl+C
+    """
 
     name = "cli"
     display_name = "CLI"
@@ -42,6 +54,15 @@ class CLIChannel(BaseChannel):
         self.console = Console()
         self._stream_interrupted = False
         self._response_callback: Callable[[str], AsyncGenerator[str, None]] | None = None
+
+        # Initialize command dispatcher
+        self._command_dispatcher: Optional[CommandDispatcher] = None
+        self._setup_command_dispatcher()
+
+    def _setup_command_dispatcher(self) -> None:
+        """Set up command dispatcher with builtin commands."""
+        self._command_dispatcher = CommandDispatcher()
+        register_builtin_commands(self._command_dispatcher)
 
     @classmethod
     def default_config(cls) -> dict[str, Any]:
@@ -72,17 +93,22 @@ class CLIChannel(BaseChannel):
             try:
                 user_input = self._get_input()
 
-                # Handle special commands
+                # Handle exit commands
                 if user_input.lower() in ["exit", "quit"]:
                     self.console.print("[yellow]Goodbye![/yellow]")
                     break
 
-                if user_input.lower() == "clear":
-                    self.console.print("[yellow]Conversation cleared.[/yellow]")
-                    continue
-
+                # Handle empty input
                 if not user_input.strip():
                     continue
+
+                # Check for special commands
+                if self._command_dispatcher and self._command_dispatcher.is_command(user_input):
+                    result = await self._handle_command(user_input)
+                    if result.handled:
+                        if result.reply:
+                            self.console.print(f"\n{result.reply}\n")
+                        continue
 
                 # Forward to bus via _handle_message
                 await self._handle_message(
@@ -114,7 +140,40 @@ class CLIChannel(BaseChannel):
         """Print welcome message."""
         self.console.print(f"\n[bold blue]Welcome to {self.config.agent_name}![/bold blue]")
         self.console.print("[dim]Type 'exit' or 'quit' to exit[/dim]")
-        self.console.print("[dim]Type 'clear' to clear conversation history[/dim]\n")
+        self.console.print("[dim]Type '/help' to see available commands[/dim]\n")
+
+    async def _handle_command(self, user_input: str) -> "CommandResult":
+        """Handle a special command.
+
+        Args:
+            user_input: User input string.
+
+        Returns:
+            CommandResult from the command handler.
+        """
+        from anyclaw.commands import CommandContext
+
+        # Build command context
+        context = CommandContext(
+            user_id="user",
+            chat_id="default",
+            channel=self,
+            channel_type="cli",
+            session_key=self._current_session_key,
+            config=self._config,
+        )
+
+        # Dispatch command
+        result = await self._command_dispatcher.dispatch(user_input, context)
+
+        # Handle special commands that need channel interaction
+        if result.handled and result.reply:
+            # Check for /clear command - actually clear the screen
+            if user_input.lower().startswith("/clear"):
+                os.system("clear" if os.name == "posix" else "cls")
+                return result
+
+        return result
 
     def _get_input(self) -> str:
         """Get user input."""
