@@ -1,5 +1,6 @@
 """Agent 主处理循环"""
 
+import asyncio
 import json
 import logging
 import time
@@ -63,6 +64,10 @@ class AgentLoop:
         self.workspace = workspace or Path.cwd()
         self._message_tool: Optional["MessageTool"] = None  # 新增：MessageTool 实例
         self._session_key: str = "default"  # 当前会话 key
+
+        # 任务中断机制
+        self._active_tasks: Dict[str, asyncio.Task] = {}
+        self._abort_flags: Dict[str, bool] = {}
 
         # SessionManager（可选）
         self.session_manager: Optional["SessionManager"] = None
@@ -225,6 +230,76 @@ class AgentLoop:
         """设置可用技能（兼容旧接口）"""
         self.skills = skills
 
+    # ==================== 任务中断机制 ====================
+
+    def register_task(self, session_key: str, task: asyncio.Task) -> None:
+        """注册活动任务
+
+        Args:
+            session_key: 会话标识
+            task: asyncio.Task 实例
+        """
+        self._active_tasks[session_key] = task
+        self._abort_flags[session_key] = False
+        logger.debug(f"Task registered: {session_key}")
+
+    def unregister_task(self, session_key: str) -> None:
+        """取消注册任务
+
+        Args:
+            session_key: 会话标识
+        """
+        if session_key in self._active_tasks:
+            del self._active_tasks[session_key]
+        if session_key in self._abort_flags:
+            del self._abort_flags[session_key]
+        logger.debug(f"Task unregistered: {session_key}")
+
+    def request_abort(self, session_key: str = "default") -> bool:
+        """请求中断任务
+
+        Args:
+            session_key: 会话标识，默认 "default"
+
+        Returns:
+            是否成功请求中断（有活动任务时返回 True）
+        """
+        if session_key not in self._active_tasks:
+            logger.debug(f"No active task to abort: {session_key}")
+            return False
+
+        task = self._active_tasks.get(session_key)
+        if task and not task.done():
+            self._abort_flags[session_key] = True
+            task.cancel()
+            logger.info(f"Abort requested for task: {session_key}")
+            return True
+
+        return False
+
+    def is_abort_requested(self, session_key: str = "default") -> bool:
+        """检查是否请求了中断
+
+        Args:
+            session_key: 会话标识
+
+        Returns:
+            是否请求了中断
+        """
+        return self._abort_flags.get(session_key, False)
+
+    def has_active_task(self, session_key: str = "default") -> bool:
+        """检查是否有活动任务
+
+        Args:
+            session_key: 会话标识
+
+        Returns:
+            是否有活动任务
+        """
+        task = self._active_tasks.get(session_key)
+        return task is not None and not task.done()
+
     # ==================== 会话归档方法 ====================
 
     def start_archive_session(
@@ -344,7 +419,7 @@ class AgentLoop:
         messages = context_builder.build()
 
         if self.enable_tools:
-            response = await self._run_with_tools(messages)
+            response = await self._run_with_tools(messages, session_key=self._session_key)
         else:
             response = await self._call_llm(messages)
 
@@ -414,7 +489,7 @@ class AgentLoop:
     async def _stream_with_tools(self, messages: List[Dict]) -> AsyncGenerator[str, None]:
         """流式处理（支持 tool calling）"""
         # 暂时使用非流式处理 tool calling
-        response = await self._run_with_tools(messages)
+        response = await self._run_with_tools(messages, session_key=self._session_key)
         yield response
 
     async def _stream_llm(self, messages: List[Dict]) -> AsyncGenerator[str, None]:
@@ -439,8 +514,16 @@ class AgentLoop:
         messages: List[Dict[str, Any]],
         max_iterations: int = 10,
         on_progress: Optional[Callable[[str, bool], Awaitable[None]]] = None,
+        session_key: str = "default",
     ) -> str:
-        """运行带 tool calling 的循环"""
+        """运行带 tool calling 的循环
+
+        Args:
+            messages: 对话消息列表
+            max_iterations: 最大迭代次数
+            on_progress: 进度回调
+            session_key: 会话标识，用于中断检测
+        """
         iteration = 0
         empty_response_count = 0  # 空响应计数器
 
@@ -451,6 +534,12 @@ class AgentLoop:
         litellm.num_retries = settings.llm_max_retries
 
         while iteration < max_iterations:
+            # 检查中断标志
+            if self._abort_flags.get(session_key, False):
+                logger.info(f"Task aborted by user: {session_key}")
+                self._abort_flags[session_key] = False  # 清除标志
+                return "⏹️ 任务已被用户中断"
+
             iteration += 1
 
             # 获取工具定义
