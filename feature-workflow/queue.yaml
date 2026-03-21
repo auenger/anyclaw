@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-21T01:35:00"
-  version: 55
+  last_updated: "2026-03-21T23:00:00"
+  version: 59
 
 # 父需求（用于分组追踪)
 parents:
@@ -37,6 +37,16 @@ parents:
     status: completed
     children:
       - feat-mcp-client
+  - id: feat-ui-redesign
+    name: Tauri 桌面应用 UI 复刻
+    description: 参考 youclaw 前端设计，全面重构 AnyClaw Tauri 桌面应用的 UI 组件和样式
+    priority: 80
+    size: L
+    status: active
+    children:
+      - feat-ui-design-core
+      - feat-ui-chat-redesign
+      - feat-ui-pages-i18n
 
 # 正在开发的需求
 active: []
@@ -44,7 +54,23 @@ active: []
 # 等待中的需求（按优先级排序）
 pending:
 
-  - id: feat-model-config-fix
+  - id: feat-ui-chat-redesign
+    name: 聊天功能复刻
+    description: 复刻 youclaw 的聊天功能（会话管理、消息渲染、输入框增强、附件支持、SSE 流式处理）
+    priority: 75
+    size: M
+    dependencies: []
+    parent: feat-ui-redesign
+
+  - id: feat-ui-pages-i18n
+    name: 其他页面 + 国际化
+    description: 复刻 Agents/Tasks/Memory/Logs 页面 + 中英文国际化支持
+    priority: 70
+    size: M
+    dependencies: []
+    parent: feat-ui-redesign
+
+  - id: feat-task-interrupt
     name: /model 命令配置传递修复
     description: 修复 cli.py 使用不存在的 self._config 导致 config 为 None；model.py 与 Settings 结构不兼容
     priority: 75
@@ -70,6 +96,35 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-ui-design-core
+    name: UI 设计系统 + 布局组件
+    description: 复刻 youclaw 的 UI 设计系统（oklch 颜色、CSS 变量、暗色主题）和布局组件（Shell、AppSidebar、SidePanel）
+    priority: 80
+    size: M
+    completed_at: "2026-03-21T23:00:00"
+    archive_path: features/archive/done-feat-ui-design-core
+    value_points:
+      - oklch 颜色空间 CSS 变量（亮色/暗色主题）
+      - 新增 subtle-border, surface-hover, surface-raised, ease-soft 变量
+      - AppSidebar 可折叠侧边栏（52px 折叠 / 220px 展开）
+      - Shell 布局组件（PlatformContext 集成）
+      - macOS traffic light 间距适配
+      - Zustand 状态管理（sidebar/theme 持久化）
+      - 新增 UI 组件: dropdown-menu, avatar, tooltip, spinner
+      - TypeScript 构建成功
+
+  - id: feat-model-config-fix
+    name: /model 命令配置传递修复
+    description: 修复 cli.py 使用不存在的 self._config 导致 config 为 None；model.py 与 Settings 结构不兼容
+    priority: 75
+    size: S
+    completed_at: "2026-03-21T02:30:00"
+    archive_path: features/archive/done-feat-model-config-fix
+    value_points:
+      - cli.py 导入 settings 单例并传递给 CommandContext
+      - model.py 兼容两种配置结构（Config.llm.model 和 Settings.llm_model）
+      - 测试通过（32 tests, 100% pass）
+
   - id: feat-session-cwd
     name: 会话级工作目录 + 文件工具权限统一
     description: Session 级 cwd 继承 + cd 命令智能检测 + ExecTool 描述优化 + 所有文件工具统一支持 allow_all_access 配置
