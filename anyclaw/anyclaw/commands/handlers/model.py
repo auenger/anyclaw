@@ -57,9 +57,18 @@ class ModelCommandHandler(CommandHandler):
         if config is None:
             return CommandResult.fail("配置不可用")
 
-        # Get current model and provider
-        current_model = getattr(config.llm, "model", "unknown") if hasattr(config, "llm") else "unknown"
-        current_provider = getattr(config.llm, "provider", "unknown") if hasattr(config, "llm") else "unknown"
+        # Get current model and provider - support both Config and Settings structures
+        if hasattr(config, "llm") and hasattr(config.llm, "model"):
+            # Config structure (from loader.py)
+            current_model = config.llm.model
+            current_provider = config.llm.provider
+        elif hasattr(config, "llm_model"):
+            # Settings structure (from settings.py)
+            current_model = config.llm_model
+            current_provider = config.llm_provider
+        else:
+            current_model = "unknown"
+            current_provider = "unknown"
 
         # No args - show current model and available models
         if not args or not args.strip():

@@ -16,6 +16,7 @@ from anyclaw.bus.queue import MessageBus
 from anyclaw.channels.base import BaseChannel, AuthorizationRequiredError
 from anyclaw.commands import CommandDispatcher, CommandContext
 from anyclaw.commands.handlers import register_builtin_commands
+from anyclaw.config.settings import settings
 
 if TYPE_CHECKING:
     from anyclaw.commands.dispatcher import CommandResult
@@ -201,7 +202,7 @@ class CLIChannel(BaseChannel):
             channel=self,
             channel_type="cli",
             session_key=self._current_session_key,
-            config=self._config,
+            config=settings,
         )
 
         # Dispatch command
