@@ -158,10 +158,12 @@ export function useSSE(options: UseSSEOptions): UseSSEReturn {
       clientRef.current.close();
     }
 
-    clientRef.current = new SSEClient({
+    const client = new SSEClient({
       url,
+      maxReconnectAttempts: reconnectAttempts,
+      reconnectInterval,
       onMessage: handleEvent,
-      onError: (error) => {
+      onError: (error: Error) => {
         setState((prev) => ({
           ...prev,
           connected: false,
@@ -185,12 +187,11 @@ export function useSSE(options: UseSSEOptions): UseSSEReturn {
         }));
         onDisconnect?.();
       },
-      reconnectAttempts,
-      reconnectInterval,
     });
 
-    clientRef.current.connect();
-  }, [url, handleEvent, onError, onConnect, onDisconnect, reconnectAttempts, reconnectInterval]);
+    clientRef.current = client;
+    client.connect();
+  }, [url, handleEvent, reconnectAttempts, reconnectInterval, onError, onConnect, onDisconnect]);
 
   // 断开
   const disconnect = useCallback(() => {
