@@ -112,6 +112,9 @@ def chat(
     cli_config = CLIConfig({"agent_name": settings.agent_name})
     channel = CLIChannel(cli_config, bus)
 
+    # 设置 AgentLoop 引用（用于 /stop 命令即时中断）
+    channel.set_agent_loop(agent)
+
     # 加载技能
     skill_loader = SkillLoader(skills_dir=settings.skills_dir)
     skills_info = skill_loader.load_all()  # 加载所有技能

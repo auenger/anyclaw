@@ -42,6 +42,7 @@ class CLIChannel(BaseChannel):
     - Streaming output for LLM responses
     - Special command support (/help, /new, /reset, /stop, /clear, etc.)
     - Interrupt handling with Ctrl+C
+    - Task abort support via /stop command
     """
 
     name = "cli"
@@ -56,9 +57,21 @@ class CLIChannel(BaseChannel):
         self._stream_interrupted = False
         self._response_callback: Callable[[str], AsyncGenerator[str, None]] | None = None
 
+        # AgentLoop 引用（用于中断任务）
+        self._agent_loop: Optional[Any] = None  # AgentLoop 类型，避免循环导入
+        self._current_task: Optional[asyncio.Task] = None
+
         # Initialize command dispatcher
         self._command_dispatcher: Optional[CommandDispatcher] = None
         self._setup_command_dispatcher()
+
+    def set_agent_loop(self, agent_loop: Any) -> None:
+        """设置 AgentLoop 引用
+
+        Args:
+            agent_loop: AgentLoop 实例
+        """
+        self._agent_loop = agent_loop
 
     def _setup_command_dispatcher(self) -> None:
         """Set up command dispatcher with builtin commands."""
@@ -101,6 +114,11 @@ class CLIChannel(BaseChannel):
 
                 # Handle empty input
                 if not user_input.strip():
+                    continue
+
+                # 直接处理 /stop 和 /abort 命令（即时中断）
+                if user_input.lower() in ["/stop", "/abort"]:
+                    await self._handle_stop_direct()
                     continue
 
                 # Check for special commands
@@ -221,6 +239,24 @@ class CLIChannel(BaseChannel):
         """Get user input."""
         return Prompt.ask(self.config.prompt, console=self.console)
 
+    async def _handle_stop_direct(self) -> None:
+        """直接处理 /stop 命令（即时中断）
+
+        不通过命令分发系统，直接调用 AgentLoop 的中断方法。
+        """
+        if self._agent_loop:
+            # 检查是否有活动任务
+            if self._agent_loop.has_active_task("default"):
+                aborted = self._agent_loop.request_abort("default")
+                if aborted:
+                    self.console.print("[yellow]⏹️ 正在停止任务...[/yellow]")
+                else:
+                    self.console.print("[dim]停止请求失败[/dim]")
+            else:
+                self.console.print("[dim]没有正在执行的任务[/dim]")
+        else:
+            self.console.print("[dim]没有正在执行的任务[/dim]")
+
     # ========== Streaming Support (for direct use without bus) ==========
 
     async def run_stream(
@@ -245,6 +281,11 @@ class CLIChannel(BaseChannel):
                     continue
 
                 if not user_input.strip():
+                    continue
+
+                # 直接处理 /stop 和 /abort 命令（即时中断）
+                if user_input.lower() in ["/stop", "/abort"]:
+                    await self._handle_stop_direct()
                     continue
 
                 # Stream the response

@@ -49,18 +49,37 @@ class StopCommandHandler(CommandHandler):
         if agent_loop is None:
             return CommandResult.success("⏹️ 没有正在执行的任务")
 
-        # Check if there's an active task
-        if not hasattr(agent_loop, "is_running") or not agent_loop.is_running:
-            return CommandResult.success("⏹️ 没有正在执行的任务")
-
-        # Abort the task
+        # 使用新的中断机制
         try:
-            # Call abort method on agent loop
-            if hasattr(agent_loop, "abort"):
-                await agent_loop.abort()
-                return CommandResult.success("⏹️ 任务已停止")
+            # 检查是否有活动任务
+            if hasattr(agent_loop, "has_active_task"):
+                if not agent_loop.has_active_task("default"):
+                    return CommandResult.success("⏹️ 没有正在执行的任务")
+
+                # 请求中断
+                if hasattr(agent_loop, "request_abort"):
+                    aborted = agent_loop.request_abort("default")
+                    if aborted:
+                        return CommandResult.success("⏹️ 正在停止任务...")
+                    else:
+                        return CommandResult.success("⏹️ 停止请求失败")
+                else:
+                    # 向后兼容：使用旧的 abort 方法
+                    if hasattr(agent_loop, "abort"):
+                        await agent_loop.abort()
+                        return CommandResult.success("⏹️ 任务已停止")
+                    else:
+                        return CommandResult.success("⏹️ 没有可停止的任务")
             else:
-                return CommandResult.success("⏹️ 没有可停止的任务")
+                # 向后兼容：使用旧的 is_running 检查
+                if not hasattr(agent_loop, "is_running") or not agent_loop.is_running:
+                    return CommandResult.success("⏹️ 没有正在执行的任务")
+
+                if hasattr(agent_loop, "abort"):
+                    await agent_loop.abort()
+                    return CommandResult.success("⏹️ 任务已停止")
+                else:
+                    return CommandResult.success("⏹️ 没有可停止的任务")
 
         except Exception as e:
             return CommandResult.fail(f"停止任务失败: {e}")
