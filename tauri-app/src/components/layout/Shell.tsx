@@ -20,7 +20,7 @@ export function Shell({ children, onOpenSettings }: ShellProps) {
 
   const isWin = platform === 'windows'
   const isMac = platform === 'macos'
-  const isDesktop = isTauri
+  const isDesktop = isTauri()
 
   const platformCtx = { platform, isMac, isWin, isDesktop }
 

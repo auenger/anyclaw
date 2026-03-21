@@ -7,3 +7,14 @@ export { useTasks } from './useTasks';
 export { useSidebar } from './useSidebar';
 export { usePlatform, usePlatformInfo, PlatformContext, type PlatformContextValue } from './usePlatform';
 export { useDragRegion } from './useDragRegion';
+
+// 聊天 Hooks
+export {
+  useActiveChatState,
+  useChatProcessing,
+  useChatActions,
+  onChatUpdate,
+} from './useChat';
+export type { Message, TimelineItem, ToolUseItem, Attachment, ChatState } from './useChat';
+export { ChatProvider, useChatContext, ChatContext } from './chatCtx';
+export type { ChatContextType } from './chatCtx';

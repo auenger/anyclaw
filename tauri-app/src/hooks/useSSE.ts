@@ -160,7 +160,7 @@ export function useSSE(options: UseSSEOptions): UseSSEReturn {
 
     const client = new SSEClient({
       url,
-      maxReconnectAttempts: reconnectAttempts,
+      reconnectAttempts,
       reconnectInterval,
       onMessage: handleEvent,
       onError: (error: Error) => {

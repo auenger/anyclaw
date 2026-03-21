@@ -3,7 +3,7 @@
 
 meta:
   last_updated: "2026-03-22T00:00:00"
-  version: 60
+  version: 61
 
 # 父需求（用于分组追踪)
 parents:
