@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-22T00:00:00"
-  version: 61
+  last_updated: "2026-03-22T12:00:00"
+  version: 62
 
 # 父需求（用于分组追踪)
 parents:
@@ -49,7 +49,13 @@ parents:
       - feat-ui-pages-i18n
 
 # 正在开发的需求
-active: []
+active:
+  - id: feat-cron-skill
+    name: Cron 技能实现
+    description: 将现有 CronTool 注册到 AgentLoop，同时创建 cron 内置技能，使 Agent 能够通过工具调用或技能两种方式使用定时任务功能
+    priority: 65
+    size: M
+    dependencies: []
 
 # 等待中的需求（按优先级排序）
 pending:
