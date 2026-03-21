@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-21T23:00:00"
-  version: 59
+  last_updated: "2026-03-22T00:00:00"
+  version: 60
 
 # 父需求（用于分组追踪)
 parents:
@@ -70,20 +70,6 @@ pending:
     dependencies: []
     parent: feat-ui-redesign
 
-  - id: feat-task-interrupt
-    name: /model 命令配置传递修复
-    description: 修复 cli.py 使用不存在的 self._config 导致 config 为 None；model.py 与 Settings 结构不兼容
-    priority: 75
-    size: S
-    dependencies: []
-
-  - id: feat-task-interrupt
-    name: 任务即时中断机制
-    description: 参考 nanobot 使用 asyncio.Task + _active_tasks 模式，让 /stop 命令能够即时中断正在执行的 LLM 调用或工具执行
-    priority: 75
-    size: M
-    dependencies: []
-
   - id: feat-path-guard
     name: 路径遍历防护
     description: 阻止路径遍历攻击、符号链接绕过、工作区外访问
@@ -96,6 +82,20 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-task-interrupt
+    name: 任务即时中断机制
+    description: 参考 nanobot 使用 asyncio.Task + _active_tasks 模式，让 /stop 命令能够即时中断正在执行的 LLM 调用或工具执行
+    priority: 75
+    size: M
+    completed_at: "2026-03-22T00:00:00"
+    archive_path: features/archive/done-feat-task-interrupt
+    value_points:
+      - AgentLoop 中断机制（_active_tasks, _abort_flags, request_abort）
+      - CLIChannel 直接处理 /stop 和 /abort 命令
+      - chat 命令集成（set_agent_loop）
+      - StopCommandHandler 更新（向后兼容）
+      - 完整测试套件（17 tests, 100% pass）
+
   - id: feat-ui-design-core
     name: UI 设计系统 + 布局组件
     description: 复刻 youclaw 的 UI 设计系统（oklch 颜色、CSS 变量、暗色主题）和布局组件（Shell、AppSidebar、SidePanel）
