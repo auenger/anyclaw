@@ -22,6 +22,8 @@ from litellm import acompletion
 from anyclaw.bus.events import OutboundMessage  # 新增导入
 from anyclaw.config.settings import settings
 from anyclaw.config.settings import settings as global_settings
+from anyclaw.cron.service import CronService
+from anyclaw.cron.tool import CronTool
 from anyclaw.security.path import create_path_guard_from_settings
 from anyclaw.security.sanitizers import ContentSanitizer
 from anyclaw.skills.models import SkillDefinition
@@ -64,6 +66,10 @@ class AgentLoop:
         self.workspace = workspace or Path.cwd()
         self._message_tool: Optional["MessageTool"] = None  # 新增：MessageTool 实例
         self._session_key: str = "default"  # 当前会话 key
+
+        # CronService（定时任务）
+        self._cron_service: Optional[CronService] = None
+        self._cron_tool: Optional[CronTool] = None
 
         # 任务中断机制
         self._active_tasks: Dict[str, asyncio.Task] = {}
@@ -114,6 +120,10 @@ class AgentLoop:
 
         # MCP 连接管理
         self._mcp_stack: Optional[AsyncExitStack] = None
+
+        # CronService 初始化（定时任务服务）
+        cron_store_path = self.workspace / ".anyclaw" / "cron_jobs.json"
+        self._cron_service = CronService(cron_store_path)
 
         # 初始化 Tool Registry
         self.tools = ToolRegistry()
@@ -182,6 +192,11 @@ class AgentLoop:
             )
         )
 
+        # CronTool（定时任务）
+        if self._cron_service:
+            self._cron_tool = CronTool(self._cron_service)
+            self.tools.register(self._cron_tool)
+
     async def connect_mcp_servers(self) -> None:
         """连接配置的 MCP Server 并注册工具
 
@@ -215,6 +230,39 @@ class AgentLoop:
             await self._mcp_stack.aclose()
             self._mcp_stack = None
             logger.info("MCP servers disconnected")
+
+    # ==================== CronService 生命周期管理 ====================
+
+    async def start_cron_service(self) -> None:
+        """启动 CronService
+
+        应该在 Channel 启动时调用。
+        """
+        if self._cron_service:
+            await self._cron_service.start()
+            logger.info("CronService started")
+
+    async def stop_cron_service(self) -> None:
+        """停止 CronService
+
+        应该在 Channel 关闭时调用。
+        """
+        if self._cron_service:
+            self._cron_service.stop()
+            logger.info("CronService stopped")
+
+    def set_cron_context(self, channel: str, chat_id: str) -> None:
+        """设置 CronTool 的上下文
+
+        由 Channel 调用，用于设置定时任务消息的投递目标。
+
+        Args:
+            channel: 频道名称（如 "cli", "feishu", "discord"）
+            chat_id: 会话 ID
+        """
+        if self._cron_tool:
+            self._cron_tool.set_context(channel, chat_id)
+            logger.debug(f"CronTool context set: channel={channel}, chat_id={chat_id}")
 
     async def __aenter__(self):
         """支持 async context manager"""
