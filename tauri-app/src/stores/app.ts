@@ -2,11 +2,16 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
 export type Theme = "light" | "dark" | "system"
+export type Locale = "en" | "zh"
 
 interface AppState {
   // 主题
   theme: Theme
   setTheme: (theme: Theme) => void
+
+  // 语言
+  locale: Locale
+  setLocale: (locale: Locale) => void
 
   // 侧边栏
   sidebarCollapsed: boolean
@@ -55,6 +60,12 @@ export const useAppStore = create<AppState>()(
         applyThemeToDOM(theme)
       },
 
+      // 语言
+      locale: "zh",
+      setLocale: (locale: Locale) => {
+        set({ locale })
+      },
+
       // 侧边栏
       sidebarCollapsed: false,
       toggleSidebar: () => {
@@ -71,6 +82,7 @@ export const useAppStore = create<AppState>()(
       name: "anyclaw-app-store",
       partialize: (state) => ({
         theme: state.theme,
+        locale: state.locale,
         sidebarCollapsed: state.sidebarCollapsed,
       }),
       onRehydrateStorage: () => (state) => {

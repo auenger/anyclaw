@@ -1,6 +1,10 @@
 export { SettingsPage } from './SettingsPage';
 export { LLMSettings } from './LLMSettings';
 export { ProviderSettings } from './ProviderSettings';
+export { SettingsDialog } from './SettingsDialog';
+export { GeneralPanel } from './GeneralPanel';
+export { ModelsPanel } from './ModelsPanel';
+export { AboutPanel } from './AboutPanel';
 export type { SettingsPageProps } from './SettingsPage';
 export type { LLMSettingsProps } from './LLMSettings';
 export type { ProviderSettingsProps } from './ProviderSettings';

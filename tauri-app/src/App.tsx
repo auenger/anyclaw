@@ -5,49 +5,22 @@ import { listen } from '@tauri-apps/api/event';
 import { Shell } from './components/layout';
 import { ChatWindow } from './components/chat';
 import { TasksPage } from './components/tasks';
+import { SettingsDialog } from './components/settings';
+import { Agents } from './pages/Agents';
+import { Memory } from './pages/Memory';
+import { Logs } from './pages/Logs';
+import { useI18n } from './i18n';
 import type { SidecarStatus } from './types';
-
-// 占位页面组件
-function AgentsPage() {
-  return (
-    <div className="h-full flex items-center justify-center">
-      <div className="text-center space-y-2">
-        <h2 className="text-lg font-semibold">Agents</h2>
-        <p className="text-muted-foreground">Agent 管理页面（开发中）</p>
-      </div>
-    </div>
-  );
-}
-
-function MemoryPage() {
-  return (
-    <div className="h-full flex items-center justify-center">
-      <div className="text-center space-y-2">
-        <h2 className="text-lg font-semibold">Memory</h2>
-        <p className="text-muted-foreground">记忆管理页面（开发中）</p>
-      </div>
-    </div>
-  );
-}
-
-function LogsPage() {
-  return (
-    <div className="h-full flex items-center justify-center">
-      <div className="text-center space-y-2">
-        <h2 className="text-lg font-semibold">Logs</h2>
-        <p className="text-muted-foreground">日志查看页面（开发中）</p>
-      </div>
-    </div>
-  );
-}
 
 // 聊天页面包装器
 function ChatPage({ sidecarStatus }: { sidecarStatus: SidecarStatus }) {
+  const { t } = useI18n();
+
   if (sidecarStatus.status !== 'Running') {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center space-y-4">
-          <p className="text-lg text-muted-foreground">后端服务未运行</p>
+          <p className="text-lg text-muted-foreground">{t.common.backendNotRunning}</p>
           <button
             className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={async () => {
@@ -58,7 +31,7 @@ function ChatPage({ sidecarStatus }: { sidecarStatus: SidecarStatus }) {
               }
             }}
           >
-            启动后端
+            {t.common.startBackend}
           </button>
         </div>
       </div>
@@ -81,6 +54,8 @@ export default function App() {
     uptime_seconds: 0,
     message: '',
   });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<string | undefined>(undefined);
 
   // 监听 sidecar 状态变化
   useEffect(() => {
@@ -106,8 +81,8 @@ export default function App() {
   }, []);
 
   const handleOpenSettings = (tab?: string) => {
-    // 未来可以通过 navigate 实现设置对话框
-    console.log('Open settings:', tab);
+    setSettingsTab(tab);
+    setSettingsOpen(true);
   };
 
   return (
@@ -115,12 +90,17 @@ export default function App() {
       <Shell onOpenSettings={handleOpenSettings}>
         <Routes>
           <Route path="/" element={<ChatPage sidecarStatus={sidecarStatus} />} />
-          <Route path="/agents" element={<AgentsPage />} />
+          <Route path="/agents" element={<Agents />} />
           <Route path="/tasks" element={<TasksPage port={sidecarStatus.port} />} />
-          <Route path="/memory" element={<MemoryPage />} />
-          <Route path="/logs" element={<LogsPage />} />
+          <Route path="/memory" element={<Memory />} />
+          <Route path="/logs" element={<Logs />} />
         </Routes>
       </Shell>
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        initialTab={settingsTab as 'general' | 'models' | 'about' | undefined}
+      />
     </BrowserRouter>
   );
 }
