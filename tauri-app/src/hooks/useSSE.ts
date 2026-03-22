@@ -239,7 +239,8 @@ export function useSSE(options: UseSSEOptions): UseSSEReturn {
     return () => {
       disconnect();
     };
-  }, [enabled, connect, disconnect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]); // 只依赖 enabled，避免 connect/disconnect 变化导致的循环
 
   return {
     state,

@@ -12,9 +12,10 @@ import sys
 from pathlib import Path
 
 import typer
+import uvicorn
 from rich.console import Console
 
-from anyclaw.api.server import run_server
+from anyclaw.api.server import create_app
 from anyclaw.api.deps import set_serve_manager
 from anyclaw.config.loader import get_config
 from anyclaw.core.serve import ServeManager
@@ -66,18 +67,20 @@ def sidecar(
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    # Run both API server and channel service
+    # Run both API server and channel service in parallel
     async def run_all():
         try:
             # Initialize serve manager
             manager.initialize()
             logger.info(f"ServeManager initialized with channels: {', '.join(manager.enabled_channels)}")
 
-            # Start channel service
-            await manager.start()
-            logger.info("Channel service started")
+            # Start channel service in background (don't await - it blocks)
+            manager_task = asyncio.create_task(manager.start())
+            logger.info("Channel service starting in background...")
 
-            # Start API server (blocks until shutdown)
+            # Give channels a moment to start
+            await asyncio.sleep(0.5)
+
             console.print(f"\n[green]✓ AnyClaw sidecar running[/green]")
             console.print(f"[dim]  API: http://127.0.0.1:{port}[/dim]")
             console.print(f"[dim]  SSE: http://127.0.0.1:{port}/api/stream[/dim]")
@@ -85,8 +88,19 @@ def sidecar(
             console.print(f"[dim]  Channels: {', '.join(manager.enabled_channels)}[/dim]")
             console.print(f"[dim]  Press Ctrl+C to stop[/dim]\n")
 
-            # Run API server (this blocks)
-            run_server(host="127.0.0.1", port=port, log_level=log_level)
+            # Create FastAPI app
+            fastapi_app = create_app()
+
+            # Run API server with async uvicorn (this blocks until shutdown)
+            config = uvicorn.Config(
+                fastapi_app,
+                host="127.0.0.1",
+                port=port,
+                log_level=log_level,
+                access_log=True,
+            )
+            server = uvicorn.Server(config)
+            await server.serve()
 
         except Exception as e:
             logger.error(f"Error running sidecar: {e}")

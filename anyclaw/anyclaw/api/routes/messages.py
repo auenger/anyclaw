@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+import logging
+from typing import Any, Dict, Optional
+import uuid
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -11,6 +13,7 @@ from anyclaw.api.deps import get_message_bus, get_serve_manager
 from anyclaw.bus.events import InboundMessage
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class SendMessageRequest(BaseModel):
@@ -46,27 +49,39 @@ async def send_message(request: SendMessageRequest) -> SendMessageResponse:
     Raises:
         HTTPException: If message cannot be sent
     """
+    import time
+    _start_time = time.time()
+
     bus = get_message_bus()
     manager = get_serve_manager()
 
     # Generate message ID
-    message_id = f"msg_{id(request)}"
+    import uuid
+    message_id = f"msg_{uuid.uuid4().hex[:8]}"
+
+    # 详细日志：消息接收
+    logger.info(f"[API] ▶️ 收到消息请求: agent_id={request.agent_id}, "
+                f"content={request.content[:50]}{'...' if len(request.content) > 50 else ''}, "
+                f"conversation_id={request.conversation_id}")
 
     # Create inbound message
     inbound_msg = InboundMessage(
-        message_id=message_id,
-        agent_id=request.agent_id,
+        channel="api",
+        sender_id="api_user",
+        chat_id=request.conversation_id or f"conv_{request.agent_id}",
         content=request.content,
-        conversation_id=request.conversation_id or f"conv_{request.agent_id}",
-        source="api",
-        metadata=request.metadata,
+        metadata=request.metadata or {},
     )
 
     # Publish to bus
-    await bus.publish(inbound_msg)
+    await bus.publish_inbound(inbound_msg)
+    logger.info(f"[API] ✅ 消息已发布到总线: message_id={message_id}, "
+                f"bus_inbound_size={bus.inbound_size}")
 
     # Update counter
     manager._messages_processed += 1
+
+    logger.info(f"[API] ⏱️ 处理耗时: {(time.time() - _start_time)*1000:.1f}ms")
 
     return SendMessageResponse(
         status="ok",

@@ -1,6 +1,6 @@
 ---
-last_updated: '2026-03-21'
-version: 9
+last_updated: '2026-03-22'
+version: 10
 features_completed: 42
 tests_passing: 588
 ---
@@ -15,7 +15,7 @@ tests_passing: 588
 
 | Category | Technology | Version | Notes |
 |----------|-----------|---------|-------|
-| Language | Python | 3.9+ | Type hints required |
+| Language | Python | 3.11+ | Type hints required, built-in tomllib |
 | Package Manager | Poetry | 2.x | pyproject.toml |
 | Config | Pydantic Settings | 2.x | .env / TOML file |
 | CLI | Typer + Rich | 0.20+ / 14+ | Beautiful terminal |

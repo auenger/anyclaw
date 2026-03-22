@@ -2,7 +2,7 @@
 
 **AnyClaw** 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot 和 OpenClaw 的核心优势。
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 核心特性

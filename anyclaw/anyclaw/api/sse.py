@@ -25,12 +25,22 @@ async def event_publisher(request: Request) -> AsyncGenerator[dict[str, str], No
     """
     bus = get_message_bus()
 
+    # 🔍 详细日志：SSE 连接
+    client_id = id(request)
+    logger.info(f"[SSE] 🔌 客户端连接: client_id={client_id}")
+
+    event_count = 0
     # Subscribe to all events
     async for event in bus.subscribe():
         # Check if client disconnected
         if await request.is_disconnected():
-            logger.info("SSE client disconnected")
+            logger.info(f"[SSE] 🔌 客户端断开: client_id={client_id}, events_sent={event_count}")
             break
+
+        event_count += 1
+        # 🔍 详细日志：SSE 事件发送
+        logger.info(f"[SSE] 📡 发送事件: client_id={client_id}, "
+                    f"type={event['type']}, event_count={event_count}")
 
         # Convert event to SSE format
         yield {
@@ -53,6 +63,6 @@ async def stream_events(request: Request) -> StreamingResponse:
     Returns:
         StreamingResponse with SSE events
     """
-    logger.info("SSE client connected")
+    logger.info(f"[SSE] 🆕 新 SSE 连接请求: client_ip={request.client.host if request.client else 'unknown'}")
 
     return EventSourceResponse(event_publisher(request))

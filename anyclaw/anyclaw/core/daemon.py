@@ -107,14 +107,37 @@ class DaemonManager:
         # This handles foreground mode (no PID file)
         current_pid = os.getpid()
         try:
-            for proc in psutil.process_iter(['pid', 'cmdline']):
+            for proc in psutil.process_iter(['pid', 'cmdline', 'name']):
                 try:
                     # Skip current process (the one checking status)
                     if proc.info['pid'] == current_pid:
                         continue
-                    cmdline = " ".join(proc.info['cmdline'] or []).lower()
-                    # Check if it's an anyclaw serve process (but not --logs, --status, --stop)
-                    if "anyclaw" in cmdline and "serve" in cmdline:
+
+                    cmdline_list = proc.info['cmdline'] or []
+                    cmdline = " ".join(cmdline_list).lower()
+
+                    # Must be a Python process (anyclaw runs with Python)
+                    proc_name = (proc.info['name'] or "").lower()
+                    if "python" not in proc_name:
+                        continue
+
+                    # Check if it's actually an anyclaw serve process
+                    # More strict matching: must have "anyclaw" as a command/module name
+                    # and "serve" as a subcommand (not just in parameters like --server_port)
+                    is_anyclaw = False
+                    is_serve = False
+
+                    for arg in cmdline_list:
+                        arg_lower = arg.lower()
+                        # Check for anyclaw command (e.g., "anyclaw", "anyclaw/__main__.py", "-m anyclaw")
+                        if arg_lower == "anyclaw" or arg_lower.endswith("/anyclaw") or \
+                           arg_lower.endswith("\\anyclaw") or "anyclaw/__main__.py" in arg_lower:
+                            is_anyclaw = True
+                        # Check for serve subcommand (exact match, not in parameters)
+                        if arg_lower == "serve":
+                            is_serve = True
+
+                    if is_anyclaw and is_serve:
                         # Exclude subcommands that don't actually run the serve
                         if any(x in cmdline for x in ["--logs", "--status", "--stop"]):
                             continue

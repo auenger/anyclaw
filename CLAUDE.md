@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot 和 OpenClaw 的核心优势。项目采用 Python 3.9+ 开发，使用 Poetry 管理依赖，同时提供 Tauri 跨平台桌面应用。
+AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot 和 OpenClaw 的核心优势。项目采用 Python 3.11+ 开发，使用 Poetry 管理依赖，同时提供 Tauri 跨平台桌面应用。
 
 **项目状态**: 42 个特性完成，588 个测试通过 ✅
 
@@ -42,7 +42,7 @@ AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot
 
 ### 后端 (Python)
 
-- **语言**: Python 3.9+
+- **语言**: Python 3.11+ (内置 tomllib)
 - **依赖管理**: Poetry
 - **核心依赖**:
   - `pydantic` >= 2.12.0 (数据验证)

@@ -24,7 +24,7 @@ class PersonaLoader:
 
     SOUL_FILE = "SOUL.md"
     USER_FILE = "USER.md"
-    IDENTITY_FILE = "IDENTITY.md"
+    IDENTITY_FILE = "AGENTS.md"  # 文件名是 AGENTS.md
     TOOLS_FILE = "TOOLS.md"
 
     DEFAULT_MAX_CHARS = 10000

@@ -23,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import logoImage from "@/assets/logo.png";
 
 /** Inline horizontal padding, keeps icon centered within 52px when collapsed (8+36+8=52) */
 const ROW_PX = "px-2";
@@ -82,9 +83,11 @@ export function AppSidebar({ onOpenSettings }: AppSidebarProps) {
           </button>
         ) : (
           <div className="flex items-center gap-1.5 ml-1.5 mr-1">
-            <div className="h-5 w-5 rounded-md bg-primary flex items-center justify-center">
-              <span className="text-[10px] font-bold text-primary-foreground">AC</span>
-            </div>
+            <img
+              src={logoImage}
+              alt="AnyClaw"
+              className="h-5 w-5 rounded-md object-contain"
+            />
             <span className="text-md font-semibold tracking-tight whitespace-nowrap text-primary">
               AnyClaw
             </span>

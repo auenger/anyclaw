@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-from typing import AsyncIterator, Optional
+import logging
+from typing import AsyncIterator, Optional, AsyncGenerator
 
 from anyclaw.bus.events import InboundMessage, OutboundMessage
+
+logger = logging.getLogger(__name__)
 
 
 class MessageBus:
@@ -29,6 +32,8 @@ class MessageBus:
     async def publish_inbound(self, msg: InboundMessage) -> None:
         """Publish a message from a channel to the agent."""
         await self._inbound.put(msg)
+        logger.debug(f"[Bus] 📥 入站消息: channel={msg.channel}, chat_id={msg.chat_id}, "
+                     f"queue_size={self._inbound.qsize()}")
 
     async def consume_inbound(self) -> InboundMessage:
         """Consume the next inbound message (blocks until available)."""
@@ -37,10 +42,34 @@ class MessageBus:
     async def publish_outbound(self, msg: OutboundMessage) -> None:
         """Publish a response from the agent to channels."""
         await self._outbound.put(msg)
+        logger.debug(f"[Bus] 📤 出站消息: channel={msg.channel}, chat_id={msg.chat_id}, "
+                     f"queue_size={self._outbound.qsize()}")
 
     async def consume_outbound(self) -> OutboundMessage:
         """Consume the next outbound message (blocks until available)."""
         return await self._outbound.get()
+
+    async def subscribe(self) -> AsyncGenerator[dict, None]:
+        """
+        Subscribe to all events on the bus (for SSE streaming).
+
+        Yields:
+            Event dictionaries with 'type' and 'payload' keys
+        """
+        while True:
+            try:
+                msg = await self._outbound.get()
+                # Convert OutboundMessage to event dict
+                yield {
+                    "type": "message:outbound",
+                    "payload": {
+                        "channel": msg.channel,
+                        "chat_id": msg.chat_id,
+                        "content": msg.content,
+                    }
+                }
+            except asyncio.CancelledError:
+                break
 
     async def consume_inbound_iter(
         self, timeout: Optional[float] = None

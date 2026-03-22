@@ -136,11 +136,12 @@ class AgentLoop:
         path_guard = create_path_guard_from_settings(self.workspace)
 
         # ExecTool 支持 session cwd
+        # Note: session 将在运行时动态获取，初始化时传入 None
         self.tools.register(
             ExecTool(
                 working_dir=str(self.workspace),
                 timeout=settings.tool_timeout if hasattr(settings, "tool_timeout") else 60,
-                session=self.session,
+                session=None,  # session 在运行时通过 get_current_session() 获取
             )
         )
 
@@ -581,6 +582,10 @@ class AgentLoop:
         # 更新 LiteLLM 重试配置
         litellm.num_retries = settings.llm_max_retries
 
+        # 🔍 详细日志：开始处理
+        logger.info(f"[Agent] 🚀 开始处理任务: session_key={session_key}, "
+                    f"history_len={len(messages)}, max_iterations={max_iterations}")
+
         while iteration < max_iterations:
             # 检查中断标志
             if self._abort_flags.get(session_key, False):
@@ -593,8 +598,22 @@ class AgentLoop:
             # 获取工具定义
             tool_defs = self.tools.get_definitions()
 
+            # 🔍 详细日志：LLM 调用前
+            logger.info(f"[Agent] 📡 LLM 调用: iteration={iteration}/{max_iterations}, "
+                        f"tools_count={len(tool_defs) if tool_defs else 0}")
+
             # 调用 LLM
+            llm_start = time.time()
             response = await self._call_llm_with_tools(messages, tool_defs)
+            llm_duration = time.time() - llm_start
+
+            # 🔍 详细日志：LLM 调用后
+            has_tool_calls = hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls
+            tool_calls_count = len(response.choices[0].message.tool_calls) if has_tool_calls else 0
+            logger.info(f"[Agent] ✅ LLM 响应: iteration={iteration}, "
+                        f"duration={llm_duration:.2f}s, "
+                        f"has_content={bool(response.choices[0].message.content)}, "
+                        f"tool_calls={tool_calls_count}")
 
             message = response.choices[0].message
 
@@ -651,6 +670,10 @@ class AgentLoop:
                 except json.JSONDecodeError:
                     arguments = {}
 
+                # 🔍 详细日志：工具调用前
+                logger.info(f"[Agent] 🔧 工具调用: tool={tool_name}, "
+                            f"args_preview={str(arguments)[:100]}{'...' if len(str(arguments)) > 100 else ''}")
+
                 # 记录工具调用到归档
                 call_id = None
                 if self.archive_manager:
@@ -671,6 +694,12 @@ class AgentLoop:
                     success = False
                     agent_logger.log_error(f"Tool {tool_name}", e)
                 duration_ms = int((time.time() - start_time) * 1000)
+
+                # 🔍 详细日志：工具调用后
+                result_preview = result[:100] if result else "empty"
+                logger.info(f"[Agent] ✅ 工具完成: tool={tool_name}, "
+                            f"duration={duration_ms}ms, success={success}, "
+                            f"result_preview={result_preview}{'...' if len(result) > 100 else ''}")
 
                 # 记录到迭代摘要收集器
                 summary_collector.record_tool_call(
@@ -712,7 +741,10 @@ class AgentLoop:
                     )
 
         # 达到最大迭代次数，生成智能汇报
-        return await self._generate_iteration_summary(summary_collector, messages, max_iterations)
+        logger.info(f"[Agent] 📊 达到最大迭代次数 {max_iterations}，生成进度汇报...")
+        summary = await self._generate_iteration_summary(summary_collector, messages, max_iterations)
+        logger.info(f"[Agent] ✅ 进度汇报生成完成: len={len(summary)}")
+        return summary
 
     async def _generate_iteration_summary(
         self,

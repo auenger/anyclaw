@@ -28,6 +28,30 @@ export function ChatWindow({
     ? `http://127.0.0.1:${sidecarStatus.port}/api/stream`
     : '';
 
+  // 稳定的 onMessage 回调（使用 ref 避免依赖变化）
+  const handleSSEMessage = useCallback((event: { type: string; data: any }) => {
+    // 处理完整消息
+    if (event.type === 'message:outbound') {
+      const newMessage: Message = {
+        id: event.data.payload?.id || `msg_${Date.now()}`,
+        role: 'assistant',
+        content: event.data.payload?.content || event.data.content || '',
+        timestamp: event.data.timestamp || Date.now(),
+      };
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === newMessage.id)) {
+          return prev;
+        }
+        return [...prev, newMessage];
+      });
+      setIsSending(false);
+    }
+  }, []);
+
+  const handleSSEError = useCallback((error: Error) => {
+    console.error('SSE error:', error);
+  }, []);
+
   // SSE 连接
   const {
     isStreaming,
@@ -36,27 +60,8 @@ export function ChatWindow({
   } = useSSE({
     url: streamUrl,
     enabled: isSidecarRunning,
-    onMessage: (event) => {
-      // 处理完整消息
-      if (event.type === 'message:outbound') {
-        const newMessage: Message = {
-          id: event.data.payload?.id || `msg_${Date.now()}`,
-          role: 'assistant',
-          content: event.data.payload?.content || event.data.content || '',
-          timestamp: event.data.timestamp || Date.now(),
-        };
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === newMessage.id)) {
-            return prev;
-          }
-          return [...prev, newMessage];
-        });
-        setIsSending(false);
-      }
-    },
-    onError: (error) => {
-      console.error('SSE error:', error);
-    },
+    onMessage: handleSSEMessage,
+    onError: handleSSEError,
   });
 
   // 发送消息

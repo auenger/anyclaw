@@ -213,11 +213,16 @@ class IterationSummaryGenerator:
         Returns:
             生成的汇报文本
         """
+        logger.info(f"[Summary] 📝 开始生成迭代摘要: enabled={self.enabled}, "
+                    f"has_tool_calls={collector.has_tool_calls()}")
+
         if not self.enabled:
+            logger.info("[Summary] ⚠️ 摘要功能已禁用")
             return "达到最大迭代次数"
 
         # 如果没有工具调用，返回简化汇报
         if not collector.has_tool_calls():
+            logger.info("[Summary] 📋 无工具调用，生成简化汇报")
             return self._generate_simple_summary(max_iterations, messages)
 
         try:
@@ -225,6 +230,9 @@ class IterationSummaryGenerator:
             stats = collector.collect_statistics()
             timeline = collector.get_tool_call_timeline()
             user_request = self._extract_user_request(messages)
+
+            logger.info(f"[Summary] 📊 统计: total_calls={stats.total_calls}, "
+                        f"success={stats.successful_calls}, failed={stats.failed_calls}")
 
             # 构建 Prompt
             prompt = self._build_prompt(
@@ -235,13 +243,17 @@ class IterationSummaryGenerator:
             )
 
             # 调用 LLM 生成汇报
+            logger.info(f"[Summary] 🤖 调用 LLM 生成汇报: prompt_len={len(prompt)}")
             summary = await self._call_llm(prompt)
+            logger.info(f"[Summary] ✅ LLM 返回摘要: len={len(summary) if summary else 0}")
             return summary
 
         except Exception as e:
-            logger.error(f"Failed to generate iteration summary: {e}")
+            logger.error(f"[Summary] ❌ 生成迭代摘要失败: {e}")
             # 降级：返回基础汇报
-            return self._generate_fallback_summary(collector, max_iterations)
+            fallback = self._generate_fallback_summary(collector, max_iterations)
+            logger.info(f"[Summary] 📋 使用降级汇报: len={len(fallback)}")
+            return fallback
 
     def _extract_user_request(self, messages: List[Dict[str, Any]]) -> str:
         """从消息历史中提取用户原始请求"""
@@ -329,16 +341,33 @@ class IterationSummaryGenerator:
             if provider.is_configured():
                 kwargs.update(provider.get_completion_kwargs(model))
 
+        logger.debug(f"[Summary] LLM kwargs: model={kwargs['model']}, max_tokens={kwargs['max_tokens']}")
+
         try:
             response = await acompletion(**kwargs)
             content = response.choices[0].message.content
-            if content is None:
-                logger.warning("LLM returned None for iteration summary")
-                return self._generate_simple_summary_fallback(max_iterations)
+            logger.debug(f"[Summary] LLM response: has_content={content is not None}, "
+                        f"len={len(content) if content else 0}")
+            if content is None or not content.strip():
+                logger.warning("[Summary] ⚠️ LLM 返回空内容，使用默认汇报")
+                return self._generate_default_summary()
             return content
         except Exception as e:
-            logger.error(f"LLM call failed for iteration summary: {e}")
-            return self._generate_simple_summary_fallback(max_iterations)
+            logger.error(f"[Summary] ❌ LLM 调用失败: {e}")
+            return self._generate_default_summary()
+
+    def _generate_default_summary(self) -> str:
+        """生成默认汇报（LLM 失败时的降级方案）"""
+        return """## 工作进度汇报
+
+**执行摘要**: Agent 在处理您的请求时达到了最大迭代次数限制。
+
+**当前阶段**: 任务正在执行中，但由于迭代次数限制，无法继续。
+
+**下一步建议**:
+- 可以发送"继续"让 Agent 继续执行
+- 或者尝试将任务拆分为更小的步骤
+- 如果需要更长的处理时间，可以在配置中增加迭代次数"""
 
     def _generate_simple_summary(
         self, max_iterations: int, messages: List[Dict[str, Any]]

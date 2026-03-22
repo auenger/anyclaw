@@ -4,6 +4,7 @@ Coordinates:
 - Channel lifecycle (start/stop)
 - Message routing between channels and agent
 - Status tracking
+- Command processing (/model, /stop, etc.)
 """
 
 from __future__ import annotations
@@ -18,7 +19,10 @@ from anyclaw.agent.loop import AgentLoop
 from anyclaw.bus.events import InboundMessage, OutboundMessage
 from anyclaw.bus.queue import MessageBus
 from anyclaw.channels.manager import ChannelManager
+from anyclaw.commands import CommandContext, CommandDispatcher
+from anyclaw.commands.handlers import register_builtin_commands
 from anyclaw.config.loader import Config, get_config
+from anyclaw.config.settings import settings
 from anyclaw.skills.loader import SkillLoader
 from anyclaw.workspace.manager import WorkspaceManager
 
@@ -57,6 +61,10 @@ class ServeManager:
         self.channel_manager: Optional[ChannelManager] = None
         self.agent: Optional[AgentLoop] = None
 
+        # Command dispatcher for handling /model, /stop, etc.
+        self._command_dispatcher = CommandDispatcher()
+        register_builtin_commands(self._command_dispatcher)
+
         # State
         self._running = False
         self._started_at: Optional[float] = None
@@ -76,6 +84,11 @@ class ServeManager:
         if self._started_at is None:
             return 0
         return int(time.time() - self._started_at)
+
+    @property
+    def is_running(self) -> bool:
+        """Check if the serve manager is running."""
+        return self._running
 
     def initialize(self) -> None:
         """Initialize all components.
@@ -189,12 +202,47 @@ class ServeManager:
                     timeout=1.0
                 )
 
-                # Process with agent
-                logger.debug(f"Processing message from {msg.channel}: {msg.content[:50]}...")
+                content = msg.content.strip()
+                # 🔍 详细日志：消息消费
+                logger.info(f"[Serve] 📨 消费消息: channel={msg.channel}, "
+                            f"chat_id={msg.chat_id}, "
+                            f"content={content[:50]}{'...' if len(content) > 50 else ''}, "
+                            f"bus_inbound_size={self.bus.inbound_size}")
 
+                # Check for /stop or /abort commands first (immediate task interruption)
+                if content.lower() in ["/stop", "/abort"]:
+                    await self._handle_stop_command(msg)
+                    continue
+
+                # Check if it's a command that should be handled locally
+                if self._command_dispatcher.is_command(content):
+                    result = await self._handle_command(msg, content)
+                    if result.handled:
+                        if result.reply:
+                            outbound = OutboundMessage(
+                                channel=msg.channel,
+                                chat_id=msg.chat_id,
+                                content=result.reply,
+                                reply_to=msg.metadata.get("message_id"),
+                            )
+                            await self.bus.publish_outbound(outbound)
+                        continue
+
+                # Not a command, process with agent
                 try:
+                    # 🔍 详细日志：开始 Agent 处理
+                    logger.info(f"[Serve] 🤖 开始 Agent 处理: chat_id={msg.chat_id}")
+
                     # Get response from agent
-                    response = await self.agent.process(msg.content)
+                    import time as time_module
+                    _agent_start = time_module.time()
+                    response = await self.agent.process(content)
+                    _agent_duration = time_module.time() - _agent_start
+
+                    # 🔍 详细日志：Agent 处理完成
+                    logger.info(f"[Serve] ✅ Agent 处理完成: chat_id={msg.chat_id}, "
+                                f"duration={_agent_duration:.2f}s, "
+                                f"response_len={len(response)}")
 
                     # Send response back
                     outbound = OutboundMessage(
@@ -204,6 +252,8 @@ class ServeManager:
                         reply_to=msg.metadata.get("message_id"),
                     )
                     await self.bus.publish_outbound(outbound)
+                    logger.info(f"[Serve] 📤 响应已发送: chat_id={msg.chat_id}, "
+                                f"bus_outbound_size={self.bus.outbound_size}")
 
                     self._messages_processed += 1
 
@@ -226,6 +276,58 @@ class ServeManager:
                 logger.error(f"Unexpected error in message processor: {e}")
 
         logger.info("Message processor stopped")
+
+    async def _handle_stop_command(self, msg: InboundMessage) -> None:
+        """Handle /stop or /abort command to interrupt running task.
+
+        Args:
+            msg: The inbound message containing the stop command.
+        """
+        response_text: str
+
+        if self.agent and self.agent.has_active_task(msg.chat_id):
+            aborted = self.agent.request_abort(msg.chat_id)
+            if aborted:
+                response_text = "⏹️ 正在停止任务..."
+                logger.info(f"Task abort requested for chat {msg.chat_id}")
+            else:
+                response_text = "停止请求失败"
+        else:
+            response_text = "没有正在执行的任务"
+
+        # Send response
+        outbound = OutboundMessage(
+            channel=msg.channel,
+            chat_id=msg.chat_id,
+            content=response_text,
+            reply_to=msg.metadata.get("message_id"),
+        )
+        await self.bus.publish_outbound(outbound)
+
+    async def _handle_command(self, msg: InboundMessage, content: str) -> Any:
+        """Handle a command through the command dispatcher.
+
+        Args:
+            msg: The inbound message.
+            content: The command content.
+
+        Returns:
+            CommandResult from the dispatcher.
+        """
+        from anyclaw.commands import CommandContext
+
+        # Build command context
+        context = CommandContext(
+            user_id=msg.sender_id,
+            chat_id=msg.chat_id,
+            channel=None,  # No direct channel reference in serve mode
+            channel_type=msg.channel,
+            session_key=msg.chat_id,
+            config=settings,
+        )
+
+        # Dispatch command
+        return await self._command_dispatcher.dispatch(content, context)
 
     async def _update_status_periodically(self) -> None:
         """Update status file periodically."""

@@ -23,11 +23,18 @@ class SaveMemoryTool(Tool):
     description = """Save important information to persistent memory.
 
 Use this tool to:
-- Remember user preferences (name, communication style, etc.)
-- Store important facts about the user
+- Remember user preferences (name, communication style, work style, etc.)
+- Store important facts about the user (background, skills, projects)
 - Record decisions or agreements made during conversation
+- Update user profile when new information is discovered
 
-The memory persists across sessions, so use it to remember things for future conversations."""
+WHEN TO USE:
+- User mentions new personal information → save to memory
+- User shares preferences or opinions → remember them
+- Important decisions are made → record for future reference
+- User corrects information → update the memory
+
+The memory persists across sessions. Be proactive in remembering useful information!"""
 
     parameters = {
         "type": "object",
@@ -115,25 +122,50 @@ The memory persists across sessions, so use it to remember things for future con
 class UpdatePersonaTool(Tool):
     """更新人设工具
 
-    让 LLM 可以更新 SOUL.md 或 USER.md 文件。
+    让 LLM 可以更新 workspace 下的关键配置文件。
     """
 
     name = "update_persona"
-    description = """Update persona files (SOUL.md or USER.md).
+    description = """Update workspace configuration files.
 
-Use this tool when the user explicitly asks to change their profile or the assistant's personality."""
+Use this tool to update:
+- USER.md: User profile (name, preferences, background, contact info, etc.)
+- SOUL.md: Assistant personality and behavior guidelines
+- AGENTS.md: Agent instructions and rules
+- TOOLS.md: Tool documentation
+- HEARTBEAT.md: Periodic tasks
+
+WHEN TO USE:
+- User provides new personal information → update USER.md
+- User asks to change assistant behavior → update SOUL.md
+- User wants to modify agent rules → update AGENTS.md
+- User explicitly asks to update any of these files
+
+ALWAYS use this tool when user mentions updating their profile or settings."""
+
+    # 支持的文件列表
+    SUPPORTED_FILES = ["SOUL.md", "USER.md", "AGENTS.md", "TOOLS.md", "HEARTBEAT.md"]
 
     parameters = {
         "type": "object",
         "properties": {
             "file": {
                 "type": "string",
-                "enum": ["SOUL.md", "USER.md"],
-                "description": "Which file to update. SOUL.md is for assistant personality, USER.md is for user profile.",
+                "enum": ["SOUL.md", "USER.md", "AGENTS.md", "TOOLS.md", "HEARTBEAT.md"],
+                "description": "Which file to update. "
+                "USER.md = user profile, SOUL.md = assistant personality, "
+                "AGENTS.md = agent rules, TOOLS.md = tool docs, HEARTBEAT.md = periodic tasks.",
             },
             "content": {
                 "type": "string",
-                "description": "The new content for the file in markdown format.",
+                "description": "The new content for the file in markdown format. "
+                "Provide COMPLETE file content, not just changes.",
+            },
+            "action": {
+                "type": "string",
+                "enum": ["replace", "append", "prepend"],
+                "description": "How to update: 'replace' (default) = full replacement, "
+                "'append' = add to end, 'prepend' = add to beginning.",
             },
         },
         "required": ["file", "content"],
@@ -148,21 +180,45 @@ Use this tool when the user explicitly asks to change their profile or the assis
         self.workspace = workspace
         self.ws_manager = WorkspaceManager(workspace_path=str(workspace))
 
-    async def execute(self, file: str, content: str, **kwargs) -> str:
+    async def execute(
+        self,
+        file: str,
+        content: str,
+        action: str = "replace",
+        **kwargs
+    ) -> str:
         """执行更新人设文件"""
         from anyclaw.workspace.persona import PersonaLoader
 
-        persona = PersonaLoader(workspace=self.ws_manager)
+        # 验证文件名
+        if file not in self.SUPPORTED_FILES:
+            return f"✗ Invalid file: {file}. Must be one of: {', '.join(self.SUPPORTED_FILES)}"
 
-        # 获取文件路径
-        file_path = persona.get_file_path(file)
-        if not file_path:
-            return f"✗ Invalid file: {file}. Must be SOUL.md or USER.md"
+        file_path = self.workspace / file
 
         try:
-            file_path.write_text(content, encoding="utf-8")
-            persona.clear_cache()  # 清除缓存
-            return f"✓ {file} updated successfully"
+            # 根据操作类型处理
+            if action == "replace" or not file_path.exists():
+                new_content = content
+            elif action == "append":
+                existing = file_path.read_text(encoding="utf-8")
+                new_content = existing.rstrip() + "\n\n" + content
+            elif action == "prepend":
+                existing = file_path.read_text(encoding="utf-8")
+                new_content = content.rstrip() + "\n\n" + existing
+            else:
+                new_content = content
+
+            file_path.write_text(new_content, encoding="utf-8")
+
+            # 清除 PersonaLoader 缓存
+            try:
+                persona = PersonaLoader(workspace=self.ws_manager)
+                persona.clear_cache()
+            except Exception:
+                pass
+
+            return f"✓ {file} updated successfully ({action}, {len(new_content)} chars)"
         except Exception as e:
             return f"✗ Failed to update {file}: {e}"
 

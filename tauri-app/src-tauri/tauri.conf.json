@@ -46,9 +46,6 @@
     "shell": {
       "open": true
     },
-    "store": {
-      "autoSave": true
-    },
     "updater": {
       "endpoints": [
         "https://github.com/anyclaw/anyclaw/releases/latest/download/latest.json"
