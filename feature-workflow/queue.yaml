@@ -110,7 +110,7 @@ completed:
     priority: 78
     size: M
     completed_at: "2026-03-22T14:30:00"
-    archive_path: features/pending-feat-chat-history-refactor
+    archive_path: features/archive/done-feat-chat-history-refactor
     value_points:
       - 后端 ChatItem 返回完整 chat_id（含 channel 前缀）
       - 添加 conversation_id 字段（短 ID）
