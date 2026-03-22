@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Copy, Check } from 'lucide-react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   Message as AIMessage,
   MessageContent,
@@ -10,15 +9,8 @@ import {
 } from '@/components/ai-elements/message'
 import { ToolUseBlock } from './ToolUseBlock'
 import type { Message } from '@/stores/chat'
-
-// Simple i18n placeholder
-const t = {
-  chat: {
-    assistant: 'Assistant',
-    copied: 'Copied!',
-    copyCode: 'Copy',
-  },
-}
+import { useI18n } from '@/i18n'
+import beeImage from '@/assets/bee.png'
 
 interface AssistantMessageProps {
   message: Message & { role: 'assistant' }
@@ -26,6 +18,7 @@ interface AssistantMessageProps {
 
 export function AssistantMessage({ message }: AssistantMessageProps) {
   const [copied, setCopied] = useState(false)
+  const { t } = useI18n()
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(message.content)
@@ -36,12 +29,9 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
   return (
     <AIMessage from="assistant" data-testid="message-assistant">
       <div className="group flex gap-3 py-3">
-        <Avatar className="h-8 w-8 mt-0.5">
-          <AvatarImage src="/icon.svg" alt="AnyClaw" />
-          <AvatarFallback className="bg-gradient-to-br from-violet-500/20 to-purple-500/20 text-[10px] font-semibold">
-            AI
-          </AvatarFallback>
-        </Avatar>
+        <div className="h-8 w-8 mt-0.5 rounded-full flex items-center justify-center flex-shrink-0">
+          <img src={beeImage} alt="AnyClaw" className="w-full h-full object-contain" />
+        </div>
         <div className="flex-1 min-w-0">
           <div className="text-xs font-medium text-muted-foreground mb-1.5">
             {t.chat.assistant}

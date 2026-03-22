@@ -1,6 +1,4 @@
-import { useEffect } from 'react'
-import { Loader2 } from 'lucide-react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useEffect, useState } from 'react'
 import {
   Conversation,
   ConversationContent,
@@ -17,14 +15,31 @@ import { AssistantMessage } from './AssistantMessage'
 import { ToolUseBlock } from './ToolUseBlock'
 import type { TimelineItem, ToolUseItem } from '@/stores/chat'
 import { buildRenderableTimeline, type RenderableTimelineItem } from './timeline'
+import { useI18n } from '@/i18n'
+import beeImage from '@/assets/bee.png'
 
-// Simple i18n placeholder
-const t = {
-  chat: {
-    thinking: 'Thinking...',
-    assistant: 'Assistant',
-  },
-}
+// 思考中的动态文字 - 中文
+const THINKING_MESSAGES_ZH = [
+  "正在思考中",
+  "分析你的问题",
+  "整理思路",
+  "查找相关信息",
+  "生成回复",
+  "理解你的意图",
+  "组织语言",
+  "准备回答",
+]
+
+// 思考中的动态文字 - 英文
+const THINKING_MESSAGES_EN = [
+  "Thinking",
+  "Analyzing your question",
+  "Organizing thoughts",
+  "Finding information",
+  "Generating response",
+  "Understanding your intent",
+  "Preparing answer",
+]
 
 interface ChatMessagesProps {
   timelineItems: TimelineItem[]
@@ -39,7 +54,37 @@ export function ChatMessages({
   isProcessing,
   pendingToolUse,
 }: ChatMessagesProps) {
+  const { locale } = useI18n()
   const renderableItems = buildRenderableTimeline(timelineItems)
+
+  // 根据语言选择思考文字数组
+  const thinkingMessages = locale === 'zh' ? THINKING_MESSAGES_ZH : THINKING_MESSAGES_EN
+
+  // 动态思考文字
+  const [thinkingIndex, setThinkingIndex] = useState(0)
+  const [dots, setDots] = useState('')
+
+  // 思考文字轮换动画
+  useEffect(() => {
+    if (!isProcessing) {
+      setThinkingIndex(0)
+      setDots('')
+      return
+    }
+
+    const textInterval = setInterval(() => {
+      setThinkingIndex((prev) => (prev + 1) % thinkingMessages.length)
+    }, 2000)
+
+    const dotsInterval = setInterval(() => {
+      setDots((prev) => prev.length >= 3 ? '' : prev + '.')
+    }, 400)
+
+    return () => {
+      clearInterval(textInterval)
+      clearInterval(dotsInterval)
+    }
+  }, [isProcessing, thinkingMessages.length])
 
   return (
     <Conversation data-testid="message-list">
@@ -51,15 +96,16 @@ export function ChatMessages({
         {/* Thinking state */}
         {isProcessing && !streamingText && pendingToolUse.length === 0 && (
           <div className="flex gap-3 py-3">
-            <Avatar className="h-8 w-8 mt-0.5">
-              <AvatarImage src="/icon.svg" alt="AnyClaw" />
-              <AvatarFallback className="bg-gradient-to-br from-violet-500/20 to-purple-500/20 text-[10px] font-semibold">
-                AI
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex items-center gap-2 text-muted-foreground text-sm pt-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {t.chat.thinking}
+            <div className="h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 animate-pulse">
+              <img src={beeImage} alt="AnyClaw" className="w-full h-full object-contain" />
+            </div>
+            <div className="bg-muted px-4 py-2 rounded-lg">
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <span className="inline-flex items-center">
+                  <span className="animate-spin inline-block w-3 h-3 border-2 border-primary border-t-transparent rounded-full mr-2" />
+                  {thinkingMessages[thinkingIndex]}{dots}
+                </span>
+              </p>
             </div>
           </div>
         )}
@@ -93,16 +139,10 @@ function StreamingAssistantItem({ content }: { content: string }) {
   return (
     <AIMessage from="assistant">
       <div className="flex gap-3 py-3">
-        <Avatar className="h-8 w-8 mt-0.5">
-          <AvatarImage src="/icon.svg" alt="AnyClaw" />
-          <AvatarFallback className="bg-gradient-to-br from-violet-500/20 to-purple-500/20 text-[10px] font-semibold">
-            AI
-          </AvatarFallback>
-        </Avatar>
+        <div className="h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0">
+          <img src={beeImage} alt="AnyClaw" className="w-full h-full object-contain" />
+        </div>
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-medium text-muted-foreground mb-1.5">
-            {t.chat.assistant}
-          </div>
           <MessageContent>
             <MessageResponse parseIncompleteMarkdown>{content}</MessageResponse>
           </MessageContent>
@@ -116,12 +156,9 @@ function ToolUseTimelineGroup({ items }: { items: ToolUseItem[] }) {
   return (
     <AIMessage from="assistant">
       <div className="flex gap-3 py-2">
-        <Avatar className="h-8 w-8 mt-0.5">
-          <AvatarImage src="/icon.svg" alt="AnyClaw" />
-          <AvatarFallback className="bg-gradient-to-br from-violet-500/20 to-purple-500/20 text-[10px] font-semibold">
-            AI
-          </AvatarFallback>
-        </Avatar>
+        <div className="h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0">
+          <img src={beeImage} alt="AnyClaw" className="w-full h-full object-contain" />
+        </div>
         <div className="flex-1 min-w-0">
           <ToolUseBlock items={items} />
         </div>
@@ -134,12 +171,9 @@ function ToolUseTimelineItem({ item }: { item: Extract<TimelineItem, { kind: 'to
   return (
     <AIMessage from="assistant">
       <div className="flex gap-3 py-2">
-        <Avatar className="h-8 w-8 mt-0.5">
-          <AvatarImage src="/icon.svg" alt="AnyClaw" />
-          <AvatarFallback className="bg-gradient-to-br from-violet-500/20 to-purple-500/20 text-[10px] font-semibold">
-            AI
-          </AvatarFallback>
-        </Avatar>
+        <div className="h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0">
+          <img src={beeImage} alt="AnyClaw" className="w-full h-full object-contain" />
+        </div>
         <div className="flex-1 min-w-0">
           <ToolUseBlock items={[{ id: item.id, name: item.name, input: item.input, status: item.status }]} />
         </div>
