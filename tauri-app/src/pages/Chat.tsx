@@ -239,6 +239,8 @@ function ChatContent() {
 // SSE handler component - handles SSE connection and updates store
 function SSEHandler({ sidecarStatus }: { sidecarStatus: SidecarStatus }) {
   const activeChatId = useChatStore((s) => s.activeChatId);
+  const initChat = useChatStore((s) => s.initChat);
+  const setActiveChatId = useChatStore((s) => s.setActiveChatId);
   const appendStreamText = useChatStore((s) => s.appendStreamText);
   const completeMessage = useChatStore((s) => s.completeMessage);
   const addToolUse = useChatStore((s) => s.addToolUse);
@@ -249,22 +251,39 @@ function SSEHandler({ sidecarStatus }: { sidecarStatus: SidecarStatus }) {
     ? `http://127.0.0.1:${sidecarStatus.port}/api/stream`
     : '';
 
-  // Handle SSE events
+  // Handle SSE events - use chat_id from event, fallback to activeChatId
   const handleSSEMessage = useCallback((event: { type: string; data: any }) => {
-    if (!activeChatId) return;
+    // Extract chat_id from event data, with multiple fallback paths
+    const eventChatId = event.data?.chat_id || event.data?.payload?.chat_id;
+    const targetChatId = eventChatId || activeChatId;
+
+    if (!targetChatId) {
+      console.log('[SSEHandler] No chat_id available, skipping event:', event.type);
+      return;
+    }
+
+    // Initialize chat if needed and sync activeChatId
+    if (eventChatId && eventChatId !== activeChatId) {
+      initChat(eventChatId);
+      setActiveChatId(eventChatId);
+    }
+
+    console.log('[SSEHandler] Processing event:', event.type, 'for chat:', targetChatId);
 
     switch (event.type) {
       case 'content_delta':
         if (event.data.delta) {
-          appendStreamText(activeChatId, event.data.delta);
+          appendStreamText(targetChatId, event.data.delta);
         } else if (event.data.content) {
-          appendStreamText(activeChatId, event.data.content);
+          appendStreamText(targetChatId, event.data.content);
         }
         break;
 
       case 'message:outbound':
         const content = event.data.payload?.content || event.data.content || '';
-        completeMessage(activeChatId, content, []);
+        console.log('[SSEHandler] message:outbound content:', content.substring(0, 50));
+        completeMessage(targetChatId, content, []);
+        setProcessing(targetChatId, false);  // Reset processing state
         break;
 
       case 'message_end':
@@ -272,7 +291,7 @@ function SSEHandler({ sidecarStatus }: { sidecarStatus: SidecarStatus }) {
         break;
 
       case 'tool:start':
-        addToolUse(activeChatId, {
+        addToolUse(targetChatId, {
           id: event.data.tool_id || `tool_${Date.now()}`,
           name: event.data.name || 'unknown',
           input: event.data.input ? JSON.stringify(event.data.input) : undefined,
@@ -281,7 +300,7 @@ function SSEHandler({ sidecarStatus }: { sidecarStatus: SidecarStatus }) {
         break;
 
       case 'tool:complete':
-        addToolUse(activeChatId, {
+        addToolUse(targetChatId, {
           id: event.data.tool_id || `tool_${Date.now()}`,
           name: event.data.name || 'unknown',
           input: event.data.input ? JSON.stringify(event.data.input) : undefined,
@@ -290,10 +309,10 @@ function SSEHandler({ sidecarStatus }: { sidecarStatus: SidecarStatus }) {
         break;
 
       case 'error':
-        setProcessing(activeChatId, false);
+        setProcessing(targetChatId, false);
         break;
     }
-  }, [activeChatId, appendStreamText, completeMessage, addToolUse, setProcessing]);
+  }, [activeChatId, initChat, setActiveChatId, appendStreamText, completeMessage, addToolUse, setProcessing]);
 
   // SSE connection
   useSSE({
@@ -360,9 +379,10 @@ export function Chat({ sidecarStatus }: ChatProps) {
   }, [api]);
 
   // Send message via API (SSE streaming handled separately)
-  const handleSendMessage = useCallback(async (_chatId: string, prompt: string, agentId: string, _attachments?: Attachment[]) => {
+  const handleSendMessage = useCallback(async (chatId: string, prompt: string, agentId: string, _attachments?: Attachment[]) => {
     try {
-      await api.sendMessage(agentId, prompt);
+      // Pass conversation_id to backend so SSE events have matching chat_id
+      await api.sendMessage(agentId, prompt, chatId);
     } catch (error) {
       console.error('Failed to send message:', error);
     }

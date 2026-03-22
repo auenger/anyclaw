@@ -90,7 +90,8 @@ export function ChatProvider({
 
   // Send message
   const send = useCallback(async (prompt: string, attachments?: Attachment[]) => {
-    const effectiveChatId = activeChatId ?? `chat:${crypto.randomUUID()}`
+    // Use backend-compatible chatId format: conv_{agentId} or existing activeChatId
+    const effectiveChatId = activeChatId ?? `conv_${agentId}`
 
     // Initialize chat entry
     initChat(effectiveChatId)
