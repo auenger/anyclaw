@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Plus, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
@@ -10,6 +10,9 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { SidePanel } from "@/components/layout/SidePanel";
 import { ChatListItem } from "@/components/chat/ChatListItem";
 import { useDragRegion } from "@/hooks/useDragRegion";
+import { getApiClient } from "@/lib/api";
+import type { Attachment, Message } from "@/hooks/useChat";
+import type { ChatItem } from "@/lib/chat-utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -258,11 +261,72 @@ function ChatContent() {
 
 // Outer component that provides context
 export function Chat() {
+  const api = getApiClient();
+
+  // Fetch chat list from API
+  const handleFetchChatList = useCallback(async (): Promise<ChatItem[]> => {
+    try {
+      const chats = await api.getChats();
+      return chats;
+    } catch (error) {
+      console.error('Failed to fetch chat list:', error);
+      return [];
+    }
+  }, []);
+
+  // Load chat messages from API
+  const handleLoadChat = useCallback(async (chatId: string): Promise<Message[]> => {
+    try {
+      const data = await api.getChat(chatId);
+      return data.messages.map(msg => ({
+        id: msg.id,
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+        timestamp: msg.timestamp,
+      }));
+    } catch (error) {
+      console.error('Failed to load chat:', error);
+      return [];
+    }
+  }, []);
+
+  // Delete chat via API
+  const handleDeleteChat = useCallback(async (chatId: string) => {
+    try {
+      await api.deleteChat(chatId);
+    } catch (error) {
+      console.error('Failed to delete chat:', error);
+    }
+  }, []);
+
+  // Update chat via API
+  const handleUpdateChat = useCallback(async (chatId: string, data: { name?: string; avatar?: string }) => {
+    try {
+      await api.updateChat(chatId, data);
+    } catch (error) {
+      console.error('Failed to update chat:', error);
+    }
+  }, []);
+
+  // Send message via API (SSE streaming handled separately)
+  const handleSendMessage = useCallback(async (_chatId: string, prompt: string, agentId: string, _attachments?: Attachment[]) => {
+    try {
+      await api.sendMessage(agentId, prompt);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
+  }, []);
+
   return (
     <ChatProvider
       agents={[
         { id: 'default', name: 'Default Agent' },
       ]}
+      onFetchChatList={handleFetchChatList}
+      onLoadChat={handleLoadChat}
+      onDeleteChat={handleDeleteChat}
+      onUpdateChat={handleUpdateChat}
+      onSendMessage={handleSendMessage}
     >
       <ChatContent />
     </ChatProvider>
