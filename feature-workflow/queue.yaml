@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-22T12:00:00"
-  version: 62
+  last_updated: "2026-03-22T12:30:00"
+  version: 64
 
 # 父需求（用于分组追踪)
 parents:
@@ -46,16 +46,11 @@ parents:
     children:
       - feat-ui-design-core
       - feat-ui-chat-redesign
+      - feat-chat-history
       - feat-ui-pages-i18n
 
 # 正在开发的需求
-active:
-  - id: feat-cron-skill
-    name: Cron 技能实现
-    description: 将现有 CronTool 注册到 AgentLoop，同时创建 cron 内置技能，使 Agent 能够通过工具调用或技能两种方式使用定时任务功能
-    priority: 65
-    size: M
-    dependencies: []
+active: []
 
 # 等待中的需求（按优先级排序）
 pending:
@@ -88,6 +83,35 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-chat-history
+    name: 聊天历史与 Agent 管理
+    description: 为 Chat 页面添加聊天历史列表（新建/删除/搜索/切换）和 Agent 选择功能，支持聊天历史持久化
+    priority: 75
+    size: M
+    completed_at: "2026-03-22T12:30:00"
+    archive_path: features/pending-feat-chat-history
+    value_points:
+      - 左侧聊天历史列表（SidePanel）
+      - 搜索框可展开/收起，实时过滤
+      - 按日期分组显示（今天、昨天、更早）
+      - 删除确认对话框（AlertDialog）
+      - ChatListItem 组件 i18n 支持
+      - 后端 /api/chats 端点（GET/DELETE/PATCH）
+      - alert-dialog UI 组件（Radix UI）
+
+  - id: feat-cron-skill
+    name: Cron 技能实现
+    description: 将现有 CronTool 注册到 AgentLoop，同时创建 cron 内置技能，使 Agent 能够通过工具调用或技能两种方式使用定时任务功能
+    priority: 65
+    size: M
+    completed_at: "2026-03-22T12:00:00"
+    archive_path: features/archive/done-feat-cron-skill
+    value_points:
+      - AgentLoop 中导入和初始化 CronService/CronTool
+      - 添加 start_cron_service/stop_cron_service/set_cron_context 方法
+      - 创建 skills/builtin/cron/SKILL.md 技能文档
+      - 添加 tests/test_cron_skill.py 测试套件（24 tests）
+
   - id: feat-task-interrupt
     name: 任务即时中断机制
     description: 参考 nanobot 使用 asyncio.Task + _active_tasks 模式，让 /stop 命令能够即时中断正在执行的 LLM 调用或工具执行
