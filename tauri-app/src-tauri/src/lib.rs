@@ -445,7 +445,6 @@ fn create_tray_icon(app: &AppHandle) {
         })
         .menu(&create_tray_menu(&app_handle))
         .icon(icon)
-        .icon_as_template(true)
         .build(app)
         .expect("Failed to create tray");
 
