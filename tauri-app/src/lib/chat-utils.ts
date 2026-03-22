@@ -11,27 +11,31 @@ export type ChatItem = {
   created_at: string | null
 }
 
-/** 8 full-spectrum preset gradient colors */
-export const PRESET_GRADIENTS = [
-  'linear-gradient(135deg, oklch(0.65 0.18 0), oklch(0.50 0.15 40))',       // red
-  'linear-gradient(135deg, oklch(0.65 0.18 30), oklch(0.50 0.15 70))',      // orange
-  'linear-gradient(135deg, oklch(0.65 0.18 60), oklch(0.50 0.15 100))',     // yellow
-  'linear-gradient(135deg, oklch(0.65 0.15 120), oklch(0.50 0.13 160))',    // green
-  'linear-gradient(135deg, oklch(0.65 0.15 180), oklch(0.50 0.13 220))',    // cyan
-  'linear-gradient(135deg, oklch(0.60 0.15 240), oklch(0.48 0.13 280))',    // blue
-  'linear-gradient(135deg, oklch(0.62 0.17 270), oklch(0.48 0.15 310))',    // purple
-  'linear-gradient(135deg, oklch(0.62 0.17 310), oklch(0.48 0.15 350))',    // pink
-] as const
+// Import preset avatar images
+import img01 from '../../headimg/01.jpg'
+import img02 from '../../headimg/02.jpg'
+import img03 from '../../headimg/03.jpg'
+import img04 from '../../headimg/04.jpg'
+import img05 from '../../headimg/05.jpg'
+import img06 from '../../headimg/06.jpg'
+import img07 from '../../headimg/07.jpg'
+import img08 from '../../headimg/08.jpg'
 
-/** Resolve avatar field to CSS background value */
-export function resolveAvatar(avatar: string | null): string {
-  if (!avatar) return PRESET_GRADIENTS[0]
-  if (avatar.startsWith('gradient:')) {
+/** 8 preset avatar images */
+export const PRESET_AVATARS = [img01, img02, img03, img04, img05, img06, img07, img08] as const
+
+/** Resolve avatar field to image URL */
+export function resolveAvatar(avatar: string | null): string | null {
+  if (!avatar) return null
+  if (avatar.startsWith('avatar:')) {
     const index = parseInt(avatar.split(':')[1], 10)
-    return PRESET_GRADIENTS[index] ?? PRESET_GRADIENTS[0]
+    return PRESET_AVATARS[index] ?? PRESET_AVATARS[0]
   }
-  // Future extension: image type
-  return PRESET_GRADIENTS[0]
+  // Backward compatibility: gradient type returns null (use default bee)
+  if (avatar.startsWith('gradient:')) {
+    return null
+  }
+  return null
 }
 
 // Group chats by date

@@ -9,7 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 import { useChatProcessing } from "@/hooks/useChat";
-import { resolveAvatar, PRESET_GRADIENTS } from "@/lib/chat-utils";
+import { resolveAvatar, PRESET_AVATARS } from "@/lib/chat-utils";
 import type { ChatItem } from "@/lib/chat-utils";
 import beeImage from "@/assets/bee.png";
 import {
@@ -91,32 +91,38 @@ export function ChatListItem({
       >
         <PopoverTrigger asChild>
           <div
-            className="w-9 h-9 rounded-full shrink-0 mt-0.5 cursor-pointer overflow-hidden flex items-center justify-center"
-            style={chat.avatar ? { background: resolveAvatar(chat.avatar) } : {}}
+            className="w-9 h-9 rounded-full shrink-0 mt-0.5 cursor-pointer overflow-hidden flex items-center justify-center bg-muted"
           >
-            {chat.avatar ? null : (
+            {chat.avatar ? (
+              <img
+                src={resolveAvatar(chat.avatar) || beeImage}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : (
               <img src={beeImage} alt="" className="w-7 h-7 object-contain" />
             )}
           </div>
         </PopoverTrigger>
         <PopoverContent side="right" align="start" className="w-auto p-3">
           <div className="grid grid-cols-4 gap-2">
-            {PRESET_GRADIENTS.map((gradient, i) => (
+            {PRESET_AVATARS.map((img, i) => (
               <button
                 key={i}
                 className={cn(
-                  "w-9 h-9 rounded-full transition-all",
-                  chat.avatar === `gradient:${i}`
-                    ? "ring-2 ring-white ring-offset-2 ring-offset-background"
+                  "w-9 h-9 rounded-full overflow-hidden transition-all",
+                  chat.avatar === `avatar:${i}`
+                    ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
                     : "hover:scale-110",
                 )}
-                style={{ background: gradient }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onUpdateAvatar(chat.chat_id, `gradient:${i}`);
+                  onUpdateAvatar(chat.chat_id, `avatar:${i}`);
                   setAvatarPickerOpen(false);
                 }}
-              />
+              >
+                <img src={img} alt="" className="w-full h-full object-cover" />
+              </button>
             ))}
           </div>
         </PopoverContent>
@@ -138,7 +144,14 @@ export function ChatListItem({
             />
           ) : (
             <span className="text-[13px] font-medium truncate flex-1 text-foreground">
-              {chat.name}
+              {chat.name === t.chat.newChat
+                ? new Date(chat.last_message_time).toLocaleString([], {
+                    month: "numeric",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : chat.name}
             </span>
           )}
           <div className="relative shrink-0">
