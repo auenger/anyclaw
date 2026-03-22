@@ -7,6 +7,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 import { useChatProcessing } from "@/hooks/useChat";
 import { resolveAvatar, PRESET_GRADIENTS } from "@/lib/chat-utils";
 import type { ChatItem } from "@/lib/chat-utils";
@@ -22,18 +23,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
-// Simple i18n placeholder
-const t = {
-  chat: {
-    thinking: "Thinking...",
-    editAvatar: "Change avatar",
-    editTitle: "Rename",
-  },
-  common: {
-    delete: "Delete",
-  },
-};
 
 interface ChatListItemProps {
   chat: ChatItem;
@@ -52,6 +41,7 @@ export function ChatListItem({
   onUpdateAvatar,
   onUpdateName,
 }: ChatListItemProps) {
+  const { t } = useI18n();
   const isProcessing = useChatProcessing(chat.chat_id);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [editing, setEditing] = useState(false);

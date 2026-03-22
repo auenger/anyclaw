@@ -54,6 +54,8 @@ export const zh: Translations = {
     stopGenerating: '停止生成',
     copyCode: '复制',
     copied: '已复制！',
+    editAvatar: '更换头像',
+    editTitle: '重命名',
   },
   agents: {
     title: '智能体',

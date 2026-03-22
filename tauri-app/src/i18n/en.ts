@@ -52,6 +52,8 @@ export const en = {
     stopGenerating: 'Stop generating',
     copyCode: 'Copy',
     copied: 'Copied!',
+    editAvatar: 'Change avatar',
+    editTitle: 'Rename',
   },
   agents: {
     title: 'Agents',

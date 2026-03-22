@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from anyclaw.api.routes.health import router as health_router
 from anyclaw.api.routes.agents import router as agents_router
+from anyclaw.api.routes.chats import router as chats_router
 from anyclaw.api.routes.messages import router as messages_router
 from anyclaw.api.routes.skills import router as skills_router
 from anyclaw.api.routes.tasks import router as tasks_router
@@ -60,6 +61,7 @@ def create_app() -> FastAPI:
     # Mount routers
     app.include_router(health_router, prefix="/api", tags=["Health"])
     app.include_router(agents_router, prefix="/api", tags=["Agents"])
+    app.include_router(chats_router, prefix="/api", tags=["Chats"])
     app.include_router(messages_router, prefix="/api", tags=["Messages"])
     app.include_router(skills_router, prefix="/api", tags=["Skills"])
     app.include_router(tasks_router, prefix="/api", tags=["Tasks"])
