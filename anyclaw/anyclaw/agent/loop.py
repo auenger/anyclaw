@@ -456,6 +456,14 @@ class AgentLoop:
 
         self.history.add_user_message(user_input)
 
+        # 记录用户消息到 session_manager
+        if self.session_manager and self._session_key:
+            self.session_manager.add_message(
+                self._session_key,
+                "user",
+                content=user_input,
+            )
+
         # 记录用户消息到归档
         if self.archive_manager:
             self.archive_manager.record_user_message(user_input)
@@ -497,6 +505,14 @@ class AgentLoop:
             return
 
         self.history.add_user_message(user_input)
+
+        # 记录用户消息到 session_manager
+        if self.session_manager and self._session_key:
+            self.session_manager.add_message(
+                self._session_key,
+                "user",
+                content=user_input,
+            )
 
         # 记录用户消息到归档
         if self.archive_manager:

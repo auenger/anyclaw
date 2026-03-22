@@ -249,14 +249,26 @@ class SessionManager:
         count, _ = SessionManager._get_session_info(path)
         return count
 
-    def delete_session(self, key: str) -> None:
-        """删除会话"""
+    def delete_session(self, key: str) -> bool:
+        """删除会话
+
+        Args:
+            key: 会话键
+
+        Returns:
+            是否成功删除（文件存在且被删除）
+        """
         path = self._get_session_path(key)
+        deleted = False
         if path.exists():
             path.unlink()
             logger.info(f"Session deleted: {key}")
+            deleted = True
+        else:
+            logger.warning(f"Session file not found for deletion: {key}")
 
         self.invalidate(key)
+        return deleted
 
     def update_metadata(self, key: str, metadata: Dict[str, Any]) -> bool:
         """

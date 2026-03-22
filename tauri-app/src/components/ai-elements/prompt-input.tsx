@@ -3,10 +3,10 @@ import type {
   ComponentProps,
   KeyboardEventHandler,
   PropsWithChildren,
-  RefObject,
 } from "react";
 import {
   createContext,
+  forwardRef,
   useCallback,
   useContext,
   useEffect,
@@ -159,19 +159,13 @@ export function PromptInput({
 export type PromptInputTextareaProps = Omit<
   ComponentProps<"textarea">,
   "value" | "onChange"
-> & {
-  ref?: RefObject<HTMLTextAreaElement>;
-};
+>;
 
-export const PromptInputTextarea = ({
-  className,
-  onKeyDown,
-  ref,
-  ...props
-}: PromptInputTextareaProps) => {
+export const PromptInputTextarea = forwardRef<HTMLTextAreaElement, PromptInputTextareaProps>(
+  ({ className, onKeyDown, ...props }, forwardedRef) => {
   const { value, setValue, onSubmit, status, disabled, files } =
     usePromptInput();
-  const textareaRef = ref || useRef<HTMLTextAreaElement>(null);
+  const innerRef = useRef<HTMLTextAreaElement>(null);
 
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -196,7 +190,7 @@ export const PromptInputTextarea = ({
 
   // Auto-resize
   useEffect(() => {
-    const textarea = textareaRef.current;
+    const textarea = innerRef.current;
     if (textarea) {
       textarea.style.height = "auto";
       textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
@@ -207,7 +201,15 @@ export const PromptInputTextarea = ({
 
   return (
     <textarea
-      ref={textareaRef}
+      ref={(node) => {
+        // Merge refs: update innerRef and forward to parent if provided
+        (innerRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = node;
+        if (typeof forwardedRef === 'function') {
+          forwardedRef(node);
+        } else if (forwardedRef) {
+          forwardedRef.current = node;
+        }
+      }}
       value={value}
       onChange={handleChange}
       onKeyDown={handleKeyDown}
@@ -223,7 +225,7 @@ export const PromptInputTextarea = ({
       {...props}
     />
   );
-};
+});
 
 // Header (for attachments)
 export const PromptInputHeader = ({
