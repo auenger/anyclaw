@@ -11,6 +11,7 @@ import { useI18n } from "@/i18n";
 import { useChatProcessing } from "@/hooks/useChat";
 import { resolveAvatar, PRESET_GRADIENTS } from "@/lib/chat-utils";
 import type { ChatItem } from "@/lib/chat-utils";
+import beeImage from "@/assets/bee.png";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -90,11 +91,11 @@ export function ChatListItem({
       >
         <PopoverTrigger asChild>
           <div
-            className="w-9 h-9 rounded-full shrink-0 mt-0.5 cursor-pointer overflow-hidden flex items-center justify-center bg-gradient-to-br from-violet-500/20 to-purple-500/20"
+            className="w-9 h-9 rounded-full shrink-0 mt-0.5 cursor-pointer overflow-hidden flex items-center justify-center"
             style={chat.avatar ? { background: resolveAvatar(chat.avatar) } : {}}
           >
             {chat.avatar ? null : (
-              <img src="/icon.svg" alt="" className="w-5 h-5" />
+              <img src={beeImage} alt="" className="w-7 h-7 object-contain" />
             )}
           </div>
         </PopoverTrigger>
