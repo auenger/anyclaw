@@ -84,11 +84,12 @@ async def list_chats() -> list[ChatItem]:
     """
     manager = get_serve_manager()
 
-    # Get sessions from SessionManager
-    sessions = manager.session_manager.list_sessions()
-
-    # Convert to ChatItem format
-    chats = [_session_to_chat_item(s) for s in sessions]
+    # Get sessions from SessionManager (via agent)
+    if manager.agent and manager.agent.session_manager:
+        sessions = manager.agent.session_manager.list_sessions()
+        chats = [_session_to_chat_item(s) for s in sessions]
+    else:
+        chats = []
 
     return chats
 
@@ -108,12 +109,16 @@ async def get_chat(chat_id: str) -> ChatDetail:
     """
     manager = get_serve_manager()
 
+    # Check if session_manager is available
+    if not manager.agent or not manager.agent.session_manager:
+        raise HTTPException(status_code=404, detail="Session manager not available")
+
     # Try to find session with various key formats
     # Session keys may be "cli:chat_id", "channel:chat_id", or just "chat_id"
     session = None
     for key_format in [f"cli:{chat_id}", chat_id, f"channel:{chat_id}"]:
         try:
-            session = manager.session_manager.get_or_create(key_format)
+            session = manager.agent.session_manager.get_or_create(key_format)
             if session.messages:
                 break
         except Exception:
@@ -149,11 +154,15 @@ async def delete_chat(chat_id: str) -> dict[str, bool]:
     """
     manager = get_serve_manager()
 
+    # Check if session_manager is available
+    if not manager.agent or not manager.agent.session_manager:
+        return {"success": False}
+
     # Try to delete with various key formats
     deleted = False
     for key_format in [f"cli:{chat_id}", chat_id, f"channel:{chat_id}"]:
         try:
-            manager.session_manager.delete_session(key_format)
+            manager.agent.session_manager.delete_session(key_format)
             deleted = True
             break
         except Exception:
