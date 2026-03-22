@@ -1,11 +1,14 @@
 export type ChatItem = {
-  chat_id: string
+  chat_id: string  // 完整 session key，如 "api:conv_1711084800"
+  conversation_id: string  // 短 ID，如 "conv_1711084800"
   name: string
   agent_id: string
   channel: string
   last_message_time: string
   last_message: string | null
   avatar: string | null
+  message_count: number
+  created_at: string | null
 }
 
 /** 8 full-spectrum preset gradient colors */

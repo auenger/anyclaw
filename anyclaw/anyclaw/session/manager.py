@@ -98,6 +98,32 @@ class SessionManager:
         self._cache[key] = session
         return session
 
+    def get(self, key: str) -> Optional[Session]:
+        """
+        获取会话（不创建）
+
+        Args:
+            key: 会话键
+
+        Returns:
+            Session 对象，如果不存在则返回 None
+        """
+        # 1. 检查内存缓存
+        if key in self._cache:
+            logger.debug(f"Session cache hit: {key}")
+            return self._cache[key]
+
+        # 2. 尝试从磁盘加载
+        path = self._get_session_path(key)
+        if path.exists():
+            session = Session.load(path)
+            if session:
+                self._cache[key] = session
+                logger.debug(f"Session loaded from disk: {key}")
+                return session
+
+        return None
+
     def save(self, session: Session) -> None:
         """保存会话到磁盘"""
         if not self.config.enable_persistence:
@@ -161,19 +187,21 @@ class SessionManager:
 
         for path in self.sessions_dir.glob("*.jsonl"):
             try:
-                # 只读取元数据行
+                # 读取元数据行和最后一条消息
                 with open(path, encoding="utf-8") as f:
                     first_line = f.readline().strip()
                     if first_line:
                         data = json.loads(first_line)
                         if data.get("_type") == "metadata":
                             key = data.get("key") or path.stem.replace("_", ":", 1)
+                            message_count, last_message = self._get_session_info(path)
                             sessions.append({
                                 "key": key,
                                 "created_at": data.get("created_at"),
                                 "updated_at": data.get("updated_at"),
                                 "path": str(path),
-                                "message_count": self._count_messages(path)
+                                "message_count": message_count,
+                                "last_message": last_message,
                             })
             except Exception:
                 continue
@@ -181,14 +209,43 @@ class SessionManager:
         return sorted(sessions, key=lambda x: x.get("updated_at", ""), reverse=True)
 
     @staticmethod
-    def _count_messages(path: Path) -> int:
-        """统计会话文件中的消息数"""
+    def _get_session_info(path: Path) -> tuple[int, Optional[str]]:
+        """获取会话信息（消息数和最后一条消息）
+
+        Args:
+            path: 会话文件路径
+
+        Returns:
+            (消息数, 最后一条消息内容)
+        """
         count = 0
+        last_message = None
+
         with open(path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
-                if line and not json.loads(line).get("_type") == "metadata":
-                    count += 1
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    if data.get("_type") == "metadata":
+                        continue
+                    # 只统计 user 和 assistant 消息
+                    role = data.get("role", "")
+                    if role in ("user", "assistant"):
+                        count += 1
+                        content = data.get("content", "")
+                        if content:
+                            last_message = content
+                except json.JSONDecodeError:
+                    continue
+
+        return count, last_message
+
+    @staticmethod
+    def _count_messages(path: Path) -> int:
+        """统计会话文件中的消息数"""
+        count, _ = SessionManager._get_session_info(path)
         return count
 
     def delete_session(self, key: str) -> None:

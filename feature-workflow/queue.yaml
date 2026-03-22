@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-22T12:30:00"
-  version: 64
+  last_updated: "2026-03-22T14:30:00"
+  version: 66
 
 # 父需求（用于分组追踪)
 parents:
@@ -90,6 +90,21 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-chat-history-refactor
+    name: 对话历史列表重构
+    description: 重构优化对话历史列表系统，统一 session key 格式，修复历史消息加载失败问题，优化对话列表显示
+    priority: 78
+    size: M
+    completed_at: "2026-03-22T14:30:00"
+    archive_path: features/pending-feat-chat-history-refactor
+    value_points:
+      - 后端 ChatItem 返回完整 chat_id（含 channel 前缀）
+      - 添加 conversation_id 字段（短 ID）
+      - 生成友好的显示名称（如 "Chat 3月22日 14:30"）
+      - 添加 last_message 预览
+      - SSE 事件使用完整 session key
+      - 前端 send() 使用 conv_${Date.now()} 生成唯一 ID
+
   - id: feat-chat-history
     name: 聊天历史与 Agent 管理
     description: 为 Chat 页面添加聊天历史列表（新建/删除/搜索/切换）和 Agent 选择功能，支持聊天历史持久化

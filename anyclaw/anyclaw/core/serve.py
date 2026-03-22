@@ -233,6 +233,10 @@ class ServeManager:
                     # 🔍 详细日志：开始 Agent 处理
                     logger.info(f"[Serve] 🤖 开始 Agent 处理: chat_id={msg.chat_id}")
 
+                    # 设置正确的 session key，确保对话保存到正确的 session
+                    session_key = f"{msg.channel}:{msg.chat_id}"
+                    self.agent.set_session_key(session_key)
+
                     # Get response from agent
                     import time as time_module
                     _agent_start = time_module.time()
@@ -244,15 +248,15 @@ class ServeManager:
                                 f"duration={_agent_duration:.2f}s, "
                                 f"response_len={len(response)}")
 
-                    # Send response back
+                    # Send response back (use session_key as chat_id for consistency)
                     outbound = OutboundMessage(
                         channel=msg.channel,
-                        chat_id=msg.chat_id,
+                        chat_id=session_key,  # 使用完整的 session key
                         content=response,
                         reply_to=msg.metadata.get("message_id"),
                     )
                     await self.bus.publish_outbound(outbound)
-                    logger.info(f"[Serve] 📤 响应已发送: chat_id={msg.chat_id}, "
+                    logger.info(f"[Serve] 📤 响应已发送: chat_id={session_key}, "
                                 f"bus_outbound_size={self.bus.outbound_size}")
 
                     self._messages_processed += 1
@@ -284,6 +288,7 @@ class ServeManager:
             msg: The inbound message containing the stop command.
         """
         response_text: str
+        session_key = f"{msg.channel}:{msg.chat_id}"
 
         if self.agent and self.agent.has_active_task(msg.chat_id):
             aborted = self.agent.request_abort(msg.chat_id)
@@ -298,7 +303,7 @@ class ServeManager:
         # Send response
         outbound = OutboundMessage(
             channel=msg.channel,
-            chat_id=msg.chat_id,
+            chat_id=session_key,  # 使用完整的 session key
             content=response_text,
             reply_to=msg.metadata.get("message_id"),
         )

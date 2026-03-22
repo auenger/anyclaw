@@ -90,8 +90,8 @@ export function ChatProvider({
 
   // Send message
   const send = useCallback(async (prompt: string, attachments?: Attachment[]) => {
-    // Use backend-compatible chatId format: conv_{agentId} or existing activeChatId
-    const effectiveChatId = activeChatId ?? `conv_${agentId}`
+    // Use backend-compatible chatId format: conv_{timestamp} or existing activeChatId
+    const effectiveChatId = activeChatId ?? `conv_${Date.now()}`
 
     // Initialize chat entry
     initChat(effectiveChatId)
