@@ -8,15 +8,29 @@ import {
   MessageAction,
 } from '@/components/ai-elements/message'
 import { ToolUseBlock } from './ToolUseBlock'
-import type { Message } from '@/stores/chat'
+import { ToolResultBlock } from './ToolResultBlock'
+import type { Message, ToolCall, ToolResult } from '@/stores/chat'
 import { useI18n } from '@/i18n'
 import beeImage from '@/assets/bee.png'
 
 interface AssistantMessageProps {
   message: Message & { role: 'assistant' }
+  toolResults?: Map<string, ToolResult>  // tool_call_id -> ToolResult
 }
 
-export function AssistantMessage({ message }: AssistantMessageProps) {
+/**
+ * Convert ToolCall[] to ToolUseItem[] for display
+ */
+function toolCallsToToolUseItems(toolCalls: ToolCall[]) {
+  return toolCalls.map(tc => ({
+    id: tc.id,
+    name: tc.function.name,
+    input: tc.function.arguments,
+    status: 'done' as const,
+  }))
+}
+
+export function AssistantMessage({ message, toolResults }: AssistantMessageProps) {
   const [copied, setCopied] = useState(false)
   const { t } = useI18n()
 
@@ -25,6 +39,9 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
+
+  // Handle both live toolUse and history toolCalls
+  const toolUseItems = message.toolUse ?? (message.toolCalls ? toolCallsToToolUseItems(message.toolCalls) : [])
 
   return (
     <AIMessage from="assistant" data-testid="message-assistant">
@@ -39,8 +56,27 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
               {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
-          {message.toolUse && message.toolUse.length > 0 && (
-            <ToolUseBlock items={message.toolUse} />
+          {/* Tool calls display */}
+          {toolUseItems.length > 0 && (
+            <div className="space-y-1">
+              {toolUseItems.map((item) => {
+                const toolResult = toolResults?.get(item.id)
+                return (
+                  <div key={item.id}>
+                    <ToolUseBlock items={[item]} />
+                    {toolResult && (
+                      <ToolResultBlock
+                        toolCallId={toolResult.toolCallId}
+                        name={toolResult.name}
+                        content={toolResult.content}
+                        status={toolResult.status}
+                        timestamp={toolResult.timestamp}
+                      />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           )}
           <div className="relative">
             <MessageContent>

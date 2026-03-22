@@ -286,6 +286,7 @@ class ServeManager:
                     # 设置正确的 session key，确保对话保存到正确的 session
                     session_key = f"{msg.channel}:{msg.chat_id}"
                     self.agent.set_session_key(session_key)
+                    logger.debug(f"[Serve] Session key set: {session_key}, agent._session_key={self.agent._session_key}")
 
                     # Get response from agent
                     import time as time_module

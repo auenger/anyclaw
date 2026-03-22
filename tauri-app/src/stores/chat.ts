@@ -1,11 +1,30 @@
 import { create } from 'zustand'
 
-// Tool use item
+// Tool call from LLM (for history messages)
+export type ToolCall = {
+  id: string
+  type: 'function'
+  function: {
+    name: string
+    arguments: string
+  }
+}
+
+// Tool use item (for streaming/live tool calls)
 export type ToolUseItem = {
   id: string
   name: string
   input?: string
   status: 'running' | 'done'
+}
+
+// Tool result (for displaying tool message)
+export type ToolResult = {
+  toolCallId: string
+  name: string
+  content: string
+  status: 'success' | 'error'
+  timestamp?: string
 }
 
 // Timeline item types
@@ -17,6 +36,8 @@ export type TimelineItem =
     content: string
     timestamp: string
     toolUse?: ToolUseItem[]
+    toolCalls?: ToolCall[]  // 历史消息中的工具调用
+    toolResults?: ToolResult[]  // 关联的工具结果
     attachments?: Attachment[]
     errorCode?: string
   }
@@ -35,13 +56,17 @@ export type TimelineItem =
     timestamp: string
   }
 
-// Message type
+// Message type (matches API ChatMessage)
 export type Message = {
   id: string
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'tool'
   content: string
   timestamp: string
-  toolUse?: ToolUseItem[]
+  toolUse?: ToolUseItem[]  // 实时工具调用
+  toolCalls?: ToolCall[]  // 历史消息中的工具调用
+  toolResults?: ToolResult[]  // 关联的工具结果
+  toolCallId?: string  // tool 消息关联 ID
+  name?: string  // 工具名称 (role="tool" 时)
   attachments?: Attachment[]
   errorCode?: string
 }
@@ -80,21 +105,27 @@ function notifyChatUpdate() {
   }
 }
 
-function messageToTimelineItem(message: Message): TimelineItem {
+function messageToTimelineItem(message: Message): TimelineItem | null {
+  // Skip tool messages - they are attached to assistant messages via toolResults
+  if (message.role === 'tool') {
+    return null
+  }
   return {
     id: `message:${message.id}`,
     kind: 'message',
-    role: message.role,
+    role: message.role as 'user' | 'assistant',
     content: message.content,
     timestamp: message.timestamp,
     toolUse: message.toolUse,
+    toolCalls: message.toolCalls,
+    toolResults: message.toolResults,
     attachments: message.attachments,
     errorCode: message.errorCode,
   }
 }
 
 function buildTimelineFromMessages(messages: Message[]): TimelineItem[] {
-  return messages.map(messageToTimelineItem)
+  return messages.map(messageToTimelineItem).filter((item): item is TimelineItem => item !== null)
 }
 
 function defaultChatState(chatId: string): ChatState {
@@ -272,12 +303,15 @@ export const useChatStore = create<ChatStore>((set) => ({
   },
 
   addUserMessage: (chatId, message) => {
-    set((state) => ({
-      chats: updateChat(state.chats, chatId, (chat) => ({
-        messages: [...chat.messages, message],
-        timelineItems: [...chat.timelineItems, messageToTimelineItem(message)],
-      })),
-    }))
+    set((state) => {
+      const timelineItem = messageToTimelineItem(message)
+      return {
+        chats: updateChat(state.chats, chatId, (chat) => ({
+          messages: [...chat.messages, message],
+          timelineItems: timelineItem ? [...chat.timelineItems, timelineItem] : chat.timelineItems,
+        })),
+      }
+    })
     // Notify after state is committed
     queueMicrotask(notifyChatUpdate)
   },

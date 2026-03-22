@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -31,12 +31,15 @@ class ChatItem(BaseModel):
 
 
 class ChatMessage(BaseModel):
-    """Chat message."""
+    """Chat message with full tool calling support."""
 
     id: str
-    role: str
+    role: str  # "user" | "assistant" | "tool"
     content: str
     timestamp: str
+    tool_calls: Optional[List[Dict[str, Any]]] = None  # assistant 发起的工具调用
+    tool_call_id: Optional[str] = None  # tool 消息关联 ID
+    name: Optional[str] = None  # 工具名称 (role="tool" 时)
 
 
 class ChatDetail(BaseModel):
@@ -195,16 +198,19 @@ async def get_chat(chat_id: str) -> ChatDetail:
     if not session:
         raise HTTPException(status_code=404, detail=f"Chat {chat_id} not found")
 
-    # Convert messages to response format
+    # Convert messages to response format (include all roles: user, assistant, tool)
     messages = [
         ChatMessage(
             id=str(i),
             role=msg.role,
             content=msg.content or "",
             timestamp=msg.timestamp or "",
+            tool_calls=msg.tool_calls if msg.tool_calls else None,
+            tool_call_id=msg.tool_call_id if msg.tool_call_id else None,
+            name=msg.name if msg.name else None,
         )
         for i, msg in enumerate(session.messages)
-        if msg.role in ("user", "assistant")
+        if msg.role in ("user", "assistant", "tool")
     ]
 
     return ChatDetail(chat_id=chat_id, messages=messages)

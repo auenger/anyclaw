@@ -353,12 +353,49 @@ export function Chat({ sidecarStatus }: ChatProps) {
   const handleLoadChat = useCallback(async (chatId: string): Promise<Message[]> => {
     try {
       const data = await api.getChat(chatId);
-      return data.messages.map(msg => ({
-        id: msg.id,
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content,
-        timestamp: msg.timestamp,
-      }));
+
+      // First pass: build tool results map
+      const toolResultsMap = new Map<string, { toolCallId: string; name: string; content: string; status: 'success' | 'error'; timestamp?: string }>()
+      for (const msg of data.messages) {
+        if (msg.role === 'tool' && msg.tool_call_id) {
+          const status = /Exit code:\s*[1-9]/i.test(msg.content) ? 'error' : 'success'
+          toolResultsMap.set(msg.tool_call_id, {
+            toolCallId: msg.tool_call_id,
+            name: msg.name || 'unknown',
+            content: msg.content,
+            status,
+            timestamp: msg.timestamp,
+          })
+        }
+      }
+
+      // Second pass: build messages, attach tool results to assistant messages
+      return data.messages
+        .filter(msg => msg.role !== 'tool')  // Filter standalone tool messages
+        .map(msg => {
+          const baseMsg: Message = {
+            id: msg.id,
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+            timestamp: msg.timestamp,
+          }
+
+          // Attach tool_calls if present
+          if (msg.role === 'assistant' && msg.tool_calls) {
+            baseMsg.toolCalls = msg.tool_calls
+
+            // Attach matching tool results
+            const toolResults = msg.tool_calls
+              .map(tc => toolResultsMap.get(tc.id))
+              .filter(Boolean) as Array<{ toolCallId: string; name: string; content: string; status: 'success' | 'error'; timestamp?: string }>
+
+            if (toolResults.length > 0) {
+              baseMsg.toolResults = toolResults
+            }
+          }
+
+          return baseMsg
+        })
     } catch (error) {
       console.error('Failed to load chat:', error);
       return [];

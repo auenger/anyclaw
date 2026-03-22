@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
   Conversation,
   ConversationContent,
@@ -13,7 +13,7 @@ import {
 import { UserMessage } from './UserMessage'
 import { AssistantMessage } from './AssistantMessage'
 import { ToolUseBlock } from './ToolUseBlock'
-import type { TimelineItem, ToolUseItem } from '@/stores/chat'
+import type { TimelineItem, ToolUseItem, ToolResult } from '@/stores/chat'
 import { buildRenderableTimeline, type RenderableTimelineItem } from './timeline'
 import { useI18n } from '@/i18n'
 import beeImage from '@/assets/bee.png'
@@ -64,6 +64,19 @@ export function ChatMessages({
   const [thinkingIndex, setThinkingIndex] = useState(0)
   const [dots, setDots] = useState('')
 
+  // Build tool results map from tool messages
+  const toolResultsMap = useMemo(() => {
+    const map = new Map<string, ToolResult>()
+    for (const item of timelineItems) {
+      if (item.kind === 'message' && item.role === 'assistant' && item.toolResults) {
+        for (const result of item.toolResults) {
+          map.set(result.toolCallId, result)
+        }
+      }
+    }
+    return map
+  }, [timelineItems])
+
   // 思考文字轮换动画
   useEffect(() => {
     if (!isProcessing) {
@@ -90,7 +103,7 @@ export function ChatMessages({
     <Conversation data-testid="message-list">
       <ConversationContent className="max-w-3xl mx-auto w-full px-4 py-6 gap-1">
         {renderableItems.map((item) => (
-          <TimelineRow key={item.id} item={item} />
+          <TimelineRow key={item.id} item={item} toolResultsMap={toolResultsMap} />
         ))}
 
         {/* Thinking state */}
@@ -116,7 +129,13 @@ export function ChatMessages({
   )
 }
 
-function TimelineRow({ item }: { item: RenderableTimelineItem }) {
+function TimelineRow({
+  item,
+  toolResultsMap
+}: {
+  item: RenderableTimelineItem
+  toolResultsMap: Map<string, ToolResult>
+}) {
   if (item.kind === 'tool_use_group') {
     return <ToolUseTimelineGroup items={item.items} />
   }
@@ -125,7 +144,10 @@ function TimelineRow({ item }: { item: RenderableTimelineItem }) {
     case 'message':
       return item.role === 'user'
         ? <UserMessage message={{ ...item, role: 'user' as const }} />
-        : <AssistantMessage message={{ ...item, role: 'assistant' as const }} />
+        : <AssistantMessage
+            message={{ ...item, role: 'assistant' as const }}
+            toolResults={toolResultsMap}
+          />
     case 'assistant_stream':
       return <StreamingAssistantItem content={item.content} />
     case 'tool_use':

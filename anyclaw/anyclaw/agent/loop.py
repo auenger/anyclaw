@@ -95,9 +95,12 @@ class AgentLoop:
                     from anyclaw.session.manager import SessionManager
 
                     self.session_manager = SessionManager(session_config)
-                    logger.info("SessionManager enabled")
+                    logger.info(f"SessionManager enabled, workspace={self.workspace}, sessions_dir={session_config.sessions_dir}")
                 except ImportError as e:
                     logger.warning(f"Failed to initialize SessionManager: {e}")
+                    self.session_manager = None
+                except Exception as e:
+                    logger.error(f"Unexpected error initializing SessionManager: {e}")
                     self.session_manager = None
             else:
                 logger.debug("SessionManager disabled")
@@ -457,12 +460,13 @@ class AgentLoop:
         self.history.add_user_message(user_input)
 
         # 记录用户消息到 session_manager
-        if self.session_manager and self._session_key:
+        if self.session_manager:
             self.session_manager.add_message(
                 self._session_key,
                 "user",
                 content=user_input,
             )
+            logger.debug(f"[AgentLoop] User message recorded to session: {self._session_key}")
 
         # 记录用户消息到归档
         if self.archive_manager:
@@ -507,7 +511,7 @@ class AgentLoop:
         self.history.add_user_message(user_input)
 
         # 记录用户消息到 session_manager
-        if self.session_manager and self._session_key:
+        if self.session_manager:
             self.session_manager.add_message(
                 self._session_key,
                 "user",

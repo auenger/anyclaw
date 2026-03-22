@@ -30,7 +30,22 @@ export class ApiClient {
     return response.json();
   }
 
-  async getChat(chatId: string): Promise<{ messages: Array<{ id: string; role: string; content: string; timestamp: string }> }> {
+  async getChat(chatId: string): Promise<{
+    chat_id: string
+    messages: Array<{
+      id: string
+      role: 'user' | 'assistant' | 'tool'
+      content: string
+      timestamp: string
+      tool_calls?: Array<{
+        id: string
+        type: 'function'
+        function: { name: string; arguments: string }
+      }>
+      tool_call_id?: string
+      name?: string
+    }>
+  }> {
     const response = await fetch(`${this.baseUrl}/api/chats/${chatId}`);
     return response.json();
   }
