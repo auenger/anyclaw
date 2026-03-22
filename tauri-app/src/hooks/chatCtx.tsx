@@ -92,8 +92,9 @@ export function ChatProvider({
 
   // Send message
   const send = useCallback(async (prompt: string, attachments?: Attachment[]) => {
-    // Use backend-compatible chatId format: conv_{timestamp} or existing activeChatId
-    const effectiveChatId = activeChatId ?? `conv_${Date.now()}`
+    // Use full session key format (api:conv_XXX) to match backend SSE events
+    // This prevents creating duplicate chat states when SSE returns api:conv_XXX
+    const effectiveChatId = activeChatId ?? `api:conv_${Date.now()}`
 
     // Initialize chat entry
     initChat(effectiveChatId)

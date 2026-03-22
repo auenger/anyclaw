@@ -284,7 +284,8 @@ class ServeManager:
                     logger.info(f"[Serve] 🤖 开始 Agent 处理: chat_id={msg.chat_id}")
 
                     # 设置正确的 session key，确保对话保存到正确的 session
-                    session_key = f"{msg.channel}:{msg.chat_id}"
+                    # Use msg.session_key property which handles session_key_override
+                    session_key = msg.session_key
                     self.agent.set_session_key(session_key)
                     logger.debug(f"[Serve] Session key set: {session_key}, agent._session_key={self.agent._session_key}")
 
@@ -388,10 +389,10 @@ class ServeManager:
             msg: The inbound message containing the stop command.
         """
         response_text: str
-        session_key = f"{msg.channel}:{msg.chat_id}"
+        session_key = msg.session_key
 
-        if self.agent and self.agent.has_active_task(msg.chat_id):
-            aborted = self.agent.request_abort(msg.chat_id)
+        if self.agent and self.agent.has_active_task(session_key):
+            aborted = self.agent.request_abort(session_key)
             if aborted:
                 response_text = "⏹️ 正在停止任务..."
                 logger.info(f"Task abort requested for chat {msg.chat_id}")
