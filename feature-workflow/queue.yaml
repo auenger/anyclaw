@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-23T01:03:00"
-  version: 68
+  last_updated: "2026-03-23T16:00:00"
+  version: 70
 
 # 父需求（用于分组追踪)
 parents:
@@ -48,12 +48,47 @@ parents:
       - feat-ui-chat-redesign
       - feat-chat-history
       - feat-ui-pages-i18n
+  - id: feat-office-skills
+    name: Office 文档处理技能
+    description: 将 Claude Code 的 documents skill 移植到 AnyClaw，支持 DOCX/PDF/PPTX/XLSX 四种文档格式
+    priority: 70
+    size: L
+    status: pending
+    children:
+      - feat-docx-skill
+      - feat-pdf-skill
+      - feat-pptx-skill
+      - feat-xlsx-skill
 
 # 正在开发的需求
 active: []
 
 # 等待中的需求（按优先级排序）
 pending:
+
+  - id: feat-pdf-skill
+    name: PDF 文档处理技能
+    description: PDF 处理技能，支持创建、合并/拆分、文本/表格提取、表单填充、OCR
+    priority: 70
+    size: M
+    dependencies: []
+    parent: feat-office-skills
+
+  - id: feat-pptx-skill
+    name: PPTX 演示文稿处理技能
+    description: PowerPoint 演示文稿技能，支持创建、模板使用、编辑和内容分析
+    priority: 65
+    size: M
+    dependencies: []
+    parent: feat-office-skills
+
+  - id: feat-xlsx-skill
+    name: XLSX 电子表格处理技能
+    description: Excel 电子表格技能，支持创建、编辑、数据分析和公式重算
+    priority: 65
+    size: M
+    dependencies: []
+    parent: feat-office-skills
 
   - id: feat-cron-skill
     name: Cron 技能实现
@@ -90,6 +125,20 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-docx-skill
+    name: DOCX 文档处理技能
+    description: Word 文档处理技能，支持创建、编辑、追踪变更（redlining）和读取分析
+    priority: 70
+    size: M
+    completed_at: "2026-03-23T16:00:00"
+    value_points:
+      - 创建文档（标题、段落、表格、列表、格式）
+      - 读取文档（pandoc 转换 markdown）
+      - 编辑文档（OOXML unpack/pack 文本替换）
+      - 提取文本和元数据
+      - 追踪变更（redlining）支持
+      - 22 个单元测试
+
   - id: feat-chat-message-render
     name: 对话历史消息渲染增强
     description: 增强 Tauri 桌面应用对话历史消息渲染，完整展示 user、assistant（含 tool_calls）、tool 角色消息。 同时修复 API session 缺少 user 消息的 bug。

@@ -300,15 +300,15 @@ class ServeManager:
                                 f"duration={_agent_duration:.2f}s, "
                                 f"response_len={len(response)}")
 
-                    # Send response back (use session_key as chat_id for consistency)
+                    # Send response back (use original chat_id for channel routing)
                     outbound = OutboundMessage(
                         channel=msg.channel,
-                        chat_id=session_key,  # 使用完整的 session key
+                        chat_id=msg.chat_id,  # 使用原始 chat_id，用于 channel 发送消息
                         content=response,
                         reply_to=msg.metadata.get("message_id"),
                     )
                     await self.bus.publish_outbound(outbound)
-                    logger.info(f"[Serve] 📤 响应已发送: chat_id={session_key}, "
+                    logger.info(f"[Serve] 📤 响应已发送: chat_id={msg.chat_id}, "
                                 f"bus_outbound_size={self.bus.outbound_size}")
 
                     # Auto-generate title if this is a new chat (first 2 exchanges)
@@ -401,10 +401,10 @@ class ServeManager:
         else:
             response_text = "没有正在执行的任务"
 
-        # Send response
+        # Send response (use original chat_id for channel routing)
         outbound = OutboundMessage(
             channel=msg.channel,
-            chat_id=session_key,  # 使用完整的 session key
+            chat_id=msg.chat_id,  # 使用原始 chat_id，用于 channel 发送消息
             content=response_text,
             reply_to=msg.metadata.get("message_id"),
         )

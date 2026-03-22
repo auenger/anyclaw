@@ -486,6 +486,15 @@ class AgentLoop:
 
         self.history.add_assistant_message(response)
 
+        # 记录助手消息到 session_manager（最终响应，无 tool_calls）
+        if self.session_manager:
+            self.session_manager.add_message(
+                self._session_key,
+                "assistant",
+                content=response,
+            )
+            logger.debug(f"[AgentLoop] Assistant message recorded to session: {self._session_key}")
+
         # 记录助手响应（检查是否是迭代摘要)
         is_summary = "迭代摘要" in response or "工作进度汇报" in response
         agent_logger.log_assistant_response(response, settings.llm_model, is_summary=is_summary)

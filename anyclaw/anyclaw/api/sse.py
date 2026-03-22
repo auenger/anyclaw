@@ -20,6 +20,8 @@ router = APIRouter()
 async def event_publisher(request: Request) -> AsyncGenerator[dict[str, str], None]:
     """Publish events from MessageBus to SSE clients.
 
+    Only forwards messages from the "api" channel to desktop app clients.
+
     Yields:
         SSE event dictionaries
     """
@@ -30,12 +32,17 @@ async def event_publisher(request: Request) -> AsyncGenerator[dict[str, str], No
     logger.info(f"[SSE] 🔌 客户端连接: client_id={client_id}")
 
     event_count = 0
-    # Subscribe to all events
-    async for event in bus.subscribe():
+    # Subscribe to API channel events only (filter out discord, feishu, etc.)
+    async for event in bus.subscribe(channel_filter="api"):
         # Check if client disconnected
         if await request.is_disconnected():
             logger.info(f"[SSE] 🔌 客户端断开: client_id={client_id}, events_sent={event_count}")
             break
+
+        # Handle keepalive comments
+        if "comment" in event:
+            yield {"comment": event["comment"]}
+            continue
 
         event_count += 1
         # 🔍 详细日志：SSE 事件发送

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import AsyncIterator, Optional, AsyncGenerator
+from typing import AsyncIterator, Optional, AsyncGenerator, List
 
 from anyclaw.bus.events import InboundMessage, OutboundMessage
 
@@ -17,6 +17,8 @@ class MessageBus:
 
     Channels push messages to the inbound queue, and the agent processes
     them and pushes responses to the outbound queue.
+
+    Outbound messages are broadcast to all subscribers (channels + SSE).
     """
 
     def __init__(self, max_size: int = 100):
@@ -28,6 +30,8 @@ class MessageBus:
         """
         self._inbound: asyncio.Queue[InboundMessage] = asyncio.Queue(maxsize=max_size)
         self._outbound: asyncio.Queue[OutboundMessage] = asyncio.Queue(maxsize=max_size)
+        # Broadcast subscribers for outbound messages
+        self._outbound_subscribers: List[asyncio.Queue] = []
 
     async def publish_inbound(self, msg: InboundMessage) -> None:
         """Publish a message from a channel to the agent."""
@@ -40,36 +44,89 @@ class MessageBus:
         return await self._inbound.get()
 
     async def publish_outbound(self, msg: OutboundMessage) -> None:
-        """Publish a response from the agent to channels."""
+        """Publish a response from the agent to channels.
+
+        Messages are broadcast to all subscribers.
+        """
         await self._outbound.put(msg)
+        # Also broadcast to all subscribers (SSE, etc.)
+        for queue in self._outbound_subscribers:
+            try:
+                queue.put_nowait(msg)
+            except asyncio.QueueFull:
+                logger.warning(f"[Bus] Subscriber queue full, dropping message")
         logger.debug(f"[Bus] 📤 出站消息: channel={msg.channel}, chat_id={msg.chat_id}, "
-                     f"queue_size={self._outbound.qsize()}")
+                     f"queue_size={self._outbound.qsize()}, subscribers={len(self._outbound_subscribers)}")
 
     async def consume_outbound(self) -> OutboundMessage:
-        """Consume the next outbound message (blocks until available)."""
+        """Consume the next outbound message (blocks until available).
+
+        This is used by channels to receive messages they need to send.
+        """
         return await self._outbound.get()
 
-    async def subscribe(self) -> AsyncGenerator[dict, None]:
+    def subscribe_outbound(self) -> asyncio.Queue[OutboundMessage]:
+        """Subscribe to outbound messages without consuming the main queue.
+
+        Returns a new queue that will receive all outbound messages.
+        Callers should call unsubscribe_outbound() when done.
+
+        Returns:
+            A queue that will receive all outbound messages
         """
-        Subscribe to all events on the bus (for SSE streaming).
+        queue: asyncio.Queue[OutboundMessage] = asyncio.Queue(maxsize=100)
+        self._outbound_subscribers.append(queue)
+        logger.debug(f"[Bus] New outbound subscriber, total={len(self._outbound_subscribers)}")
+        return queue
+
+    def unsubscribe_outbound(self, queue: asyncio.Queue) -> None:
+        """Unsubscribe from outbound messages.
+
+        Args:
+            queue: The queue returned by subscribe_outbound()
+        """
+        if queue in self._outbound_subscribers:
+            self._outbound_subscribers.remove(queue)
+            logger.debug(f"[Bus] Unsubscribed, remaining={len(self._outbound_subscribers)}")
+
+    async def subscribe(
+        self, channel_filter: Optional[str] = None
+    ) -> AsyncGenerator[dict, None]:
+        """
+        Subscribe to events on the bus (for SSE streaming).
+
+        Uses broadcast mode - does not consume from the main queue.
+
+        Args:
+            channel_filter: Optional channel name to filter (e.g., "api" for desktop app)
 
         Yields:
             Event dictionaries with 'type' and 'payload' keys
         """
-        while True:
-            try:
-                msg = await self._outbound.get()
-                # Convert OutboundMessage to event dict
-                yield {
-                    "type": "message:outbound",
-                    "payload": {
-                        "channel": msg.channel,
-                        "chat_id": msg.chat_id,
-                        "content": msg.content,
+        queue = self.subscribe_outbound()
+        try:
+            while True:
+                try:
+                    msg = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    # Filter by channel if specified
+                    if channel_filter and msg.channel != channel_filter:
+                        continue
+                    # Convert OutboundMessage to event dict
+                    yield {
+                        "type": "message:outbound",
+                        "payload": {
+                            "channel": msg.channel,
+                            "chat_id": msg.chat_id,
+                            "content": msg.content,
+                        }
                     }
-                }
-            except asyncio.CancelledError:
-                break
+                except asyncio.TimeoutError:
+                    # Send keepalive comment to prevent connection timeout
+                    yield {"comment": "keepalive"}
+                except asyncio.CancelledError:
+                    break
+        finally:
+            self.unsubscribe_outbound(queue)
 
     async def consume_inbound_iter(
         self, timeout: Optional[float] = None
@@ -114,3 +171,10 @@ class MessageBus:
                 self._outbound.get_nowait()
             except asyncio.QueueEmpty:
                 break
+        # Clear subscriber queues
+        for queue in self._outbound_subscribers:
+            while not queue.empty():
+                try:
+                    queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
