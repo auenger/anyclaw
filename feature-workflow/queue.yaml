@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-23T16:00:00"
-  version: 70
+  last_updated: "2026-03-23T17:30:00"
+  version: 73
 
 # 父需求（用于分组追踪)
 parents:
@@ -61,30 +61,33 @@ parents:
       - feat-xlsx-skill
 
 # 正在开发的需求
-active: []
+active:
+  - id: feat-xlsx-skill
+    name: XLSX 电子表格处理技能
+    description: Excel 电子表格技能，支持创建、编辑、数据分析和公式重算
+    priority: 65
+    size: M
+    dependencies: []
+    parent: feat-office-skills
+    branch: feature/xlsx-skill
+    worktree: ../AnyClaw-xlsx-skill
+    started_at: "2026-03-23T17:00:00"
 
 # 等待中的需求（按优先级排序）
 pending:
 
-  - id: feat-pdf-skill
-    name: PDF 文档处理技能
-    description: PDF 处理技能，支持创建、合并/拆分、文本/表格提取、表单填充、OCR
-    priority: 70
-    size: M
+  - id: feat-feishu-outbound
+    name: 飞书 Channel 出站消息支持
+    description: 飞书 channel 缺少 _outbound_loop 实现，导致 Agent 处理完飞书消息后无法将响应发送回飞书
+    priority: 30
+    size: S
+    dependencies: []
     dependencies: []
     parent: feat-office-skills
 
   - id: feat-pptx-skill
     name: PPTX 演示文稿处理技能
     description: PowerPoint 演示文稿技能，支持创建、模板使用、编辑和内容分析
-    priority: 65
-    size: M
-    dependencies: []
-    parent: feat-office-skills
-
-  - id: feat-xlsx-skill
-    name: XLSX 电子表格处理技能
-    description: Excel 电子表格技能，支持创建、编辑、数据分析和公式重算
     priority: 65
     size: M
     dependencies: []
@@ -125,6 +128,24 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-pdf-skill
+    name: PDF 文档处理技能
+    description: PDF 处理技能，支持创建、合并/拆分、文本/表格提取、表单填充、OCR
+    priority: 70
+    size: M
+    completed_at: "2026-03-23T17:10:00"
+    value_points:
+      - 创建 PDF（reportlab，标题、列表、段落）
+      - 合并多个 PDF（pypdf）
+      - 拆分 PDF（按页码范围）
+      - 提取文本和表格（pdfplumber）
+      - 获取元数据
+      - 旋转页面
+      - 添加水印
+      - 填充表单
+      - OCR（需要 tesseract）
+      - 26 个单元测试
+
   - id: feat-docx-skill
     name: DOCX 文档处理技能
     description: Word 文档处理技能，支持创建、编辑、追踪变更（redlining）和读取分析
