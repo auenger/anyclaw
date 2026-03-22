@@ -192,35 +192,9 @@ function ChatContent() {
           />
         )}
 
-        {/* ChatInput always rendered, animated from center to bottom */}
-        <div
-          className={
-            isNewChat
-              ? "absolute inset-x-0 top-1/2 -translate-y-1/2 px-6 transition-all duration-500 ease-[var(--ease-soft)]"
-              : "relative px-0 transition-all duration-500 ease-[var(--ease-soft)]"
-          }
-        >
+        {/* ChatInput - always at bottom */}
+        <div className="relative px-4 pb-4">
           <div className="max-w-3xl mx-auto">
-            {/* Welcome text, fades out after send */}
-            <div
-              className={
-                isNewChat
-                  ? "text-center space-y-4 mb-8 opacity-100 transition-all duration-500 ease-[var(--ease-soft)]"
-                  : "text-center space-y-4 mb-0 opacity-0 h-0 overflow-hidden transition-all duration-500 ease-[var(--ease-soft)]"
-              }
-            >
-              <img
-                src="/icon.svg"
-                alt="AnyClaw"
-                className="h-24 w-24 mb-3 mx-auto transition-transform duration-300 ease-out hover:scale-110 hover:rotate-3"
-              />
-              <h1 className="text-2xl font-semibold tracking-tight">
-                {t.chat.welcome}
-              </h1>
-              <p className="text-sm text-muted-foreground/70 max-w-md mx-auto leading-relaxed">
-                {t.chat.startHint}
-              </p>
-            </div>
             <ChatInput
               onSubmit={handleSend}
               onStop={stop}

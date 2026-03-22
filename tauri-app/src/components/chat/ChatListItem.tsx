@@ -90,9 +90,13 @@ export function ChatListItem({
       >
         <PopoverTrigger asChild>
           <div
-            className="w-9 h-9 rounded-full shrink-0 mt-0.5 cursor-pointer"
-            style={{ background: resolveAvatar(chat.avatar) }}
-          />
+            className="w-9 h-9 rounded-full shrink-0 mt-0.5 cursor-pointer overflow-hidden flex items-center justify-center bg-gradient-to-br from-violet-500/20 to-purple-500/20"
+            style={chat.avatar ? { background: resolveAvatar(chat.avatar) } : {}}
+          >
+            {chat.avatar ? null : (
+              <img src="/icon.svg" alt="" className="w-5 h-5" />
+            )}
+          </div>
         </PopoverTrigger>
         <PopoverContent side="right" align="start" className="w-auto p-3">
           <div className="grid grid-cols-4 gap-2">
