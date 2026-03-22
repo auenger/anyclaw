@@ -1,5 +1,5 @@
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Listener, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_store::StoreExt;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -35,7 +35,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_store::Builder::new().build())
-        .plugin(tauri_plugin_window_state::init())
+        .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
@@ -58,8 +58,8 @@ pub fn run() {
 
             // 初始化设置
             let store = app.store("settings.json").unwrap();
-            if !store.has("preferred_port").unwrap() {
-                store.set("preferred_port", 62616_u16).unwrap();
+            if !store.has("preferred_port") {
+                store.set("preferred_port", 62616_u16);
             }
 
             Ok(())
@@ -111,6 +111,8 @@ fn find_python() -> Result<String, String> {
 
 /// 启动 sidecar
 async fn spawn_sidecar(app: &AppHandle, port: u16) -> Result<u32, String> {
+    use tauri_plugin_shell::ShellExt;
+
     // 查找 Python
     let python = find_python().map_err(|e| format!("Failed to find Python: {}", e))?;
 
@@ -125,8 +127,8 @@ async fn spawn_sidecar(app: &AppHandle, port: u16) -> Result<u32, String> {
     }
 
     // 启动进程
-    let mut cmd = tauri_plugin_shell::process::Command::new(&python);
-    cmd.args([
+    let mut cmd = app.shell().command(&python);
+    cmd = cmd.args([
         "-m",
         "anyclaw.cli.sidecar_cmd",
         "sidecar",
@@ -138,12 +140,36 @@ async fn spawn_sidecar(app: &AppHandle, port: u16) -> Result<u32, String> {
         cmd = cmd.env(key, val);
     }
 
-    let child = cmd
+    let (mut rx, child) = cmd
         .spawn()
         .map_err(|e| format!("Failed to spawn sidecar: {}", e))?;
 
+    // 获取 PID
     let pid = child.pid();
     log::info!("Sidecar spawned with PID: {}", pid);
+
+    // 在后台处理输出事件
+    tokio::spawn(async move {
+        use tauri_plugin_shell::process::CommandEvent;
+        while let Some(event) = rx.recv().await {
+            match event {
+                CommandEvent::Stdout(line) => {
+                    log::info!("[sidecar stdout] {}", String::from_utf8_lossy(&line));
+                }
+                CommandEvent::Stderr(line) => {
+                    log::warn!("[sidecar stderr] {}", String::from_utf8_lossy(&line));
+                }
+                CommandEvent::Error(err) => {
+                    log::error!("[sidecar error] {}", err);
+                }
+                CommandEvent::Terminated(payload) => {
+                    log::info!("[sidecar] terminated with code: {:?}", payload.code);
+                    break;
+                }
+                _ => {}
+            }
+        }
+    });
 
     Ok(pid)
 }
@@ -206,7 +232,7 @@ fn kill_sidecar(app: &AppHandle) {
 
 /// 获取 sidecar 状态
 #[tauri::command]
-pub fn get_sidecar_status(app: AppHandle) -> Result<SidecarInfo, String> {
+fn get_sidecar_status(app: AppHandle) -> Result<SidecarInfo, String> {
     let state = app.state::<AppState>();
     let status = state.sidecar_status.lock().unwrap();
 
@@ -215,19 +241,19 @@ pub fn get_sidecar_status(app: AppHandle) -> Result<SidecarInfo, String> {
 
 /// 启动 sidecar
 #[tauri::command]
-pub async fn start_sidecar(app: AppHandle) -> Result<String, String> {
+async fn start_sidecar(app: AppHandle) -> Result<String, String> {
     let state = app.state::<AppState>();
-    let mut status = state.sidecar_status.lock().unwrap();
 
-    // 检查是否已在运行
-    if matches!(status.status, SidecarStatus::Running | SidecarStatus::Starting) {
-        return Ok("Sidecar is already running".to_string());
+    // 检查是否已在运行，并更新状态为启动中
+    {
+        let mut status = state.sidecar_status.lock().unwrap();
+        if matches!(status.status, SidecarStatus::Running | SidecarStatus::Starting) {
+            return Ok("Sidecar is already running".to_string());
+        }
+        status.status = SidecarStatus::Starting;
+        status.message = "Starting sidecar...".to_string();
+        app.emit("sidecar-status", &*status).unwrap();
     }
-
-    // 更新状态为启动中
-    status.status = SidecarStatus::Starting;
-    status.message = "Starting sidecar...".to_string();
-    app.emit("sidecar-status", &*status).unwrap();
 
     // 获取配置
     let store = app.store("settings.json").unwrap();
@@ -242,44 +268,49 @@ pub async fn start_sidecar(app: AppHandle) -> Result<String, String> {
     // 等待健康检查
     if let Err(e) = wait_for_health(port, 30).await {
         log::error!("Health check failed: {}", e);
-        
-        status.status = SidecarStatus::Error;
-        status.message = format!("Health check failed: {}", e);
-        app.emit("sidecar-status", &*status).unwrap();
-        
+
+        {
+            let mut status = state.sidecar_status.lock().unwrap();
+            status.status = SidecarStatus::Error;
+            status.message = format!("Health check failed: {}", e);
+            app.emit("sidecar-status", &*status).unwrap();
+        }
+
         // 杀死进程
         kill_sidecar(&app);
-        
+
         return Err(format!("Failed to start sidecar: {}", e));
     }
 
     // 更新状态为运行中
-    status.status = SidecarStatus::Running;
-    status.port = port;
-    status.pid = Some(pid);
-    status.uptime_seconds = 0;
-    status.message = "Sidecar is running".to_string();
-
-    app.emit("sidecar-status", &*status).unwrap();
+    {
+        let mut status = state.sidecar_status.lock().unwrap();
+        status.status = SidecarStatus::Running;
+        status.port = port;
+        status.pid = Some(pid);
+        status.uptime_seconds = 0;
+        status.message = "Sidecar is running".to_string();
+        app.emit("sidecar-status", &*status).unwrap();
+    }
 
     Ok(format!("Sidecar started on port {}", port))
 }
 
 /// 停止 sidecar
 #[tauri::command]
-pub async fn stop_sidecar(app: AppHandle) -> Result<String, String> {
+async fn stop_sidecar(app: AppHandle) -> Result<String, String> {
     let state = app.state::<AppState>();
-    let mut status = state.sidecar_status.lock().unwrap();
 
-    // 检查是否已停止
-    if matches!(status.status, SidecarStatus::Stopped) {
-        return Ok("Sidecar is already stopped".to_string());
+    // 检查是否已停止，并更新状态为停止中
+    {
+        let mut status = state.sidecar_status.lock().unwrap();
+        if matches!(status.status, SidecarStatus::Stopped) {
+            return Ok("Sidecar is already stopped".to_string());
+        }
+        status.status = SidecarStatus::Stopping;
+        status.message = "Stopping sidecar...".to_string();
+        app.emit("sidecar-status", &*status).unwrap();
     }
-
-    // 更新状态为停止中
-    status.status = SidecarStatus::Stopping;
-    status.message = "Stopping sidecar...".to_string();
-    app.emit("sidecar-status", &*status).unwrap();
 
     // 杀死进程
     kill_sidecar(&app);
@@ -288,19 +319,21 @@ pub async fn stop_sidecar(app: AppHandle) -> Result<String, String> {
     tokio::time::sleep(Duration::from_secs(1)).await;
 
     // 更新状态
-    status.status = SidecarStatus::Stopped;
-    status.pid = None;
-    status.uptime_seconds = 0;
-    status.message = "Sidecar stopped".to_string();
-
-    app.emit("sidecar-status", &*status).unwrap();
+    {
+        let mut status = state.sidecar_status.lock().unwrap();
+        status.status = SidecarStatus::Stopped;
+        status.pid = None;
+        status.uptime_seconds = 0;
+        status.message = "Sidecar stopped".to_string();
+        app.emit("sidecar-status", &*status).unwrap();
+    }
 
     Ok("Sidecar stopped".to_string())
 }
 
 /// 重启 sidecar
 #[tauri::command]
-pub async fn restart_sidecar(app: AppHandle) -> Result<String, String> {
+async fn restart_sidecar(app: AppHandle) -> Result<String, String> {
     // 先停止
     stop_sidecar(app.clone()).await?;
 
@@ -313,23 +346,22 @@ pub async fn restart_sidecar(app: AppHandle) -> Result<String, String> {
 
 /// 获取所有设置
 #[tauri::command]
-pub fn get_settings(app: AppHandle) -> Result<serde_json::Value, String> {
+fn get_settings(app: AppHandle) -> Result<serde_json::Value, String> {
     let store = app.store("settings.json").unwrap();
     Ok(store.get("").unwrap_or(serde_json::Value::Object(serde_json::Map::new())))
 }
 
 /// 设置单个配置项
 #[tauri::command]
-pub fn set_setting(app: AppHandle, key: String, value: serde_json::Value) -> Result<(), String> {
+fn set_setting(app: AppHandle, key: String, value: serde_json::Value) -> Result<(), String> {
     let store = app.store("settings.json").unwrap();
-    store.set(key, value).unwrap();
+    store.set(key, value);
     Ok(())
 }
 
 /// 创建系统托盘图标
 fn create_tray_icon(app: &AppHandle) {
     use tauri::{
-        menu::{Menu, MenuItem, PredefinedMenuItem},
         tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState},
         image::Image,
     };
@@ -338,7 +370,7 @@ fn create_tray_icon(app: &AppHandle) {
     let icon = Image::from_bytes(include_bytes!("../icons/tray.png")).unwrap();
 
     let tray_icon = TrayIconBuilder::new()
-        .on_tray_icon_event(|app, event| {
+        .on_tray_icon_event(|tray, event| {
             match event {
                 TrayIconEvent::Click {
                     button: MouseButton::Left,
@@ -346,11 +378,14 @@ fn create_tray_icon(app: &AppHandle) {
                     ..
                 } => {
                     // 左键单击：显示/隐藏窗口
-                    toggle_window(app);
+                    toggle_window(tray.app_handle());
                 }
                 TrayIconEvent::DoubleClick { .. } => {
                     // 双击：启动/停止 sidecar
-                    toggle_sidecar(app);
+                    let app = tray.app_handle().clone();
+                    tokio::spawn(async move {
+                        toggle_sidecar(&app).await;
+                    });
                 }
                 _ => {}
             }
@@ -393,16 +428,28 @@ async fn toggle_sidecar(app: &AppHandle) {
 }
 
 /// 创建托盘菜单
-fn create_tray_menu(app: &AppHandle) -> Menu {
+fn create_tray_menu(app: &AppHandle) -> tauri::menu::Menu<tauri::Wry> {
+    use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+
+    let show = MenuItem::with_id(app, "show", "Show", true, None::<&str>).unwrap();
+    let hide = MenuItem::with_id(app, "hide", "Hide", true, None::<&str>).unwrap();
+    let separator = PredefinedMenuItem::separator(app).unwrap();
+    let start = MenuItem::with_id(app, "start_sidecar", "Start Backend", true, None::<&str>).unwrap();
+    let stop = MenuItem::with_id(app, "stop_sidecar", "Stop Backend", true, None::<&str>).unwrap();
+    let restart = MenuItem::with_id(app, "restart_sidecar", "Restart Backend", true, None::<&str>).unwrap();
+    let separator2 = PredefinedMenuItem::separator(app).unwrap();
+    let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>).unwrap();
+    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>).unwrap();
+
     Menu::with_items(app, &[
-        &MenuItem::with_id(app, "show", "Show", true, None::<&str>),
-        &MenuItem::with_id(app, "hide", "Hide", true, None::<&str>),
-        &PredefinedMenuItem::separator(app),
-        &MenuItem::with_id(app, "start_sidecar", "Start Backend", true, None::<&str>),
-        &MenuItem::with_id(app, "stop_sidecar", "Stop Backend", true, None::<&str>),
-        &MenuItem::with_id(app, "restart_sidecar", "Restart Backend", true, None::<&str>),
-        &PredefinedMenuItem::separator(app),
-        &MenuItem::with_id(app, "settings", "Settings", true, None::<&str>),
-        &MenuItem::with_id(app, "quit", "Quit", true, None::<&str>),
-    ])
+        &show,
+        &hide,
+        &separator,
+        &start,
+        &stop,
+        &restart,
+        &separator2,
+        &settings,
+        &quit,
+    ]).expect("Failed to create tray menu")
 }
