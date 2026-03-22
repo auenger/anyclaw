@@ -217,7 +217,7 @@ function ChatContent() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t.chat.deleteChat}</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-muted-foreground">
               {t.chat.confirmDelete}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -237,7 +237,7 @@ function ChatContent() {
 }
 
 // SSE handler component - handles SSE connection and updates store
-function SSEHandler({ sidecarStatus }: { sidecarStatus: SidecarStatus }) {
+function SSEHandler({ sidecarStatus, onRefreshChats }: { sidecarStatus: SidecarStatus; onRefreshChats: () => void }) {
   const activeChatId = useChatStore((s) => s.activeChatId);
   const initChat = useChatStore((s) => s.initChat);
   const setActiveChatId = useChatStore((s) => s.setActiveChatId);
@@ -284,6 +284,8 @@ function SSEHandler({ sidecarStatus }: { sidecarStatus: SidecarStatus }) {
         console.log('[SSEHandler] message:outbound content:', content.substring(0, 50));
         completeMessage(targetChatId, content, []);
         setProcessing(targetChatId, false);  // Reset processing state
+        // Refresh chat list after message completes (new chat may appear)
+        setTimeout(() => onRefreshChats(), 500);
         break;
 
       case 'message_end':
@@ -312,7 +314,7 @@ function SSEHandler({ sidecarStatus }: { sidecarStatus: SidecarStatus }) {
         setProcessing(targetChatId, false);
         break;
     }
-  }, [activeChatId, initChat, setActiveChatId, appendStreamText, completeMessage, addToolUse, setProcessing]);
+  }, [activeChatId, initChat, setActiveChatId, appendStreamText, completeMessage, addToolUse, setProcessing, onRefreshChats]);
 
   // SSE connection
   useSSE({
@@ -332,6 +334,9 @@ interface ChatProps {
 
 export function Chat({ sidecarStatus }: ChatProps) {
   const api = sidecarStatus ? getApiClient(sidecarStatus.port) : getApiClient();
+
+  // Track refresh trigger for ChatProvider
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Fetch chat list from API
   const handleFetchChatList = useCallback(async (): Promise<ChatItem[]> => {
@@ -364,6 +369,8 @@ export function Chat({ sidecarStatus }: ChatProps) {
   const handleDeleteChat = useCallback(async (chatId: string) => {
     try {
       await api.deleteChat(chatId);
+      // Trigger refresh after delete
+      setRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Failed to delete chat:', error);
     }
@@ -373,6 +380,8 @@ export function Chat({ sidecarStatus }: ChatProps) {
   const handleUpdateChat = useCallback(async (chatId: string, data: { name?: string; avatar?: string }) => {
     try {
       await api.updateChat(chatId, data);
+      // Trigger refresh after update
+      setRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Failed to update chat:', error);
     }
@@ -388,9 +397,14 @@ export function Chat({ sidecarStatus }: ChatProps) {
     }
   }, [api]);
 
+  // Refresh chats callback for SSE handler
+  const handleRefreshChats = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
+
   return (
     <>
-      {sidecarStatus && <SSEHandler sidecarStatus={sidecarStatus} />}
+      {sidecarStatus && <SSEHandler sidecarStatus={sidecarStatus} onRefreshChats={handleRefreshChats} />}
       <ChatProvider
         agents={[
           { id: 'default', name: 'Default Agent' },
@@ -400,6 +414,7 @@ export function Chat({ sidecarStatus }: ChatProps) {
         onDeleteChat={handleDeleteChat}
         onUpdateChat={handleUpdateChat}
         onSendMessage={handleSendMessage}
+        refreshTrigger={refreshTrigger}
       >
         <ChatContent />
       </ChatProvider>

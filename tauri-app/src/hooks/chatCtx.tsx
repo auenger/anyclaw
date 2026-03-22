@@ -47,6 +47,7 @@ interface ChatProviderProps {
   onDeleteChat?: (chatId: string) => Promise<void>
   onUpdateChat?: (chatId: string, data: { name?: string; avatar?: string }) => Promise<void>
   onFetchChatList?: () => Promise<ChatItem[]>
+  refreshTrigger?: number  // External trigger to refresh chat list
 }
 
 export function ChatProvider({
@@ -58,6 +59,7 @@ export function ChatProvider({
   onDeleteChat,
   onUpdateChat,
   onFetchChatList,
+  refreshTrigger,
 }: ChatProviderProps) {
   const [agentId, setAgentId] = useState(initialAgentId || agents[0]?.id || 'default')
   const [chatList, setChatList] = useState<ChatItem[]>([])
@@ -86,7 +88,7 @@ export function ChatProvider({
   useEffect(() => {
     refreshChats()
     return onChatUpdate(refreshChats)
-  }, [refreshChats])
+  }, [refreshChats, refreshTrigger])  // Re-fetch when refreshTrigger changes
 
   // Send message
   const send = useCallback(async (prompt: string, attachments?: Attachment[]) => {

@@ -29,6 +29,56 @@ from anyclaw.workspace.manager import WorkspaceManager
 logger = logging.getLogger(__name__)
 
 
+async def generate_chat_title(messages: list, agent: AgentLoop) -> str:
+    """
+    Generate a chat title based on conversation content.
+
+    Args:
+        messages: List of conversation messages
+        agent: AgentLoop instance for LLM call
+
+    Returns:
+        Generated title string
+    """
+    # Build a summary of the conversation
+    conversation_text = ""
+    for msg in messages[:4]:  # Use first 4 messages for title generation
+        role = msg.get("role", "")
+        content = msg.get("content", "")
+        if role in ("user", "assistant") and content:
+            conversation_text += f"{role}: {content[:200]}\n"
+
+    if not conversation_text:
+        return "新对话"
+
+    # Use LLM to generate title
+    prompt = f"""请根据以下对话内容，生成一个简短的标题（不超过15个字）。
+只返回标题，不要加引号或其他符号。
+
+对话内容：
+{conversation_text[:800]}
+
+标题："""
+
+    try:
+        # Use a simple LLM call
+        from litellm import acompletion
+        response = await acompletion(
+            model=settings.llm_model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=30,
+            temperature=0.3,
+        )
+        title = response.choices[0].message.content.strip()
+        # Clean up the title
+        title = title.replace('"', '').replace('"', '').replace('"', '')
+        title = title.replace('标题：', '').replace('标题:', '')
+        return title[:20] if len(title) > 20 else title
+    except Exception as e:
+        logger.warning(f"Failed to generate chat title: {e}")
+        return "新对话"
+
+
 class ServeManager:
     """Manages multi-channel parallel service.
 
@@ -259,6 +309,9 @@ class ServeManager:
                     logger.info(f"[Serve] 📤 响应已发送: chat_id={session_key}, "
                                 f"bus_outbound_size={self.bus.outbound_size}")
 
+                    # Auto-generate title if this is a new chat (first 2 exchanges)
+                    await self._maybe_generate_title(session_key)
+
                     self._messages_processed += 1
 
                 except Exception as e:
@@ -280,6 +333,52 @@ class ServeManager:
                 logger.error(f"Unexpected error in message processor: {e}")
 
         logger.info("Message processor stopped")
+
+    async def _maybe_generate_title(self, session_key: str) -> None:
+        """
+        Auto-generate chat title if this is a new conversation.
+
+        Generates title after the first 2 exchanges (4 messages).
+
+        Args:
+            session_key: Session key
+        """
+        if not self.agent or not self.agent.session_manager:
+            return
+
+        # Get session
+        session = self.agent.session_manager.get(session_key)
+        if not session:
+            return
+
+        # Check if already has a custom title
+        if session.metadata.get("display_name"):
+            return
+
+        # Count user messages (exchanges)
+        user_message_count = sum(1 for m in session.messages if m.role == "user")
+
+        # Generate title after 2 exchanges (2 user messages)
+        if user_message_count == 2:
+            logger.info(f"[Serve] 🏷️ Auto-generating title for {session_key}")
+            try:
+                # Get recent messages for title generation
+                recent_messages = [
+                    {"role": m.role, "content": m.content}
+                    for m in session.messages
+                    if m.role in ("user", "assistant")
+                ]
+
+                title = await generate_chat_title(recent_messages, self.agent)
+                logger.info(f"[Serve] 🏷️ Generated title: {title}")
+
+                # Update session metadata
+                self.agent.session_manager.update_metadata(
+                    session_key,
+                    {"display_name": title}
+                )
+            except Exception as e:
+                logger.warning(f"[Serve] Failed to generate title: {e}")
 
     async def _handle_stop_command(self, msg: InboundMessage) -> None:
         """Handle /stop or /abort command to interrupt running task.

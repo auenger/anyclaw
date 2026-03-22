@@ -40,7 +40,7 @@ export const zh: Translations = {
     thinking: '思考中...',
     search: '搜索对话...',
     deleteChat: '删除对话',
-    confirmDelete: '确定要删除这个对话吗？',
+    confirmDelete: '此操作将彻底删除该对话的所有消息记录，无法恢复。已记忆到系统中的信息不会受影响。',
     today: '今天',
     yesterday: '昨天',
     older: '更早',

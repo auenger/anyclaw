@@ -202,6 +202,7 @@ class SessionManager:
                                 "path": str(path),
                                 "message_count": message_count,
                                 "last_message": last_message,
+                                "metadata": data.get("metadata", {}),  # Include metadata
                             })
             except Exception:
                 continue
@@ -256,6 +257,35 @@ class SessionManager:
             logger.info(f"Session deleted: {key}")
 
         self.invalidate(key)
+
+    def update_metadata(self, key: str, metadata: Dict[str, Any]) -> bool:
+        """
+        更新会话元数据
+
+        Args:
+            key: 会话键
+            metadata: 要更新的元数据（如 {"display_name": "新名称", "avatar": "gradient:0"}）
+
+        Returns:
+            是否更新成功
+        """
+        session = self.get(key)
+        if not session:
+            # Try to load from disk
+            path = self._get_session_path(key)
+            if path.exists():
+                session = Session.load(path)
+            if not session:
+                return False
+
+        # Update metadata
+        session.metadata.update(metadata)
+        session.updated_at = datetime.now()
+
+        # Save to disk
+        self.save(session)
+        logger.info(f"Session metadata updated: {key} -> {metadata}")
+        return True
 
     def migrate_from_legacy(self, legacy_dir: Path) -> int:
         """

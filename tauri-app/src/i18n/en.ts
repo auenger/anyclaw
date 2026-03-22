@@ -38,7 +38,7 @@ export const en = {
     thinking: 'Thinking...',
     search: 'Search chats...',
     deleteChat: 'Delete Chat',
-    confirmDelete: 'Are you sure you want to delete this chat?',
+    confirmDelete: 'This will permanently delete all messages in this chat. This cannot be undone. Information already memorized by the system will not be affected.',
     today: 'Today',
     yesterday: 'Yesterday',
     older: 'Older',

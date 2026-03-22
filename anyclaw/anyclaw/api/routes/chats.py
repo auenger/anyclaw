@@ -57,6 +57,11 @@ def _generate_chat_name(session_info: dict) -> str:
     """Generate a friendly display name from session info."""
     from datetime import datetime
 
+    # First check if there's a custom display_name in metadata
+    metadata = session_info.get("metadata", {})
+    if metadata.get("display_name"):
+        return metadata["display_name"]
+
     # Try to use updated_at or created_at for naming
     updated_at = session_info.get("updated_at")
     if updated_at:
@@ -98,6 +103,12 @@ def _extract_last_message(session_info: dict) -> Optional[str]:
     return None
 
 
+def _extract_avatar(session_info: dict) -> Optional[str]:
+    """Extract avatar from session metadata."""
+    metadata = session_info.get("metadata", {})
+    return metadata.get("avatar")
+
+
 def _session_to_chat_item(session_info: dict) -> ChatItem:
     """Convert session info to ChatItem format."""
     key = session_info.get("key", "")
@@ -115,6 +126,9 @@ def _session_to_chat_item(session_info: dict) -> ChatItem:
     # Extract last message preview
     last_message = _extract_last_message(session_info)
 
+    # Extract avatar from metadata
+    avatar = _extract_avatar(session_info)
+
     return ChatItem(
         chat_id=key,  # 完整 key，如 "api:conv_1711084800"
         conversation_id=conversation_id,  # 短 ID，如 "conv_1711084800"
@@ -123,7 +137,7 @@ def _session_to_chat_item(session_info: dict) -> ChatItem:
         channel=channel,
         last_message_time=session_info.get("updated_at", ""),
         last_message=last_message,
-        avatar=None,
+        avatar=avatar,
         message_count=session_info.get("message_count", 0),
         created_at=session_info.get("created_at"),
     )
@@ -232,17 +246,35 @@ async def update_chat(chat_id: str, data: ChatUpdateRequest) -> dict[str, bool]:
     """Update chat metadata (name, avatar).
 
     Args:
-        chat_id: Chat ID
-        data: Update data
+        chat_id: Chat ID (完整 session key)
+        data: Update data (name and/or avatar)
 
     Returns:
         Success status
-
-    Note:
-        Currently a placeholder. Full implementation would require
-        extending Session model to support metadata.
     """
-    # TODO: Implement chat metadata storage
-    # For now, just return success
-    logger.info(f"Update chat {chat_id}: name={data.name}, avatar={data.avatar}")
-    return {"success": True}
+    manager = get_serve_manager()
+
+    # Check if session_manager is available
+    if not manager.agent or not manager.agent.session_manager:
+        logger.warning(f"Session manager not available for update: {chat_id}")
+        return {"success": False}
+
+    # Build metadata update
+    metadata = {}
+    if data.name is not None:
+        metadata["display_name"] = data.name
+    if data.avatar is not None:
+        metadata["avatar"] = data.avatar
+
+    if not metadata:
+        return {"success": True}  # Nothing to update
+
+    # Update metadata
+    success = manager.agent.session_manager.update_metadata(chat_id, metadata)
+
+    if success:
+        logger.info(f"Updated chat {chat_id}: {metadata}")
+    else:
+        logger.warning(f"Failed to update chat {chat_id}")
+
+    return {"success": success}
