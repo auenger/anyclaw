@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-22T14:30:00"
-  version: 66
+  last_updated: "2026-03-23T01:03:00"
+  version: 68
 
 # 父需求（用于分组追踪)
 parents:
@@ -90,6 +90,20 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-chat-message-render
+    name: 对话历史消息渲染增强
+    description: 增强 Tauri 桌面应用对话历史消息渲染，完整展示 user、assistant（含 tool_calls）、tool 角色消息。 同时修复 API session 缺少 user 消息的 bug。
+    priority: 80
+    size: M
+    completed_at: "2026-03-23T01:02:00"
+    value_points:
+      - 修复 API session 缺少 user 消息的 bug (关键)
+      - 后端 ChatMessage 模型添加 tool_calls/tool_call_id/name 字段
+      - API 返回 tool 角色消息
+      - 前端 ToolResultBlock 组件（折叠显示工具结果）
+      - AssistantMessage 组件支持 tool_calls 渲染
+      - 成功/失败状态样式区分
+
   - id: feat-chat-history-refactor
     name: 对话历史列表重构
     description: 重构优化对话历史列表系统，统一 session key 格式，修复历史消息加载失败问题，优化对话列表显示
