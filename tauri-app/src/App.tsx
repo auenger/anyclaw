@@ -3,12 +3,12 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Shell } from './components/layout';
-import { ChatWindow } from './components/chat';
 import { TasksPage } from './components/tasks';
 import { SettingsDialog } from './components/settings';
 import { Agents } from './pages/Agents';
 import { Memory } from './pages/Memory';
 import { Logs } from './pages/Logs';
+import { Chat } from './pages/Chat';
 import { useI18n } from './i18n';
 import type { SidecarStatus } from './types';
 import { AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
@@ -106,10 +106,7 @@ function ChatPage({
   }
 
   return (
-    <ChatWindow
-      agentId="default"
-      sidecarStatus={sidecarStatus}
-    />
+    <Chat sidecarStatus={sidecarStatus} />
   );
 }
 

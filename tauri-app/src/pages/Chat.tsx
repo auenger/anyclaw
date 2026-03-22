@@ -10,9 +10,12 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { SidePanel } from "@/components/layout/SidePanel";
 import { ChatListItem } from "@/components/chat/ChatListItem";
 import { useDragRegion } from "@/hooks/useDragRegion";
+import { useSSE } from "@/hooks/useSSE";
 import { getApiClient } from "@/lib/api";
 import type { Attachment, Message } from "@/hooks/useChat";
 import type { ChatItem } from "@/lib/chat-utils";
+import type { SidecarStatus } from "@/types";
+import { useChatStore } from "@/stores/chat";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -259,9 +262,83 @@ function ChatContent() {
   );
 }
 
+// SSE handler component - handles SSE connection and updates store
+function SSEHandler({ sidecarStatus }: { sidecarStatus: SidecarStatus }) {
+  const activeChatId = useChatStore((s) => s.activeChatId);
+  const appendStreamText = useChatStore((s) => s.appendStreamText);
+  const completeMessage = useChatStore((s) => s.completeMessage);
+  const addToolUse = useChatStore((s) => s.addToolUse);
+  const setProcessing = useChatStore((s) => s.setProcessing);
+
+  const isSidecarRunning = sidecarStatus.status === 'Running';
+  const streamUrl = isSidecarRunning
+    ? `http://127.0.0.1:${sidecarStatus.port}/api/stream`
+    : '';
+
+  // Handle SSE events
+  const handleSSEMessage = useCallback((event: { type: string; data: any }) => {
+    if (!activeChatId) return;
+
+    switch (event.type) {
+      case 'content_delta':
+        if (event.data.delta) {
+          appendStreamText(activeChatId, event.data.delta);
+        } else if (event.data.content) {
+          appendStreamText(activeChatId, event.data.content);
+        }
+        break;
+
+      case 'message:outbound':
+        const content = event.data.payload?.content || event.data.content || '';
+        completeMessage(activeChatId, content, []);
+        break;
+
+      case 'message_end':
+        // Already handled by message:outbound
+        break;
+
+      case 'tool:start':
+        addToolUse(activeChatId, {
+          id: event.data.tool_id || `tool_${Date.now()}`,
+          name: event.data.name || 'unknown',
+          input: event.data.input ? JSON.stringify(event.data.input) : undefined,
+          status: 'running',
+        });
+        break;
+
+      case 'tool:complete':
+        addToolUse(activeChatId, {
+          id: event.data.tool_id || `tool_${Date.now()}`,
+          name: event.data.name || 'unknown',
+          input: event.data.input ? JSON.stringify(event.data.input) : undefined,
+          status: 'done',
+        });
+        break;
+
+      case 'error':
+        setProcessing(activeChatId, false);
+        break;
+    }
+  }, [activeChatId, appendStreamText, completeMessage, addToolUse, setProcessing]);
+
+  // SSE connection
+  useSSE({
+    url: streamUrl,
+    enabled: isSidecarRunning,
+    onMessage: handleSSEMessage,
+    onError: (error) => console.error('SSE error:', error),
+  });
+
+  return null;
+}
+
 // Outer component that provides context
-export function Chat() {
-  const api = getApiClient();
+interface ChatProps {
+  sidecarStatus?: SidecarStatus;
+}
+
+export function Chat({ sidecarStatus }: ChatProps) {
+  const api = sidecarStatus ? getApiClient(sidecarStatus.port) : getApiClient();
 
   // Fetch chat list from API
   const handleFetchChatList = useCallback(async (): Promise<ChatItem[]> => {
@@ -272,7 +349,7 @@ export function Chat() {
       console.error('Failed to fetch chat list:', error);
       return [];
     }
-  }, []);
+  }, [api]);
 
   // Load chat messages from API
   const handleLoadChat = useCallback(async (chatId: string): Promise<Message[]> => {
@@ -288,7 +365,7 @@ export function Chat() {
       console.error('Failed to load chat:', error);
       return [];
     }
-  }, []);
+  }, [api]);
 
   // Delete chat via API
   const handleDeleteChat = useCallback(async (chatId: string) => {
@@ -297,7 +374,7 @@ export function Chat() {
     } catch (error) {
       console.error('Failed to delete chat:', error);
     }
-  }, []);
+  }, [api]);
 
   // Update chat via API
   const handleUpdateChat = useCallback(async (chatId: string, data: { name?: string; avatar?: string }) => {
@@ -306,7 +383,7 @@ export function Chat() {
     } catch (error) {
       console.error('Failed to update chat:', error);
     }
-  }, []);
+  }, [api]);
 
   // Send message via API (SSE streaming handled separately)
   const handleSendMessage = useCallback(async (_chatId: string, prompt: string, agentId: string, _attachments?: Attachment[]) => {
@@ -315,21 +392,24 @@ export function Chat() {
     } catch (error) {
       console.error('Failed to send message:', error);
     }
-  }, []);
+  }, [api]);
 
   return (
-    <ChatProvider
-      agents={[
-        { id: 'default', name: 'Default Agent' },
-      ]}
-      onFetchChatList={handleFetchChatList}
-      onLoadChat={handleLoadChat}
-      onDeleteChat={handleDeleteChat}
-      onUpdateChat={handleUpdateChat}
-      onSendMessage={handleSendMessage}
-    >
-      <ChatContent />
-    </ChatProvider>
+    <>
+      {sidecarStatus && <SSEHandler sidecarStatus={sidecarStatus} />}
+      <ChatProvider
+        agents={[
+          { id: 'default', name: 'Default Agent' },
+        ]}
+        onFetchChatList={handleFetchChatList}
+        onLoadChat={handleLoadChat}
+        onDeleteChat={handleDeleteChat}
+        onUpdateChat={handleUpdateChat}
+        onSendMessage={handleSendMessage}
+      >
+        <ChatContent />
+      </ChatProvider>
+    </>
   )
 }
 
