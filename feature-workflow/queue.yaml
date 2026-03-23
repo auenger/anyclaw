@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-23T18:00:00"
-  version: 75
+  last_updated: "2026-03-23T18:30:00"
+  version: 76
 
 # 父需求（用于分组追踪)
 parents:
@@ -61,16 +61,7 @@ parents:
       - feat-xlsx-skill
 
 # 正在开发的需求
-active:
-  - id: feat-pptx-skill
-    name: PPTX 演示文稿处理技能
-    description: PowerPoint 演示文稿技能，支持创建、模板使用、编辑和内容分析
-    priority: 65
-    size: M
-    dependencies: []
-    parent: feat-office-skills
-    branch: feature/pptx-skill
-    worktree: ../AnyClaw-pptx-skill
+active: []
 
 # 等待中的需求（按优先级排序）
 pending:
@@ -110,6 +101,24 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-pptx-skill
+    name: PPTX 演示文稿处理技能
+    description: PowerPoint 演示文稿技能，支持创建、模板使用、编辑和内容分析
+    priority: 65
+    size: M
+    completed_at: "2026-03-23T18:30:00"
+    value_points:
+      - 创建演示文稿（python-pptx，8 种专业配色主题）
+      - 提取文本内容（markdown 格式）
+      - 获取元数据（标题、作者、幻灯片数）
+      - 编辑演示文稿（OOXML unpack/pack 文本替换）
+      - 添加演讲者备注
+      - 模板分析（布局结构分析）
+      - 模板使用（基于模板创建）
+      - 内容替换（批量替换占位符）
+      - 缩略图生成（需要 LibreOffice）
+      - 33 个单元测试
+
   - id: feat-feishu-outbound
     name: 飞书 Channel 出站消息支持
     description: 飞书 channel 添加 _outbound_loop 实现，使 Agent 处理完飞书消息后能将响应发送回飞书
