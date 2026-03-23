@@ -271,7 +271,7 @@ class ServeManager:
                         if result.reply:
                             outbound = OutboundMessage(
                                 channel=msg.channel,
-                                chat_id=msg.chat_id,
+                                chat_id=msg.session_key,  # 使用完整 session key
                                 content=result.reply,
                                 reply_to=msg.metadata.get("message_id"),
                             )
@@ -300,10 +300,12 @@ class ServeManager:
                                 f"duration={_agent_duration:.2f}s, "
                                 f"response_len={len(response)}")
 
-                    # Send response back (use original chat_id for channel routing)
+                    # Send response back
+                    # Use session_key (e.g., "api:conv_xxx") for chat_id so frontend can match
+                    # The channel routing still works because channel field is separate
                     outbound = OutboundMessage(
                         channel=msg.channel,
-                        chat_id=msg.chat_id,  # 使用原始 chat_id，用于 channel 发送消息
+                        chat_id=msg.session_key,  # 使用完整 session key，前端需要这个格式
                         content=response,
                         reply_to=msg.metadata.get("message_id"),
                     )
@@ -321,7 +323,7 @@ class ServeManager:
                     # Send error response
                     error_msg = OutboundMessage(
                         channel=msg.channel,
-                        chat_id=msg.chat_id,
+                        chat_id=msg.session_key,  # 使用完整 session key
                         content=f"Error: {str(e)}",
                         reply_to=msg.metadata.get("message_id"),
                     )
@@ -401,10 +403,10 @@ class ServeManager:
         else:
             response_text = "没有正在执行的任务"
 
-        # Send response (use original chat_id for channel routing)
+        # Send response
         outbound = OutboundMessage(
             channel=msg.channel,
-            chat_id=msg.chat_id,  # 使用原始 chat_id，用于 channel 发送消息
+            chat_id=msg.session_key,  # 使用完整 session key
             content=response_text,
             reply_to=msg.metadata.get("message_id"),
         )
