@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-PyInstaller 打包脚本 - 将 AnyClaw Sidecar 打包成独立可执行文件
+PyInstaller build script - Package AnyClaw Sidecar as standalone executable
 
-用法:
+Usage:
     python build_sidecar.py [--platform PLATFORM] [--output DIR]
 
-平台:
+Platforms:
     macos-x64      - macOS Intel
     macos-arm64    - macOS Apple Silicon (M1/M2)
     windows-x64    - Windows 64-bit
@@ -20,9 +20,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-# PyInstaller 隐藏导入 - 这些模块动态加载，需要显式声明
+# PyInstaller hidden imports - dynamically loaded modules need explicit declaration
 HIDDEN_IMPORTS = [
-    # uvicorn 相关
+    # uvicorn
     "uvicorn",
     "uvicorn.logging",
     "uvicorn.loops",
@@ -40,7 +40,7 @@ HIDDEN_IMPORTS = [
     "starlette.routing",
     "starlette.middleware",
     "starlette.staticfiles",
-    # litellm 相关
+    # litellm
     "litellm",
     "litellm.integrations",
     # pydantic
@@ -55,33 +55,33 @@ HIDDEN_IMPORTS = [
     "anyio._backends._asyncio",
     # SSE
     "sse_starlette",
-    # 其他常用库
+    # Common
     "json",
     "logging",
     "logging.config",
     "asyncio",
     "concurrent.futures",
     "multiprocessing",
-    # 日期时间
+    # datetime
     "dateutil",
     "dateutil.parser",
-    # 加密/安全
+    # crypto
     "cryptography",
-    # 配置
+    # config
     "tomllib",
-    # CLI 相关 (虽然 sidecar 不需要，但可能被导入)
+    # CLI (may be imported)
     "typer",
     "rich",
     "rich.console",
     "rich.progress",
 ]
 
-# 需要收集数据的包
+# Packages to collect data from
 COLLECT_DATA = [
     "litellm",
 ]
 
-# 需要排除的模块（减小体积）
+# Modules to exclude (reduce size)
 EXCLUDE_MODULES = [
     "tkinter",
     "matplotlib",
@@ -98,7 +98,7 @@ EXCLUDE_MODULES = [
     "docutils",
 ]
 
-# 平台到 Tauri target triple 的映射
+# Platform to Tauri target triple mapping
 PLATFORM_TARGETS = {
     "macos-x64": "x86_64-apple-darwin",
     "macos-arm64": "aarch64-apple-darwin",
@@ -108,7 +108,7 @@ PLATFORM_TARGETS = {
 
 
 def get_current_platform() -> str:
-    """检测当前平台"""
+    """Detect current platform"""
     system = platform.system().lower()
     machine = platform.machine().lower()
 
@@ -125,70 +125,70 @@ def get_current_platform() -> str:
 
 
 def get_executable_name(target: str) -> str:
-    """根据平台获取可执行文件名"""
+    """Get executable name for platform"""
     if "windows" in target:
         return f"anyclaw-sidecar-{target}.exe"
     return f"anyclaw-sidecar-{target}"
 
 
 def build_sidecar(target_platform: str, output_dir: Path) -> Path:
-    """构建 Sidecar 可执行文件"""
+    """Build Sidecar executable"""
 
-    # 获取项目根目录
-    # 脚本位于: anyclaw/build_sidecar.py
-    # 项目根目录: anyclaw/.. (AnyClaw)
-    # Python 包: anyclaw/anyclaw/
-    script_dir = Path(__file__).parent
-    project_root = script_dir.parent  # AnyClaw/
-    anyclaw_pkg = script_dir / "anyclaw"  # anyclaw/anyclaw/ 包目录
+    # Get absolute paths
+    script_dir = Path(__file__).parent.resolve()
+    project_root = script_dir.parent.resolve()
+    anyclaw_pkg = script_dir / "anyclaw"
 
-    # 确定输出目录
-    output_dir = output_dir / "binaries"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Resolve output directory to absolute path
+    output_dir = output_dir.resolve()
+    binaries_dir = output_dir / "binaries"
+    binaries_dir.mkdir(parents=True, exist_ok=True)
 
-    # 获取 target triple
+    # Get target triple
     target = PLATFORM_TARGETS.get(target_platform)
     if not target:
         raise ValueError(f"Unknown platform: {target_platform}")
 
-    # 可执行文件名
+    # Executable name
     exe_name = get_executable_name(target)
-    output_path = output_dir / exe_name
+    output_path = binaries_dir / exe_name
 
     print(f"\n{'='*60}")
     print(f"Building AnyClaw Sidecar")
     print(f"  Platform: {target_platform}")
     print(f"  Target: {target}")
+    print(f"  Script dir: {script_dir}")
+    print(f"  Project root: {project_root}")
     print(f"  Output: {output_path}")
     print(f"{'='*60}\n")
 
-    # 构建 PyInstaller 命令
+    # Build PyInstaller command
     cmd = [
         sys.executable, "-m", "PyInstaller",
         str(anyclaw_pkg / "__main__.py"),
         "--name=anyclaw-sidecar",
-        "--onefile",  # 打包成单个文件
-        "--console",  # 保留控制台窗口（用于调试）
+        "--onefile",
+        "--console",
         "--clean",
         "--noconfirm",
-        f"--distpath={output_dir}",
+        f"--distpath={binaries_dir}",
         f"--workpath={project_root / 'build' / 'sidecar_work'}",
         f"--specpath={project_root / 'build'}",
     ]
 
-    # 添加隐藏导入
+    # Add hidden imports
     for module in HIDDEN_IMPORTS:
         cmd.append(f"--hidden-import={module}")
 
-    # 添加数据收集
+    # Add data collection
     for package in COLLECT_DATA:
         cmd.append(f"--collect-data={package}")
 
-    # 添加排除模块
+    # Add excluded modules
     for module in EXCLUDE_MODULES:
         cmd.append(f"--exclude-module={module}")
 
-    # 添加运行时钩子 - 确保 sidecar 模式
+    # Add runtime hook
     runtime_hook = project_root / "build" / "sidecar_hook.py"
     runtime_hook.parent.mkdir(parents=True, exist_ok=True)
     runtime_hook.write_text('''
@@ -202,53 +202,53 @@ if len(sys.argv) == 1:
 ''', encoding='utf-8')
     cmd.append(f"--runtime-hook={runtime_hook}")
 
-    # 平台特定配置
-    if "windows" in target:
-        # Windows 不显示控制台窗口（但保留用于调试）
-        # cmd.append("--noconsole")  # 取消注释以隐藏控制台
-        pass
-    elif "macos" in target:
-        # macOS 特定配置
-        pass
-
-    # 运行 PyInstaller
+    # Run PyInstaller
     print(f"Running PyInstaller...")
-    print(f"  {' '.join(cmd[:10])}...")  # 只显示部分命令
+    print(f"  Working directory: {project_root}")
+    print(f"  Command: {' '.join(cmd[:8])}...")
 
-    result = subprocess.run(cmd, cwd=project_root)
+    result = subprocess.run(cmd, cwd=str(project_root))
 
     if result.returncode != 0:
         raise RuntimeError(f"PyInstaller failed with exit code {result.returncode}")
 
-    # 重命名输出文件（PyInstaller 输出文件名不带平台后缀）
-    temp_output = output_dir / "anyclaw-sidecar"
-    if "windows" in target:
-        temp_output = output_dir / "anyclaw-sidecar.exe"
+    # Rename output file (PyInstaller outputs without platform suffix)
+    temp_output = binaries_dir / "anyclaw-sidecar.exe" if "windows" in target else binaries_dir / "anyclaw-sidecar"
+
+    print(f"\nLooking for PyInstaller output...")
+    print(f"  Expected temp file: {temp_output}")
 
     if temp_output.exists():
-        if temp_output != output_path:
-            temp_output.rename(output_path)
-    elif not output_path.exists():
-        # 查找 PyInstaller 生成的文件
-        for f in output_dir.iterdir():
+        print(f"  Found temp file, renaming to: {output_path}")
+        if output_path.exists():
+            output_path.unlink()
+        temp_output.rename(output_path)
+    else:
+        # Search for the generated file
+        print(f"  Temp file not found, searching in: {binaries_dir}")
+        found = False
+        for f in binaries_dir.iterdir():
             if f.name.startswith("anyclaw-sidecar") and not f.name.endswith(".gitkeep"):
-                if f != output_path:
-                    f.rename(output_path)
+                print(f"  Found: {f}")
+                if output_path.exists():
+                    output_path.unlink()
+                f.rename(output_path)
+                found = True
                 break
+        if not found:
+            # List directory contents for debugging
+            print(f"  Directory contents:")
+            for f in binaries_dir.iterdir():
+                print(f"    {f.name}")
 
     if not output_path.exists():
-        # 如果还是没有找到，检查是否有不带后缀的文件
-        fallback = output_dir / "anyclaw-sidecar"
-        if fallback.exists():
-            fallback.rename(output_path)
-        else:
-            raise RuntimeError(f"Build output not found at {output_path}")
+        raise RuntimeError(f"Build output not found at {output_path}")
 
-    # 设置可执行权限
+    # Set executable permission
     if "windows" not in target:
         output_path.chmod(0o755)
 
-    # 检查文件大小
+    # Check file size
     size_mb = output_path.stat().st_size / (1024 * 1024)
     print(f"\n[OK] Build successful!")
     print(f"  Output: {output_path}")
@@ -278,7 +278,7 @@ def main():
 
     args = parser.parse_args()
 
-    # 自动检测平台
+    # Auto-detect platform
     target_platform = args.platform or get_current_platform()
 
     try:
