@@ -43,14 +43,7 @@
   },
   "plugins": {
     "shell": {
-      "open": true,
-      "sidecar": true,
-      "scope": [
-        {
-          "name": "binaries/anyclaw-sidecar",
-          "sidecar": true
-        }
-      ]
+      "open": true
     },
     "updater": {
       "endpoints": [
