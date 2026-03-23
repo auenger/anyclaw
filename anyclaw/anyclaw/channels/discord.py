@@ -167,7 +167,10 @@ class DiscordChannel(BaseChannel):
             logger.warning("Discord HTTP client not initialized")
             return
 
-        url = f"{DISCORD_API_BASE}/channels/{msg.chat_id}/messages"
+        # 从 session_key 格式（如 "discord:123456789"）中提取真实 channel_id
+        real_channel_id = msg.chat_id.split(":")[-1] if ":" in msg.chat_id else msg.chat_id
+        url = f"{DISCORD_API_BASE}/channels/{real_channel_id}/messages"
+        logger.debug(f"[Discord] 📤 发送消息: channel_id={real_channel_id}, content_len={len(msg.content or '')}")
         headers = {"Authorization": f"Bot {self.config.token}"}
 
         try:
@@ -202,7 +205,7 @@ class DiscordChannel(BaseChannel):
                     break
 
         finally:
-            await self._stop_typing(msg.chat_id)
+            await self._stop_typing(real_channel_id)
 
     async def _send_payload(self, url: str, headers: dict, payload: dict) -> bool:
         """Send a Discord API payload with retry on rate-limit."""
