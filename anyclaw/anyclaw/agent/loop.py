@@ -386,8 +386,21 @@ class AgentLoop:
             self.archive_manager.end_session()
 
     def set_session_key(self, key: str) -> None:
-        """设置当前会话 key"""
+        """设置当前会话 key，并从 SessionManager 加载历史"""
         self._session_key = key
+
+        # 从 SessionManager 加载历史到内存中的 ConversationHistory
+        if self.session_manager:
+            history_messages = self.session_manager.get_history(key)
+            if history_messages:
+                # 清空当前历史并加载历史消息
+                self.history.clear()
+                for msg in history_messages:
+                    role = msg.get("role", "")
+                    content = msg.get("content", "")
+                    if role and content:
+                        self.history.add_message(role, content)
+                logger.debug(f"[AgentLoop] Loaded {len(history_messages)} messages from session: {key}")
 
     def _get_skills_info(self) -> List[Dict[str, Any]]:
         """获取技能信息列表"""
