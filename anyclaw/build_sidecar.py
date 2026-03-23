@@ -192,14 +192,14 @@ def build_sidecar(target_platform: str, output_dir: Path) -> Path:
     runtime_hook = project_root / "build" / "sidecar_hook.py"
     runtime_hook.parent.mkdir(parents=True, exist_ok=True)
     runtime_hook.write_text('''
-# Sidecar 运行时钩子
+# Sidecar runtime hook
 import sys
 import os
 
-# 设置默认运行 sidecar 命令
+# Set default sidecar command
 if len(sys.argv) == 1:
     sys.argv = [sys.argv[0], "sidecar", "--port", "62601"]
-''')
+''', encoding='utf-8')
     cmd.append(f"--runtime-hook={runtime_hook}")
 
     # 平台特定配置
@@ -250,12 +250,12 @@ if len(sys.argv) == 1:
 
     # 检查文件大小
     size_mb = output_path.stat().st_size / (1024 * 1024)
-    print(f"\n✓ Build successful!")
+    print(f"\n[OK] Build successful!")
     print(f"  Output: {output_path}")
     print(f"  Size: {size_mb:.1f} MB")
 
     if size_mb > 100:
-        print(f"  ⚠️  Warning: File size exceeds 100MB target")
+        print(f"  [WARN] File size exceeds 100MB target")
 
     return output_path
 
@@ -283,9 +283,9 @@ def main():
 
     try:
         output_path = build_sidecar(target_platform, args.output)
-        print(f"\n🎉 Sidecar build complete: {output_path}")
+        print(f"\n[DONE] Sidecar build complete: {output_path}")
     except Exception as e:
-        print(f"\n❌ Build failed: {e}")
+        print(f"\n[ERROR] Build failed: {e}")
         sys.exit(1)
 
 
