@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot 和 OpenClaw 的核心优势。项目采用 Python 3.11+ 开发，使用 Poetry 管理依赖，同时提供 Tauri 跨平台桌面应用。
 
-**项目状态**: 42 个特性完成，588 个测试通过 ✅
+**项目状态**: 60 个特性完成，965 个测试通过 ✅
 
 ### 核心特性
 
@@ -131,7 +131,7 @@ anyclaw/
 │   │   ├── conversation.py    # 技能对话模式
 │   │   ├── models.py          # 数据模型
 │   │   ├── parser.py          # SKILL.md 解析
-│   │   └── builtin/           # 内置技能 (11 个)
+│   │   └── builtin/           # 内置技能 (17 个)
 │   ├── security/              # 安全模块
 │   │   ├── network.py         # SSRF 防护
 │   │   ├── path_guard.py      # 路径遍历防护
@@ -178,9 +178,9 @@ anyclaw/
 │   │   └── tauri.conf.json    # Tauri 配置
 │   ├── package.json           # npm 依赖
 │   └── vite.config.ts         # Vite 配置
-├── tests/                     # 测试目录 (588 个测试)
+├── tests/                     # 测试目录 (965 个测试)
 ├── docs/                      # 文档目录
-├── features/                  # Feature 归档 (39 个特性)
+├── features/                  # Feature 归档 (60 个特性)
 ├── pyproject.toml             # 项目配置
 └── .env.example               # 环境变量示例
 ```

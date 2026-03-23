@@ -1,8 +1,8 @@
 ---
-last_updated: '2026-03-22'
-version: 10
-features_completed: 42
-tests_passing: 588
+last_updated: '2026-03-23'
+version: 11
+features_completed: 60
+tests_passing: 965
 ---
 
 # Project Context: AnyClaw
@@ -80,7 +80,7 @@ anyclaw/
 │   │   ├── loader.py          # Skill loader (dynamic + progressive)
 │   │   ├── toolkit.py         # Skill toolkit
 │   │   ├── conversation.py    # Skill conversation mode
-│   │   └── builtin/           # Built-in skills (11 skills)
+│   │   └── builtin/           # Built-in skills (17 skills)
 │   ├── providers/             # Provider system
 │   │   ├── zai.py             # ZAI Provider
 │   │   └── zai_detect.py      # Endpoint detection
@@ -100,7 +100,7 @@ anyclaw/
 │   │   ├── src/lib.rs         # Shell implementation
 │   │   └── tauri.conf.json    # Tauri config
 │   └── package.json           # npm dependencies
-├── tests/                     # Test files (588 tests)
+├── tests/                     # Test files (965 tests)
 ├── features/                  # Feature archive
 ├── pyproject.toml             # Project config
 └── .env                       # Environment vars
@@ -309,27 +309,26 @@ credential_encryption: bool = True
 
 | Date | Feature | Impact |
 |------|---------|--------|
-| 2026-03-21 | feat-smart-file-search | Intelligent file search with heuristics and context awareness |
+| 2026-03-23 | feat-pptx-skill | PPTX presentation skill (python-pptx, template analysis) |
+| 2026-03-23 | feat-feishu-outbound | Feishu outbound message support |
+| 2026-03-23 | feat-xlsx-skill | XLSX spreadsheet skill (openpyxl, pandas, formula recalc) |
+| 2026-03-23 | feat-pdf-skill | PDF document skill (reportlab, pypdf, pdfplumber) |
+| 2026-03-23 | feat-docx-skill | DOCX document skill (python-docx, OOXML editing) |
+| 2026-03-23 | feat-chat-message-render | Chat message rendering enhancement (tool_calls) |
+| 2026-03-22 | feat-chat-history-refactor | Chat history list refactor (unified session key) |
+| 2026-03-22 | feat-chat-history | Chat history with Agent management (SidePanel) |
+| 2026-03-22 | feat-cron-skill | Cron skill implementation |
+| 2026-03-22 | feat-task-interrupt | Task instant interrupt mechanism (/stop) |
+| 2026-03-21 | feat-ui-design-core | UI design system + layout components (oklch, AppSidebar) |
+| 2026-03-21 | feat-model-config-fix | /model command config fix |
+| 2026-03-21 | feat-session-cwd | Session-level working directory |
+| 2026-03-21 | feat-llm-resilience | LLM response resilience (empty response recovery) |
+| 2026-03-21 | feat-iteration-summary | Iteration limit smart summary |
+| 2026-03-20 | feat-smart-file-search | Intelligent file search with heuristics |
+| 2026-03-20 | feat-special-commands-advanced | Advanced special commands |
+| 2026-03-20 | feat-special-commands-core | Core special commands |
 | 2026-03-20 | feat-security-config-enhancement | Enhanced security config with allow_all_access |
 | 2026-03-20 | feat-desktop-app-phase3 | Tauri desktop app Phase 3 complete |
-| 2026-03-20 | feat-session-archive | Session archiving system |
-| 2026-03-20 | feat-input-sanitizer | Input validation and sanitization |
-| 2026-03-20 | feat-path-guard | Path traversal protection |
-| 2026-03-20 | feat-credential-vault | Secure credential management |
-| 2026-03-20 | feat-skill-conversation-mode | Skill conversation mode |
-| 2026-03-20 | feat-skill-progressive-loading | Progressive skill loading |
-| 2026-03-20 | feat-skill-dynamic-loader | Dynamic skill loading |
-| 2026-03-20 | feat-desktop-app | Tauri desktop app (Phase 1-2, 80%) |
-| 2026-03-20 | feat-multi-agent | Multi-Agent system (OpenClaw-style) |
-| 2026-03-20 | feat-session-manager | SessionManager with JSONL persistence |
-| 2026-03-20 | feat-subagent | SubAgent background tasks (SpawnTool) |
-| 2026-03-20 | feat-message-tool | MessageTool for cross-session messaging |
-| 2026-03-20 | feat-cron | Cron scheduling (at/every/cron) |
-| 2026-03-20 | feat-im-channels | Channel integration (Discord/Feishu) |
-| 2026-03-19 | feat-serve-mode | Multi-channel serve mode with daemon support |
-| 2026-03-19 | feat-ssrf-guard | SSRF protection module |
-| 2026-03-18 | feat-streaming-output | Added streaming output support |
-| 2026-03-18 | feat-mvp-* | MVP implementation complete |
 
 ## CLI Commands Reference
 
@@ -385,7 +384,26 @@ anyclaw agent switch <name>
 
 ## Update Log
 
-- 2026-03-20: Completed 40 features, 588 tests passing
+- 2026-03-23: Completed 60 features, 965 tests passing
+- 2026-03-23: Added feat-pptx-skill - PPTX presentation processing skill
+- 2026-03-23: Added feat-feishu-outbound - Feishu outbound message support
+- 2026-03-23: Added feat-xlsx-skill - XLSX spreadsheet processing skill
+- 2026-03-23: Added feat-pdf-skill - PDF document processing skill
+- 2026-03-23: Added feat-docx-skill - DOCX document processing skill
+- 2026-03-23: Added feat-chat-message-render - Chat message rendering enhancement
+- 2026-03-22: Added feat-chat-history-refactor - Chat history list refactor
+- 2026-03-22: Added feat-chat-history - Chat history with Agent management
+- 2026-03-22: Added feat-cron-skill - Cron skill implementation
+- 2026-03-22: Added feat-task-interrupt - Task instant interrupt mechanism
+- 2026-03-21: Added feat-ui-design-core - UI design system + layout components
+- 2026-03-21: Added feat-model-config-fix - /model command config fix
+- 2026-03-21: Added feat-session-cwd - Session-level working directory
+- 2026-03-21: Added feat-llm-resilience - LLM response resilience
+- 2026-03-21: Added feat-iteration-summary - Iteration limit smart summary
+- 2026-03-20: Added feat-smart-file-search - Intelligent file search
+- 2026-03-20: Added feat-special-commands-advanced - Advanced special commands
+- 2026-03-20: Added feat-special-commands-core - Core special commands
+- 2026-03-20: Completed 42 features, 588 tests passing (before office skills)
 - 2026-03-20: Added feat-security-config-enhancement - Enhanced security config
 - 2026-03-20: Added feat-desktop-app-phase3 - Tauri desktop app Phase 3
 - 2026-03-20: Added feat-session-archive - Session archiving system

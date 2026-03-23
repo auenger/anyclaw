@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-23T18:30:00"
-  version: 76
+  last_updated: "2026-03-23T19:45:00"
+  version: 79
 
 # 父需求（用于分组追踪)
 parents:
@@ -65,6 +65,27 @@ active: []
 
 # 等待中的需求（按优先级排序）
 pending:
+
+  - id: feat-session-concurrency
+    name: 会话并发引擎
+    description: 实现会话级别的并发处理，支持同时处理多个 chat session 的对话，解决单线程阻塞问题
+    priority: 80
+    size: M
+    dependencies: []
+
+  - id: feat-config-editor
+    name: 配置编辑器与服务控制
+    description: 在 Tauri 桌面应用中添加 config.toml 编辑器和 sidecar 服务控制（停止/重启），方便修改配置后应用新设置
+    priority: 75
+    size: M
+    dependencies: []
+
+  - id: feat-app-bundle
+    name: 桌面应用打包方案
+    description: PyInstaller + Tauri Sidecar 打包方案，实现用户无需 Python 环境即可使用的开箱即用体验
+    priority: 60
+    size: L
+    dependencies: []
 
   - id: feat-cron-skill
     name: Cron 技能实现

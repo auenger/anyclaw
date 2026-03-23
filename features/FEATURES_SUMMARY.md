@@ -4,11 +4,11 @@
 
 **整体进度**: ████████████████████████ **100%** MVP + 扩展特性完成
 
-**最后更新**: 2026-03-21
+**最后更新**: 2026-03-23
 
-**测试状态**: 588 个测试通过 ✅
+**测试状态**: 965 个测试通过 ✅
 
-**完成特性数**: 42
+**完成特性数**: 60
 
 ## 特性列表
 
@@ -167,7 +167,7 @@ feat-mvp-init (初始化) ✅
 - ✅ 技能对话模式
 - ✅ Tool Calling 集成
 
-#### 内置技能（11 个）
+#### 内置技能（17 个）
 
 | 技能 | 功能 |
 |------|------|
@@ -182,6 +182,12 @@ feat-mvp-init (初始化) ✅
 | `text` | 文本处理 |
 | `system` | 系统信息 |
 | `data` | 数据处理 |
+| `cron` | 定时任务调度 |
+| `skill-creator` | 技能创建与管理 |
+| `docx` | Word 文档处理 |
+| `pdf` | PDF 文档处理 |
+| `xlsx` | Excel 电子表格处理 |
+| `pptx` | PowerPoint 演示文稿处理 |
 
 ### 安全功能
 - ✅ SSRF 防护 (网络请求安全)
@@ -228,7 +234,7 @@ feat-mvp-init (初始化) ✅
 - ✅ 流式中断支持 (Ctrl+C)
 
 ### 测试覆盖
-- ✅ 588 个测试全部通过
+- ✅ 965 个测试全部通过
 - ✅ test_config.py
 - ✅ test_agent.py
 - ✅ test_skills.py
@@ -242,6 +248,12 @@ feat-mvp-init (初始化) ✅
 - ✅ test_session.py
 - ✅ test_subagent.py
 - ✅ test_cron.py
+- ✅ test_special_commands.py
+- ✅ test_docx_skill.py
+- ✅ test_pdf_skill.py
+- ✅ test_xlsx_skill.py
+- ✅ test_pptx_skill.py
+- ✅ test_feishu_channel.py
 
 ## 快速启动
 
@@ -293,18 +305,18 @@ anyclaw chat --no-stream
 ## 当前队列状态
 
 ```yaml
-pending: []   # 无待开发需求
+pending: 6 个需求 (feat-session-concurrency, feat-config-editor, feat-app-bundle 等)
 active:  []   # 无活跃需求
-completed: 40 个特性
+completed: 60 个特性
 ```
 
 ## 统计
 
 | 指标 | 数值 |
 |------|------|
-| 完成特性数 | 40 |
-| 内置技能数 | 11 |
-| 测试数量 | 588 |
+| 完成特性数 | 60 |
+| 内置技能数 | 17 |
+| 测试数量 | 965 |
 | 配置项数量 | 40+ |
 | CLI 命令数 | 25+ |
 | API 端点数 | 13 |
@@ -313,6 +325,24 @@ completed: 40 个特性
 
 | 日期 | 特性 | 价值点 |
 |------|------|--------|
+| 2026-03-23 | feat-pptx-skill | PPTX 演示文稿处理技能 (python-pptx, 模板分析, 缩略图) |
+| 2026-03-23 | feat-feishu-outbound | 飞书出站消息支持 (_outbound_loop 实现) |
+| 2026-03-23 | feat-xlsx-skill | XLSX 电子表格处理技能 (openpyxl, pandas, 公式重算) |
+| 2026-03-23 | feat-pdf-skill | PDF 文档处理技能 (reportlab, pypdf, pdfplumber) |
+| 2026-03-23 | feat-docx-skill | DOCX 文档处理技能 (python-docx, OOXML 编辑) |
+| 2026-03-23 | feat-chat-message-render | 对话历史消息渲染增强 (tool_calls 渲染) |
+| 2026-03-22 | feat-chat-history-refactor | 对话历史列表重构 (session key 统一) |
+| 2026-03-22 | feat-chat-history | 聊天历史与 Agent 管理 (SidePanel, 持久化) |
+| 2026-03-22 | feat-cron-skill | Cron 技能实现 (CronTool 注册到 AgentLoop) |
+| 2026-03-22 | feat-task-interrupt | 任务即时中断机制 (/stop 即时中断) |
+| 2026-03-21 | feat-ui-design-core | UI 设计系统 + 布局组件 (oklch 颜色, AppSidebar) |
+| 2026-03-21 | feat-model-config-fix | /model 命令配置传递修复 |
+| 2026-03-21 | feat-session-cwd | 会话级工作目录 + 文件工具权限统一 |
+| 2026-03-21 | feat-llm-resilience | LLM 响应韧性增强 (空响应检测与恢复) |
+| 2026-03-21 | feat-iteration-summary | 迭代限制智能汇报 |
+| 2026-03-20 | feat-smart-file-search | 智能文件搜索 (启发式优先级, 授权机制) |
+| 2026-03-20 | feat-special-commands-advanced | 高级特殊指令 (/compact /model /agent /session) |
+| 2026-03-20 | feat-special-commands-core | 核心特殊指令 (/new /reset /stop /help /status) |
 | 2026-03-20 | feat-security-config-enhancement | 安全配置增强 (allow_all_access, extra_allowed_dirs) |
 | 2026-03-20 | feat-desktop-app-phase3 | Tauri 桌面应用 Phase 3 完成 |
 | 2026-03-20 | feat-session-archive | 会话归档系统 |
