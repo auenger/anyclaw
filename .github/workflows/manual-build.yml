@@ -60,18 +60,10 @@ jobs:
           python build_sidecar.py --platform windows-x64 --output ../tauri-app/src-tauri
 
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: manual-build
-          releaseName: 'AnyClaw Manual Build'
-          releaseBody: 'Manual build for testing'
-          releaseDraft: true
-          prerelease: true
-          projectPath: tauri-app
+        working-directory: tauri-app
+        run: npm run tauri:build
 
-      - name: Upload Windows artifact
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: anyclaw-windows-x64
