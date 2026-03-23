@@ -83,6 +83,7 @@ class FeishuChannel(BaseChannel):
         self.config: FeishuConfig = config
         self._client: Any = None
         self._message_api: Any = None
+        self._outbound_task: asyncio.Task | None = None
 
         if not FEISHU_AVAILABLE:
             logger.warning("lark-oapi not installed, Feishu channel unavailable")
@@ -114,6 +115,9 @@ class FeishuChannel(BaseChannel):
 
             self._message_api = self._client.im.v1.message
             self._running = True
+
+            # Start outbound message listener
+            self._outbound_task = asyncio.create_task(self._outbound_loop())
             logger.info("Feishu channel started (WebSocket mode requires event callback)")
 
             # Note: WebSocket long connection requires running a separate server
@@ -123,9 +127,30 @@ class FeishuChannel(BaseChannel):
         except Exception as e:
             logger.error(f"Failed to start Feishu channel: {e}")
 
+    async def _outbound_loop(self) -> None:
+        """Listen for outbound messages from bus and send them."""
+        while self._running:
+            try:
+                msg = await asyncio.wait_for(
+                    self.bus.consume_outbound(),
+                    timeout=1.0
+                )
+                # Only handle messages for this channel
+                if msg.channel == self.name:
+                    await self.send(msg)
+            except asyncio.TimeoutError:
+                continue
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error in outbound loop: {e}")
+
     async def stop(self) -> None:
         """Stop the Feishu channel."""
         self._running = False
+        if self._outbound_task:
+            self._outbound_task.cancel()
+            self._outbound_task = None
         if self._client:
             # lark-oapi doesn't have explicit close
             self._client = None

@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-23T17:45:00"
-  version: 74
+  last_updated: "2026-03-23T18:00:00"
+  version: 75
 
 # 父需求（用于分组追踪)
 parents:
@@ -61,7 +61,16 @@ parents:
       - feat-xlsx-skill
 
 # 正在开发的需求
-active: []
+active:
+  - id: feat-pptx-skill
+    name: PPTX 演示文稿处理技能
+    description: PowerPoint 演示文稿技能，支持创建、模板使用、编辑和内容分析
+    priority: 65
+    size: M
+    dependencies: []
+    parent: feat-office-skills
+    branch: feature/pptx-skill
+    worktree: ../AnyClaw-pptx-skill
 
 # 等待中的需求（按优先级排序）
 pending:
@@ -71,15 +80,6 @@ pending:
     description: 飞书 channel 缺少 _outbound_loop 实现，导致 Agent 处理完飞书消息后无法将响应发送回飞书
     priority: 30
     size: S
-    dependencies: []
-    dependencies: []
-    parent: feat-office-skills
-
-  - id: feat-pptx-skill
-    name: PPTX 演示文稿处理技能
-    description: PowerPoint 演示文稿技能，支持创建、模板使用、编辑和内容分析
-    priority: 65
-    size: M
     dependencies: []
     parent: feat-office-skills
 
