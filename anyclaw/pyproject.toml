@@ -54,6 +54,7 @@ black = "^24.0.0"
 ruff = "^0.3.0"
 tomli-w = "^1.0.0"  # 用于写入 TOML 配置
 httpx = "^0.27.0"  # API testing
+pyinstaller = ">=6.0.0,<7.0.0"  # 用于打包 sidecar
 
 [build-system]
 requires = ["poetry-core"]

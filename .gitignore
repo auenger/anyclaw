@@ -88,4 +88,11 @@ Thinking.md
 MEMORY.md
 HISTORY.md
 .dev-progress.yaml
-docs/
+
+# Tauri build artifacts
+tauri-app/src-tauri/target/
+tauri-app/dist/
+tauri-app/node_modules/
+
+# Sidecar binaries (too large for git)
+tauri-app/src-tauri/binaries/anyclaw-sidecar-*

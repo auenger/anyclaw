@@ -36,11 +36,21 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "externalBin": [
+      "binaries/anyclaw-sidecar"
     ]
   },
   "plugins": {
     "shell": {
-      "open": true
+      "open": true,
+      "sidecar": true,
+      "scope": [
+        {
+          "name": "binaries/anyclaw-sidecar",
+          "sidecar": true
+        }
+      ]
     },
     "updater": {
       "endpoints": [

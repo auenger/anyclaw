@@ -4,8 +4,10 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};
 use tauri::image::Image;
 use tauri_plugin_store::StoreExt;
+use tauri_plugin_shell::ShellExt;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use std::process::{Child, Command, Stdio};
 
 /// Sidecar 进程状态
 #[derive(Clone, Serialize)]
@@ -30,6 +32,46 @@ pub struct SidecarInfo {
 /// 全局状态
 struct AppState {
     sidecar_status: Arc<Mutex<SidecarInfo>>,
+    sidecar_process: Arc<Mutex<Option<Child>>>,
+}
+
+/// 检查是否为生产模式（打包后的应用）
+fn is_production_mode() -> bool {
+    // 检查 sidecar 可执行文件是否存在
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(parent) = exe_path.parent() {
+            // macOS: AnyClaw.app/Contents/MacOS/AnyClaw
+            // Windows: AnyClaw/AnyClaw.exe
+            let binaries_dir = if cfg!(target_os = "macos") {
+                parent.parent().map(|p| p.join("Resources").join("binaries"))
+            } else {
+                Some(parent.join("binaries"))
+            };
+
+            if let Some(bin_dir) = binaries_dir {
+                let sidecar_name = get_sidecar_binary_name();
+                if bin_dir.join(&sidecar_name).exists() {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+/// 获取当前平台的 sidecar 二进制文件名
+fn get_sidecar_binary_name() -> String {
+    #[cfg(target_os = "macos")]
+    {
+        #[cfg(target_arch = "x86_64")]
+        { "anyclaw-sidecar-x86_64-apple-darwin".to_string() }
+        #[cfg(target_arch = "aarch64")]
+        { "anyclaw-sidecar-aarch64-apple-darwin".to_string() }
+    }
+    #[cfg(target_os = "windows")]
+    { "anyclaw-sidecar-x86_64-pc-windows-msvc.exe".to_string() }
+    #[cfg(target_os = "linux")]
+    { "anyclaw-sidecar-x86_64-unknown-linux-gnu".to_string() }
 }
 
 // ============ 命令函数 ============
@@ -304,6 +346,71 @@ fn find_project_root() -> Option<std::path::PathBuf> {
 }
 
 fn spawn_sidecar(app: &AppHandle, port: u16) -> Result<u32, String> {
+    // 检查是否为生产模式
+    if is_production_mode() {
+        spawn_bundled_sidecar(app, port)
+    } else {
+        spawn_dev_sidecar(app, port)
+    }
+}
+
+/// 启动打包后的 sidecar（生产模式）
+fn spawn_bundled_sidecar(app: &AppHandle, port: u16) -> Result<u32, String> {
+    log::info!("Starting bundled sidecar in production mode");
+
+    // 获取 sidecar 路径
+    let exe_path = std::env::current_exe().map_err(|e| format!("Failed to get exe path: {}", e))?;
+    let exe_dir = exe_path.parent().ok_or("Failed to get exe directory")?;
+
+    // macOS: AnyClaw.app/Contents/MacOS/AnyClaw -> Contents/Resources/binaries/
+    // Windows: AnyClaw/AnyClaw.exe -> AnyClaw/binaries/
+    let binaries_dir = if cfg!(target_os = "macos") {
+        exe_dir.parent()
+            .map(|p| p.join("Resources").join("binaries"))
+            .ok_or("Failed to get Resources directory")?
+    } else {
+        exe_dir.join("binaries")
+    };
+
+    let sidecar_name = get_sidecar_binary_name();
+    let sidecar_path = binaries_dir.join(&sidecar_name);
+
+    if !sidecar_path.exists() {
+        return Err(format!("Sidecar binary not found at: {:?}", sidecar_path));
+    }
+
+    log::info!("Sidecar path: {:?}", sidecar_path);
+
+    let mut cmd = Command::new(&sidecar_path);
+    cmd.args(["sidecar", "--port", &port.to_string()])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .env("PORT", port.to_string())
+        .env("PYTHONUNBUFFERED", "1");
+
+    // 设置数据目录
+    if let Ok(data_dir) = app.path().app_data_dir() {
+        cmd.env("DATA_DIR", data_dir.to_string_lossy().to_string());
+    }
+
+    let child = cmd.spawn().map_err(|e| format!("Failed to spawn sidecar: {}", e))?;
+    let pid = child.id();
+
+    // 保存进程句柄
+    {
+        let state = app.state::<AppState>();
+        let mut proc = state.sidecar_process.lock().unwrap();
+        *proc = Some(child);
+    }
+
+    log::info!("Bundled sidecar spawned with PID: {}", pid);
+    Ok(pid)
+}
+
+/// 启动开发模式的 sidecar（使用 poetry/python）
+fn spawn_dev_sidecar(app: &AppHandle, port: u16) -> Result<u32, String> {
+    log::info!("Starting sidecar in development mode");
+
     let (python, extra_env) = find_python()?;
 
     // 获取项目根目录
@@ -311,7 +418,7 @@ fn spawn_sidecar(app: &AppHandle, port: u16) -> Result<u32, String> {
 
     let mut cmd = if python == "poetry" {
         // 使用 poetry run
-        let mut c = std::process::Command::new("poetry");
+        let mut c = Command::new("poetry");
         c.args(["run", "python", "-m", "anyclaw.cli.sidecar_cmd", "--port", &port.to_string()]);
         if let Some(root) = &project_root {
             c.current_dir(root);
@@ -319,14 +426,16 @@ fn spawn_sidecar(app: &AppHandle, port: u16) -> Result<u32, String> {
         c
     } else {
         // 直接使用 Python
-        let mut c = std::process::Command::new(&python);
+        let mut c = Command::new(&python);
         c.args(["-m", "anyclaw.cli.sidecar_cmd", "--port", &port.to_string()]);
         c
     };
 
     // 设置环境变量
     cmd.env("PORT", port.to_string())
-        .env("PYTHONUNBUFFERED", "1");
+        .env("PYTHONUNBUFFERED", "1")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
     // 添加额外环境变量
     for (key, val) in extra_env {
@@ -346,8 +455,17 @@ fn spawn_sidecar(app: &AppHandle, port: u16) -> Result<u32, String> {
     }
 
     let child = cmd.spawn().map_err(|e| format!("Failed to spawn sidecar: {}", e))?;
-    log::info!("Sidecar spawned with PID: {}", child.id());
-    Ok(child.id())
+    let pid = child.id();
+
+    // 保存进程句柄
+    {
+        let state = app.state::<AppState>();
+        let mut proc = state.sidecar_process.lock().unwrap();
+        *proc = Some(child);
+    }
+
+    log::info!("Dev sidecar spawned with PID: {}", pid);
+    Ok(pid)
 }
 
 async fn wait_for_health(port: u16, max_retries: u32) -> Result<(), String> {
@@ -403,25 +521,42 @@ async fn check_existing_sidecar(port: u16) -> bool {
 
 fn kill_sidecar(app: &AppHandle) {
     let state = app.state::<AppState>();
-    let mut guard = state.sidecar_status.lock().unwrap();
 
-    if let Some(pid) = guard.pid {
-        #[cfg(target_os = "windows")]
-        {
-            use std::os::windows::process::CommandExt;
-            const CREATE_NO_WINDOW: u32 = 0x08000000;
-            let _ = std::process::Command::new("taskkill")
-                .args(["/PID", &pid.to_string(), "/T", "/F"])
-                .creation_flags(CREATE_NO_WINDOW)
-                .output();
+    // 首先尝试使用进程句柄（生产模式）
+    {
+        let mut proc_guard = state.sidecar_process.lock().unwrap();
+        if let Some(mut child) = proc_guard.take() {
+            log::info!("Killing sidecar process via handle");
+            let _ = child.kill();
+            let _ = child.wait();
         }
-        #[cfg(not(target_os = "windows"))]
-        {
-            let _ = std::process::Command::new("pkill")
-                .args(["-KILL", "-P", &pid.to_string()])
-                .output();
+    }
+
+    // 然后尝试通过 PID 终止（兼容旧逻辑）
+    {
+        let mut guard = state.sidecar_status.lock().unwrap();
+        if let Some(pid) = guard.pid {
+            #[cfg(target_os = "windows")]
+            {
+                use std::os::windows::process::CommandExt;
+                const CREATE_NO_WINDOW: u32 = 0x08000000;
+                let _ = Command::new("taskkill")
+                    .args(["/PID", &pid.to_string(), "/T", "/F"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .output();
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                let _ = Command::new("pkill")
+                    .args(["-KILL", "-P", &pid.to_string()])
+                    .output();
+                // 也尝试直接杀死 PID
+                let _ = Command::new("kill")
+                    .args(["-9", &pid.to_string()])
+                    .output();
+            }
+            guard.pid = None;
         }
-        guard.pid = None;
     }
 }
 
@@ -507,13 +642,23 @@ pub fn run() {
                 message: String::new(),
             }));
 
-            app.manage(AppState { sidecar_status });
+            app.manage(AppState {
+                sidecar_status,
+                sidecar_process: Arc::new(Mutex::new(None)),
+            });
 
             create_tray_icon(app.handle());
 
             let store = app.store("settings.json").unwrap();
             if !store.has("preferred_port") {
                 store.set("preferred_port", 62616_u16);
+            }
+
+            // 检测运行模式并记录日志
+            if is_production_mode() {
+                log::info!("Running in production mode (bundled sidecar)");
+            } else {
+                log::info!("Running in development mode (poetry/python sidecar)");
             }
 
             Ok(())
