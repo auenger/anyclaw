@@ -262,10 +262,14 @@ function SSEHandler({ sidecarStatus, onRefreshChats }: { sidecarStatus: SidecarS
       return;
     }
 
-    // Initialize chat if needed and sync activeChatId
-    if (eventChatId && eventChatId !== activeChatId) {
+    // Initialize chat if needed, but DON'T auto-switch activeChatId
+    // Only switch if user hasn't selected a chat yet (activeChatId is null)
+    if (eventChatId) {
       initChat(eventChatId);
-      setActiveChatId(eventChatId);
+      // Only auto-switch if no chat is currently selected
+      if (!activeChatId) {
+        setActiveChatId(eventChatId);
+      }
     }
 
     console.log('[SSEHandler] Processing event:', event.type, 'for chat:', targetChatId);
