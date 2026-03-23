@@ -9,22 +9,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            platform: macos-arm64
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            platform: macos-x64
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            platform: windows-x64
-
-    runs-on: ${{ matrix.os }}
+  build-windows:
+    runs-on: windows-latest
 
     steps:
       - name: Checkout repository
@@ -34,68 +20,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller
-          cd anyclaw
-          pip install -e .
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './tauri-app/src-tauri -> target'
-
-      - name: Install npm dependencies
-        working-directory: tauri-app
-        run: npm install
-
-      - name: Build Sidecar
-        run: |
-          cd anyclaw
-          python build_sidecar.py --platform ${{ matrix.platform }} --output ../tauri-app/src-tauri
-
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'AnyClaw ${{ github.ref_name }}'
-          releaseBody: 'See CHANGELOG.md for details.'
-          releaseDraft: true
-          prerelease: false
-          projectPath: tauri-app
-
-  # Linux 构建单独处理（可选）
-  build-linux:
-    if: false  # 暂时禁用 Linux 构建
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
 
       - name: Install Python dependencies
         run: |
@@ -124,16 +48,22 @@ jobs:
       - name: Build Sidecar
         run: |
           cd anyclaw
-          python build_sidecar.py --platform linux-x64 --output ../tauri-app/src-tauri
+          python build_sidecar.py --platform windows-x64 --output ../tauri-app/src-tauri
 
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: tauri-app
+        run: npm run tauri:build
+
+      - name: Upload MSI installer
+        uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'AnyClaw ${{ github.ref_name }}'
-          releaseBody: 'See CHANGELOG.md for details.'
-          releaseDraft: true
-          prerelease: false
-          projectPath: tauri-app
+          name: AnyClaw-${{ github.ref_name }}-windows-msi
+          path: tauri-app/src-tauri/target/release/bundle/msi/*.msi
+          retention-days: 30
+
+      - name: Upload NSIS installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnyClaw-${{ github.ref_name }}-windows-exe
+          path: tauri-app/src-tauri/target/release/bundle/nsis/*-setup.exe
+          retention-days: 30
