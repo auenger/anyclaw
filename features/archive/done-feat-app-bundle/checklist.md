@@ -14,7 +14,7 @@
 - [x] 配置数据收集
 - [x] 配置排除模块
 - [x] 本地打包测试（需要 Python 3.11+ 环境）
-- [ ] 验证打包后功能正常（需要 CI 环境）
+- [x] 验证打包后功能正常（需要 CI 环境）
 - [x] 检查打包体积（约 57MB，符合预期）
 
 ## Phase 2: Tauri Sidecar 集成
@@ -25,8 +25,8 @@
 - [x] 添加 SidecarState 状态管理
 - [x] 实现应用关闭时停止 sidecar
 - [x] 支持生产模式（打包的 sidecar）和开发模式（poetry/python）
-- [ ] 前端添加 waitForSidecar 逻辑
-- [ ] 本地测试完整流程
+- [x] 前端添加 waitForSidecar 逻辑 (App.tsx 已实现)
+- [x] 本地测试完整流程
 
 ## Phase 3: 构建脚本
 
@@ -34,7 +34,7 @@
 - [x] 创建 `scripts/clean-build.sh`
 - [x] 创建 `scripts/dev.sh`
 - [x] 创建 `scripts/build-sidecar.sh`
-- [ ] 测试本地构建流程
+- [x] 测试本地构建流程
 
 ## Phase 4: CI/CD
 
@@ -42,9 +42,9 @@
 - [x] 创建 `.github/workflows/build.yml`
 - [x] 配置 macOS/Windows 构建矩阵
 - [x] 配置 Release 发布
-- [ ] 测试 CI 构建流程
+- [x] 测试 CI 构建流程
 
-## Phase 5: 签名与公证 (可选)
+## Phase 5: 签名与公证 (可选 - 后续优化)
 
 - [ ] Windows 代码签名
 - [ ] macOS 公证
@@ -52,6 +52,6 @@
 ## 文档
 
 - [x] 添加打包指南文档 (`docs/app-bundle.md`)
-- [ ] 更新 README 添加下载链接
-- [ ] 添加安装说明文档
-- [ ] 添加故障排除文档
+- [ ] 更新 README 添加下载链接 (后续优化)
+- [ ] 添加安装说明文档 (后续优化)
+- [ ] 添加故障排除文档 (后续优化)

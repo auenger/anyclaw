@@ -4,11 +4,11 @@
 
 **整体进度**: ████████████████████████ **100%** MVP + 扩展特性完成
 
-**最后更新**: 2026-03-23
+**最后更新**: 2026-03-25
 
-**测试状态**: 965 个测试通过 ✅
+**测试状态**: 1094 个测试通过 ✅
 
-**完成特性数**: 60
+**完成特性数**: 71
 
 ## 特性列表
 
@@ -44,6 +44,13 @@
 |---------|------|------|--------|--------|
 | feat-desktop-app | Tauri 桌面应用 (Phase 1-2) | ✅ completed | 80% | 75 |
 | feat-desktop-app-phase3 | Tauri 桌面应用 Phase 3 | ✅ completed | 95% | 75 |
+| feat-agents-ui | Agent 管理页面 | ✅ completed | 95% | 75 |
+| feat-models-panel | Provider 配置面板 | ✅ completed | 95% | 75 |
+| feat-tasks-ui | Tasks 定时任务页面 | ✅ completed | 95% | 75 |
+| feat-logs-pages | Logs 日志查看页面 | ✅ completed | 95% | 70 |
+| feat-memory-pages | Memory 记忆页面 | ✅ completed | 95% | 70 |
+| feat-config-editor | 配置编辑器 | ✅ completed | 95% | 80 |
+| feat-app-bundle | 应用打包 | ✅ completed | 95% | 70 |
 
 ### 安全特性
 
@@ -203,7 +210,9 @@ feat-mvp-init (初始化) ✅
 - ✅ 工具调用边界检测
 - ✅ 跨会话消息发送 (MessageTool)
 - ✅ SubAgent 后台任务执行
-- ✅ Cron 定时任务调度
+- ✅ Cron 定时任务调度 (完整 5 字段 cron)
+- ✅ 会话级并发消息处理
+- ✅ Cron API REST 端点
 
 ### Multi-Agent 系统
 - ✅ 多 Agent 管理
@@ -215,6 +224,13 @@ feat-mvp-init (初始化) ✅
 - ✅ Phase 1: 基础架构 (FastAPI + SSE)
 - ✅ Phase 2: 核心功能 (会话、消息、Agent 管理)
 - ✅ Phase 3: 完整 UI (聊天界面、Agent 切换、设置面板)
+- ✅ Phase 4: 高级功能 (Agent API、Cron API、日志、配置编辑器)
+- ✅ Provider 配置面板
+- ✅ Tasks 定时任务管理页面
+- ✅ Logs 日志查看页面
+- ✅ Memory 记忆管理页面
+- ✅ 配置编辑器和服务控制
+- ✅ 应用打包支持
 
 ### 记忆系统
 - ✅ 长期记忆 (MEMORY.md)
@@ -234,7 +250,7 @@ feat-mvp-init (初始化) ✅
 - ✅ 流式中断支持 (Ctrl+C)
 
 ### 测试覆盖
-- ✅ 965 个测试全部通过
+- ✅ 1094 个测试全部通过
 - ✅ test_config.py
 - ✅ test_agent.py
 - ✅ test_skills.py
@@ -254,6 +270,8 @@ feat-mvp-init (初始化) ✅
 - ✅ test_xlsx_skill.py
 - ✅ test_pptx_skill.py
 - ✅ test_feishu_channel.py
+- ✅ test_agents_api.py
+- ✅ test_cron_api.py
 
 ## 快速启动
 
@@ -305,26 +323,38 @@ anyclaw chat --no-stream
 ## 当前队列状态
 
 ```yaml
-pending: 6 个需求 (feat-session-concurrency, feat-config-editor, feat-app-bundle 等)
+pending: 2 个需求 (feat-context-shuttle, feat-remove-litellm)
 active:  []   # 无活跃需求
-completed: 60 个特性
+completed: 71 个特性
 ```
 
 ## 统计
 
 | 指标 | 数值 |
 |------|------|
-| 完成特性数 | 60 |
+| 完成特性数 | 71 |
 | 内置技能数 | 17 |
-| 测试数量 | 965 |
+| 测试数量 | 1094 |
 | 配置项数量 | 40+ |
 | CLI 命令数 | 25+ |
-| API 端点数 | 13 |
+| API 端点数 | 20+ |
 
 ## 最近完成
 
 | 日期 | 特性 | 价值点 |
 |------|------|--------|
+| 2026-03-25 | feat-tasks-ui | Tasks 页面实现，用于 cron 任务管理 |
+| 2026-03-25 | feat-models-panel | Provider 配置 UI 与 API 集成 |
+| 2026-03-25 | feat-cron-api | Cron 管理的完整 REST API |
+| 2026-03-25 | feat-agents-ui | Agents 页面完整 CRUD 操作 |
+| 2026-03-25 | feat-cron-resilience | cron 弹性特性：退避、卡住检测、日志 |
+| 2026-03-25 | feat-agents-api | 完整的 Agent API 端点 |
+| 2026-03-25 | feat-cron-parser-enhance | 升级到完整的 5 字段 cron 表达式解析器 |
+| 2026-03-25 | feat-logs-pages | Logs 页面，支持会话和系统日志查看 |
+| 2026-03-25 | feat-session-concurrency | 会话级并发消息处理 |
+| 2026-03-25 | feat-config-editor | 配置文件编辑器和服务控制 |
+| 2026-03-25 | feat-app-bundle | 应用打包支持 |
+| 2026-03-25 | feat-memory-pages | Memory 页面实现 |
 | 2026-03-23 | feat-pptx-skill | PPTX 演示文稿处理技能 (python-pptx, 模板分析, 缩略图) |
 | 2026-03-23 | feat-feishu-outbound | 飞书出站消息支持 (_outbound_loop 实现) |
 | 2026-03-23 | feat-xlsx-skill | XLSX 电子表格处理技能 (openpyxl, pandas, 公式重算) |

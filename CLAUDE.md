@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot 和 OpenClaw 的核心优势。项目采用 Python 3.11+ 开发，使用 Poetry 管理依赖，同时提供 Tauri 跨平台桌面应用。
 
-**项目状态**: 60 个特性完成，965 个测试通过 ✅
+**项目状态**: 71 个特性完成，1094 个测试通过 ✅
 
 ### 核心特性
 
@@ -29,7 +29,11 @@ AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot
 - ✅ **Multi-Agent 系统** - 多 Agent 管理、Identity 人设、独立 Workspace
 
 **桌面应用**
-- ✅ **Tauri 桌面应用** - 跨平台 GUI (Phase 1-3 完成)
+- ✅ **Tauri 桌面应用** - 跨平台 GUI (Phase 1-4 完成)
+- ✅ **配置编辑器** - 桌面端配置编辑和服务控制
+- ✅ **日志查看** - 会话和系统日志查看
+- ✅ **任务管理** - Tasks 定时任务管理页面
+- ✅ **Provider 配置** - Provider 配置面板
 
 **安全功能**
 - ✅ **SSRF 防护** - 网络请求安全保护
@@ -37,6 +41,11 @@ AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot
 - ✅ **输入净化** - 输入验证和净化 (Input Sanitizer)
 - ✅ **凭证管理** - 安全凭证存储和日志脱敏 (Credential Vault)
 - ✅ **安全配置增强** - 灵活的安全策略配置 (allow_all_access, extra_allowed_dirs)
+
+**高级功能**
+- ✅ **会话并发** - 会话级并发消息处理
+- ✅ **Cron API** - 完整的 Cron 管理 REST API
+- ✅ **Cron 弹性** - 退避、卡住检测、日志
 
 ## 技术栈
 

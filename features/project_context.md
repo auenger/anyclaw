@@ -1,8 +1,8 @@
 ---
-last_updated: '2026-03-23'
-version: 11
-features_completed: 60
-tests_passing: 965
+last_updated: '2026-03-25'
+version: 12
+features_completed: 71
+tests_passing: 1094
 ---
 
 # Project Context: AnyClaw
@@ -306,29 +306,40 @@ credential_encryption: bool = True
 ```
 
 ## Recent Changes
-
 | Date | Feature | Impact |
 |------|---------|--------|
+| 2026-03-25 | feat-tasks-ui | Tasks 页面实现，用于 cron 任务管理 |
+| 2026-03-25 | feat-models-panel | Provider 配置 UI 与 API 集成 |
+| 2026-03-25 | feat-cron-api | Cron 管理的完整 REST API |
+| 2026-03-25 | feat-agents-ui | Agents 页面完整 CRUD 操作 |
+| 2026-03-25 | feat-cron-resilience | cron 弹性特性：退避、卡住检测、日志 |
+| 2026-03-25 | feat-agents-api | 完整的 Agent API 端点 |
+| 2026-03-25 | feat-cron-parser-enhance | 升级到完整的 5 字段 cron 表达式解析器 |
+| 2026-03-25 | feat-logs-pages | Logs 页面，支持会话和系统日志查看 |
+| 2026-03-25 | feat-session-concurrency | 会话级并发消息处理 |
+| 2026-03-25 | feat-config-editor | 配置文件编辑器和服务控制 |
+| 2026-03-25 | feat-app-bundle | 应用打包支持 |
+| 2026-03-25 | feat-memory-pages | Memory 页面实现 |
 | 2026-03-23 | feat-pptx-skill | PPTX presentation skill (python-pptx, template analysis) |
 | 2026-03-23 | feat-feishu-outbound | Feishu outbound message support |
 | 2026-03-23 | feat-xlsx-skill | XLSX spreadsheet skill (openpyxl, pandas, formula recalc) |
-| 2026-03-23 | feat-pdf-skill | PDF document skill (reportlab, pypdf, pdfplumber) |
-| 2026-03-23 | feat-docx-skill | DOCX document skill (python-docx, OOXML editing) |
-| 2026-03-23 | feat-chat-message-render | Chat message rendering enhancement (tool_calls) |
-| 2026-03-22 | feat-chat-history-refactor | Chat history list refactor (unified session key) |
-| 2026-03-22 | feat-chat-history | Chat history with Agent management (SidePanel) |
-| 2026-03-22 | feat-cron-skill | Cron skill implementation |
-| 2026-03-22 | feat-task-interrupt | Task instant interrupt mechanism (/stop) |
-| 2026-03-21 | feat-ui-design-core | UI design system + layout components (oklch, AppSidebar) |
-| 2026-03-21 | feat-model-config-fix | /model command config fix |
-| 2026-03-21 | feat-session-cwd | Session-level working directory |
-| 2026-03-21 | feat-llm-resilience | LLM response resilience (empty response recovery) |
-| 2026-03-21 | feat-iteration-summary | Iteration limit smart summary |
-| 2026-03-20 | feat-smart-file-search | Intelligent file search with heuristics |
-| 2026-03-20 | feat-special-commands-advanced | Advanced special commands |
-| 2026-03-20 | feat-special-commands-core | Core special commands |
-| 2026-03-20 | feat-security-config-enhancement | Enhanced security config with allow_all_access |
-| 2026-03-20 | feat-desktop-app-phase3 | Tauri desktop app Phase 3 complete |
+            2026-03-23 | feat-pdf-skill | PDF document skill (reportlab, pypdf, pdfplumber) |
+            2026-03-23 | feat-docx-skill | DOCX document skill (python-docx, OOXML editing) |
+            2026-03-23 | feat-chat-message-render | Chat message rendering enhancement (tool_calls) |
+            2026-03-22 | feat-chat-history-refactor | Chat history list refactor (unified session key) |
+            2026-03-22 | feat-chat-history | Chat history with Agent management (SidePanel) |
+            2026-03-22 | feat-cron-skill | Cron skill implementation |
+            2026-03-22 | feat-task-interrupt | Task instant interrupt mechanism (/stop) |
+            2026-03-21 | feat-ui-design-core | UI design system + layout components (oklch, AppSidebar) |
+            2026-03-21 | feat-model-config-fix | /model command config fix |
+            2026-03-21 | feat-session-cwd | Session-level working directory |
+            2026-03-21 | feat-llm-resilience | LLM response resilience (empty response recovery) |
+            2026-03-21 | feat-iteration-summary | Iteration limit smart summary |
+            2026-03-20 | feat-smart-file-search | Intelligent file search with heuristics |
+            2026-03-20 | feat-special-commands-advanced | Advanced special commands |
+            2026-03-20 | feat-special-commands-core | Core special commands |
+            2026-03-20 | feat-security-config-enhancement | Enhanced security config with allow_all_access |
+            2026-03-20 | feat-desktop-app-phase3 | Tauri desktop app Phase 3 complete |
 
 ## CLI Commands Reference
 
@@ -384,7 +395,19 @@ anyclaw agent switch <name>
 
 ## Update Log
 
-- 2026-03-23: Completed 60 features, 965 tests passing
+- 2026-03-25: Completed 71 features, 1094 tests passing
+- 2026-03-25: Added feat-tasks-ui - Tasks page for cron job management
+- 2026-03-25: Added feat-models-panel - Provider configuration UI with API integration
+- 2026-03-25: Added feat-cron-api - Complete REST API for Cron management
+- 2026-03-25: Added feat-agents-ui - Agents page with full CRUD operations
+- 2026-03-25: Added feat-cron-resilience - Cron resilience features (backoff, stuck detection, logs)
+- 2026-03-25: Added feat-agents-api - Complete Agent API endpoints
+- 2026-03-25: Added feat-cron-parser-enhance - Full 5-field cron expression parser
+- 2026-03-25: Added feat-logs-pages - Logs page with session and system log viewing
+- 2026-03-25: Added feat-session-concurrency - Session-level concurrent message processing
+- 2026-03-25: Added feat-config-editor - Config file editor and service control
+- 2026-03-25: Added feat-app-bundle - Application packaging support
+- 2026-03-25: Added feat-memory-pages - Memory page implementation
 - 2026-03-23: Added feat-pptx-skill - PPTX presentation processing skill
 - 2026-03-23: Added feat-feishu-outbound - Feishu outbound message support
 - 2026-03-23: Added feat-xlsx-skill - XLSX spreadsheet processing skill
@@ -403,7 +426,6 @@ anyclaw agent switch <name>
 - 2026-03-20: Added feat-smart-file-search - Intelligent file search
 - 2026-03-20: Added feat-special-commands-advanced - Advanced special commands
 - 2026-03-20: Added feat-special-commands-core - Core special commands
-- 2026-03-20: Completed 42 features, 588 tests passing (before office skills)
 - 2026-03-20: Added feat-security-config-enhancement - Enhanced security config
 - 2026-03-20: Added feat-desktop-app-phase3 - Tauri desktop app Phase 3
 - 2026-03-20: Added feat-session-archive - Session archiving system

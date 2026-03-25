@@ -317,10 +317,17 @@ class OutboundMessage:
 | 事件订阅 | GET | `/api/stream` | SSE 长连接 |
 | 发送消息 | POST | `/api/agents/{id}/chat` | 发送聊天消息 |
 | Agent 列表 | GET | `/api/agents` | 获取 Agent 列表 |
+| Agent CRUD | POST | `/api/agents` | 创建 Agent |
+| Agent 更新 | PUT | `/api/agents/{id}` | 更新 Agent |
+| Agent 删除 | DELETE | `/api/agents/{id}` | 删除 Agent |
 | 技能列表 | GET | `/api/skills` | 获取技能列表 |
 | 任务列表 | GET | `/api/tasks` | 获取任务列表 |
+| 任务创建 | POST | `/api/cron/jobs` | 创建 Cron 任务 |
+| 任务更新 | PUT | `/api/cron/jobs/{id}` | 更新 Cron 任务 |
+| 任务删除 | DELETE | `/api/cron/jobs/{id}` | 删除 Cron 任务 |
 | 配置获取 | GET | `/api/config` | 获取配置 |
 | 配置更新 | PUT | `/api/config` | 更新配置 |
+| 日志列表 | GET | `/api/logs` | 获取日志列表 |
 
 ---
 
