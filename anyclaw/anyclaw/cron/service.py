@@ -2,15 +2,14 @@
 
 import asyncio
 import json
+import logging
 import time
 import uuid
-import logging
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Coroutine, Optional
 
-from .types import CronSchedule, CronJob, CronStore, CronPayload, CronJobState
-
+from .parser import compute_next_run_ms
+from .types import CronJob, CronJobState, CronPayload, CronSchedule, CronStore
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +19,7 @@ def _now_ms() -> int:
 
 
 def _compute_next_run(schedule: CronSchedule, now_ms: int) -> Optional[int]:
-    """Compute next run time in ms (simplified version)."""
+    """Compute next run time in ms using full cron parser."""
     if schedule.kind == "at":
         return schedule.at_ms if schedule.at_ms and schedule.at_ms > now_ms else None
 
@@ -30,29 +29,8 @@ def _compute_next_run(schedule: CronSchedule, now_ms: int) -> Optional[int]:
         return now_ms + schedule.every_ms
 
     if schedule.kind == "cron" and schedule.expr:
-        # Simplified cron: only support basic patterns
-        # Format: "minute hour * * *"
-        try:
-            parts = schedule.expr.split()
-            if len(parts) >= 5:
-                minute = parts[0]
-                hour = parts[1]
-
-                now = datetime.now()
-                next_run = now.replace(
-                    minute=int(minute) if minute != '*' else now.minute,
-                    hour=int(hour) if hour != '*' else now.hour,
-                )
-
-                # If the time is in the past, schedule for tomorrow
-                if next_run.timestamp() <= now.timestamp():
-                    from datetime import timedelta
-                    next_run += timedelta(days=1)
-
-                return int(next_run.timestamp() * 1000)
-        except Exception as e:
-            logger.error(f"Failed to parse cron expression '{schedule.expr}': {e}")
-            return None
+        # Use full cron parser with timezone support
+        return compute_next_run_ms(schedule.expr, schedule.tz, now_ms)
 
     return None
 
@@ -246,9 +224,9 @@ class CronService:
         logger.info(f"Cron: executing job '{job.name}' ({job.id})")
 
         try:
-            response = None
+            _response = None
             if self.on_job:
-                response = await self.on_job(job)
+                _response = await self.on_job(job)
 
             job.state.last_status = "ok"
             job.state.last_error = None

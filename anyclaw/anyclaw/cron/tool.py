@@ -5,9 +5,10 @@ from datetime import datetime
 from typing import Any, Optional
 
 from anyclaw.tools.base import Tool
+
+from .parser import validate_cron_expr
 from .service import CronService
 from .types import CronSchedule
-
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,9 @@ class CronTool(Tool):
                 },
                 "at": {
                     "type": "string",
-                    "description": "ISO datetime for one-time execution (e.g. '2026-02-12T10:30:00')",
+                    "description": (
+                        "ISO datetime for one-time execution (e.g. '2026-02-12T10:30:00')"
+                    ),
                 },
                 "job_id": {"type": "string", "description": "Job ID (for remove)"},
             },
@@ -115,12 +118,18 @@ class CronTool(Tool):
         if every_seconds:
             schedule = CronSchedule(kind="every", every_ms=every_seconds * 1000)
         elif cron_expr:
+            # Validate cron expression
+            if not validate_cron_expr(cron_expr):
+                return f"Error: invalid cron expression '{cron_expr}'"
             schedule = CronSchedule(kind="cron", expr=cron_expr, tz=tz)
         elif at:
             try:
                 dt = datetime.fromisoformat(at)
             except ValueError:
-                return f"Error: invalid ISO datetime format '{at}'. Expected format: YYYY-MM-DDTHH:MM:SS"
+                return (
+                    f"Error: invalid ISO datetime format '{at}'. "
+                    "Expected format: YYYY-MM-DDTHH:MM:SS"
+                )
             at_ms = int(dt.timestamp() * 1000)
             schedule = CronSchedule(kind="at", at_ms=at_ms)
             delete_after = True
