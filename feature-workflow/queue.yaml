@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-25T21:30:00"
-  version: 90
+  last_updated: "2026-03-25T22:00:00"
+  version: 91
 
 # 父需求（用于分组追踪)
 parents:
@@ -76,13 +76,6 @@ active: []
 
 # 等待中的需求（按优先级排序）
 pending:
-
-  - id: feat-config-form-editor
-    name: 配置表单编辑器
-    description: 将配置文件页面从原始 TOML 编辑器升级为基于 Schema 的表单式配置界面，提供用户友好的配置编辑体验
-    priority: 75
-    size: M
-    dependencies: []
 
   - id: feat-models-panel
     name: 模型配置页面完善
@@ -169,6 +162,24 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-config-form-editor
+    name: 配置表单编辑器
+    description: 将配置文件页面从原始 TOML 编辑器升级为基于 Schema 的表单式配置界面，提供用户友好的配置编辑体验
+    priority: 75
+    size: M
+    completed_at: "2026-03-25T22:00:00"
+    value_points:
+      - ConfigSchema 类型定义 (types/config.ts)
+      - 配置字段 Schema (schemas/configSchema.ts)
+      - 字段组件 (String, Number, Boolean, Enum, Array)
+      - ConfigField 动态渲染器
+      - ConfigFormEditor 分组卡片布局
+      - useConfigForm Hook (TOML 解析/序列化)
+      - 表单/高级模式切换
+      - 字段验证和错误显示
+      - 敏感字段密码输入
+      - 完整 i18n 支持
+
   - id: feat-logs-pages
     name: Logs 页面功能实现
     description: 为 Tauri 桌面应用的 Logs 页面实现完整的日志查看功能，支持会话归档日志和系统运行日志的查看、过滤和搜索
