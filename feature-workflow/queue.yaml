@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-25T15:45:00"
-  version: 85
+  last_updated: "2026-03-25T20:00:00"
+  version: 89
 
 # 父需求（用于分组追踪)
 parents:
@@ -42,7 +42,7 @@ parents:
     description: 参考 youclaw 前端设计，全面重构 AnyClaw Tauri 桌面应用的 UI 组件和样式
     priority: 80
     size: L
-    status: active
+    status: completed
     children:
       - feat-ui-design-core
       - feat-ui-chat-redesign
@@ -59,6 +59,17 @@ parents:
       - feat-pdf-skill
       - feat-pptx-skill
       - feat-xlsx-skill
+  - id: feat-tasks-alignment
+    name: Tasks 系统对齐
+    description: 参考 YouClaw 的 Tasks 实现，对齐 AnyClaw 定时任务系统（完整 cron 解析、执行日志持久化、失败退避机制、卡死检测、REST API 和前端 UI）
+    priority: 80
+    size: L
+    status: pending
+    children:
+      - feat-cron-parser-enhance
+      - feat-cron-resilience
+      - feat-cron-api
+      - feat-tasks-ui
 
 # 正在开发的需求
 active: []
@@ -66,19 +77,67 @@ active: []
 # 等待中的需求（按优先级排序）
 pending:
 
+  - id: feat-models-panel
+    name: 模型配置页面完善
+    description: 完善 ModelsPanel 组件，连接后端 API，实现 Provider 配置管理、模型选择和连接测试功能
+    priority: 75
+    size: M
+    dependencies: []
+
+  - id: feat-agents-api
+    name: 多 Agent 后端 API 完善
+    description: 将 AgentManager 集成到 FastAPI 路由，实现完整的 Agent CRUD API
+    priority: 75
+    size: M
+    dependencies: []
+
+  - id: feat-agents-ui
+    name: Agents 页面前端优化
+    description: 连接后端 API，实现 Agent 的创建、编辑、删除功能的完整 UI
+    priority: 75
+    size: M
+    dependencies: [feat-agents-api]
+
   - id: feat-context-shuttle
     name: 上下文穿梭
     description: 创新的上下文管理策略，通过"思考-压缩-执行"模式按需加载技能，大幅减少 Token 消耗（预估节省 70-90%）
     priority: 85
     size: M
     dependencies: []
+    status: deferred
+    defer_reason: "设计保留，暂不开发"
 
-  - id: feat-session-concurrency
-    name: 会话并发引擎
-    description: 实现会话级别的并发处理，支持同时处理多个 chat session 的对话，解决单线程阻塞问题
+  - id: feat-cron-parser-enhance
+    name: Cron 解析器增强
+    description: 升级 cron 表达式解析器，支持完整 5 字段语法（*/n, a,b,c, a-b, Mon-Fri 等），添加时区支持
+    priority: 80
+    size: S
+    dependencies: []
+    parent: feat-tasks-alignment
+
+  - id: feat-cron-resilience
+    name: Cron 韧性机制
+    description: 执行日志持久化（JSONL）、失败退避机制（30s→1m→5m→15m→60m）、卡死检测与恢复（5分钟阈值）
     priority: 80
     size: M
-    dependencies: []
+    dependencies: [feat-cron-parser-enhance]
+    parent: feat-tasks-alignment
+
+  - id: feat-cron-api
+    name: Cron REST API
+    description: 完整的定时任务管理 API（CRUD、克隆、手动执行、日志查询），Pydantic 验证
+    priority: 80
+    size: M
+    dependencies: [feat-cron-resilience]
+    parent: feat-tasks-alignment
+
+  - id: feat-tasks-ui
+    name: Tasks 前端页面
+    description: Tauri 桌面应用 Tasks 页面（任务列表、详情、创建/编辑表单、执行历史、i18n）
+    priority: 80
+    size: M
+    dependencies: [feat-cron-api]
+    parent: feat-tasks-alignment
 
   - id: feat-cron-skill
     name: Cron 技能实现
@@ -86,22 +145,6 @@ pending:
     priority: 65
     size: M
     dependencies: []
-
-  - id: feat-ui-chat-redesign
-    name: 聊天功能复刻
-    description: 复刻 youclaw 的聊天功能（会话管理、消息渲染、输入框增强、附件支持、SSE 流式处理）
-    priority: 75
-    size: M
-    dependencies: []
-    parent: feat-ui-redesign
-
-  - id: feat-ui-pages-i18n
-    name: 其他页面 + 国际化
-    description: 复刻 Agents/Tasks/Memory/Logs 页面 + 中英文国际化支持
-    priority: 70
-    size: M
-    dependencies: []
-    parent: feat-ui-redesign
 
   - id: feat-memory-pages
     name: Memory 页面功能实现
@@ -114,13 +157,6 @@ pending:
     name: Logs 页面功能实现
     description: 为 Tauri 桌面应用的 Logs 页面实现完整的日志查看功能，支持会话归档日志和系统运行日志的查看、过滤和搜索
     priority: 70
-    size: M
-    dependencies: []
-
-  - id: feat-path-guard
-    name: 路径遍历防护
-    description: 阻止路径遍历攻击、符号链接绕过、工作区外访问
-    priority: 61
     size: M
     dependencies: []
 
@@ -140,6 +176,57 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-session-concurrency
+    name: 会话并发引擎
+    description: 实现会话级别的并发处理，支持同时处理多个 chat session 的对话，解决单线程阻塞问题
+    priority: 80
+    size: M
+    completed_at: "2026-03-25T21:30:00"
+    archive_path: features/archive/done-feat-session-concurrency
+    value_points:
+      - SessionAgentPool 类（会话级 AgentLoop 管理）
+      - max_concurrent_sessions 配置项（默认 5）
+      - ServeManager 并发处理模式（semaphore 控制）
+      - 优雅关闭（等待活动任务完成）
+      - 完整测试套件（14 tests）
+
+  - id: feat-path-guard
+    name: 路径遍历防护
+    description: 阻止路径遍历攻击、符号链接绕过、工作区外访问
+    priority: 61
+    size: M
+    completed_at: "2026-03-21T23:00:00"
+    archive_path: features/archive/done-feat-path-guard
+    value_points:
+      - PathGuard 核心类（路径验证、符号链接解析）
+      - 工作区边界检查
+      - 集成到文件系统工具
+
+  - id: feat-ui-chat-redesign
+    name: 聊天功能复刻
+    description: 复刻 youclaw 的聊天功能（会话管理、消息渲染、输入框增强、附件支持、SSE 流式处理）
+    priority: 75
+    size: M
+    completed_at: "2026-03-21T23:44:00"
+    archive_path: features/archive/done-feat-ui-chat-redesign
+    value_points:
+      - 聊天窗口 UI 组件
+      - 消息渲染（用户/助手/工具调用）
+      - SSE 流式处理
+      - 会话管理
+
+  - id: feat-ui-pages-i18n
+    name: 其他页面 + 国际化
+    description: 复刻 Agents/Tasks/Memory/Logs 页面 + 中英文国际化支持
+    priority: 70
+    size: M
+    completed_at: "2026-03-21T22:05:00"
+    archive_path: features/archive/done-feat-ui-pages-i18n
+    value_points:
+      - Agents/Memory/Logs 页面基础框架
+      - i18n 国际化系统（中英文）
+      - useI18n Hook
+
   - id: feat-config-editor
     name: 配置编辑器与服务控制
     description: 在 Tauri 桌面应用中添加 config.toml 编辑器和 sidecar 服务控制（停止/重启），方便修改配置后应用新设置
