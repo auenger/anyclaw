@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { X, Palette, Cpu, Info } from 'lucide-react'
+import { X, Palette, Cpu, Info, FileText, Activity } from 'lucide-react'
 import { useI18n } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { GeneralPanel } from './GeneralPanel'
 import { ModelsPanel } from './ModelsPanel'
 import { AboutPanel } from './AboutPanel'
+import { ConfigEditor } from './ConfigEditor'
+import { ServiceControl } from './ServiceControl'
 
-type Tab = 'general' | 'models' | 'skills' | 'about'
+type Tab = 'general' | 'models' | 'config' | 'service' | 'about'
 
 interface SettingsDialogProps {
   open: boolean
@@ -23,6 +25,8 @@ export function SettingsDialog({ open, onOpenChange, initialTab = 'general' }: S
   const tabs = [
     { id: 'general' as const, label: t.settings.general, icon: Palette },
     { id: 'models' as const, label: t.settings.models, icon: Cpu },
+    { id: 'config' as const, label: t.settings.configFile || 'Config File', icon: FileText },
+    { id: 'service' as const, label: t.settings.service || 'Service', icon: Activity },
     { id: 'about' as const, label: t.settings.about, icon: Info },
   ]
 
@@ -71,6 +75,8 @@ export function SettingsDialog({ open, onOpenChange, initialTab = 'general' }: S
         <div className="flex-1 overflow-y-auto p-6">
           {currentTab === 'general' && <GeneralPanel />}
           {currentTab === 'models' && <ModelsPanel />}
+          {currentTab === 'config' && <ConfigEditor />}
+          {currentTab === 'service' && <ServiceControl />}
           {currentTab === 'about' && <AboutPanel />}
         </div>
       </div>

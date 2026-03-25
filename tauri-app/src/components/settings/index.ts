@@ -5,6 +5,8 @@ export { SettingsDialog } from './SettingsDialog';
 export { GeneralPanel } from './GeneralPanel';
 export { ModelsPanel } from './ModelsPanel';
 export { AboutPanel } from './AboutPanel';
+export { ConfigEditor } from './ConfigEditor';
+export { ServiceControl } from './ServiceControl';
 export type { SettingsPageProps } from './SettingsPage';
 export type { LLMSettingsProps } from './LLMSettings';
 export type { ProviderSettingsProps } from './ProviderSettings';
