@@ -1,4 +1,4 @@
-{"_type": "metadata", "key": "default", "created_at": "2026-03-21T01:00:09.658091", "updated_at": "2026-03-23T10:30:44.287731", "metadata": {}, "last_consolidated": 8}
+{"_type": "metadata", "key": "default", "created_at": "2026-03-21T01:00:09.658091", "updated_at": "2026-03-25T14:16:12.449686", "metadata": {}, "last_consolidated": 10}
 {"role": "assistant", "content": null, "timestamp": "2026-03-21T01:00:09.658099", "tool_calls": [{"id": "call_123", "type": "function", "function": {"name": "test_tool", "arguments": "{\"arg\": \"value\"}"}}]}
 {"role": "tool", "content": "执行成功", "timestamp": "2026-03-21T01:00:09.658506", "tool_call_id": "call_123", "name": "test_tool"}
 {"role": "assistant", "content": null, "timestamp": "2026-03-21T01:00:21.920250", "tool_calls": [{"id": "call_123", "type": "function", "function": {"name": "test_tool", "arguments": "{\"arg\": \"value\"}"}}]}
@@ -7,3 +7,5 @@
 {"role": "tool", "content": "执行成功", "timestamp": "2026-03-21T01:03:09.870719", "tool_call_id": "call_123", "name": "test_tool"}
 {"role": "assistant", "content": null, "timestamp": "2026-03-23T10:30:44.286942", "tool_calls": [{"id": "call_123", "type": "function", "function": {"name": "test_tool", "arguments": "{\"arg\": \"value\"}"}}]}
 {"role": "tool", "content": "执行成功", "timestamp": "2026-03-23T10:30:44.287722", "tool_call_id": "call_123", "name": "test_tool"}
+{"role": "assistant", "content": null, "timestamp": "2026-03-25T14:16:12.448681", "tool_calls": [{"id": "call_123", "type": "function", "function": {"name": "test_tool", "arguments": "{\"arg\": \"value\"}"}}]}
+{"role": "tool", "content": "执行成功", "timestamp": "2026-03-25T14:16:12.449671", "tool_call_id": "call_123", "name": "test_tool"}

@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-25T20:00:00"
-  version: 89
+  last_updated: "2026-03-25T21:30:00"
+  version: 90
 
 # 父需求（用于分组追踪)
 parents:
@@ -76,6 +76,13 @@ active: []
 
 # 等待中的需求（按优先级排序）
 pending:
+
+  - id: feat-config-form-editor
+    name: 配置表单编辑器
+    description: 将配置文件页面从原始 TOML 编辑器升级为基于 Schema 的表单式配置界面，提供用户友好的配置编辑体验
+    priority: 75
+    size: M
+    dependencies: []
 
   - id: feat-models-panel
     name: 模型配置页面完善

@@ -1,10 +1,10 @@
 /**
  * ConfigEditor Component
  *
- * TOML 配置文件编辑器，支持读取、编辑、保存和验证配置文件
+ * 配置文件编辑器，支持表单模式和高级（TOML）模式切换
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import {
   Save,
@@ -14,8 +14,11 @@ import {
   Loader2,
   FileText,
   RefreshCw,
+  Settings,
+  Code,
 } from 'lucide-react'
 import { Button } from '../ui/button'
+import { Switch } from '../ui/switch'
 import { cn } from '@/lib/utils'
 import {
   AlertDialog,
@@ -28,6 +31,9 @@ import {
   AlertDialogTitle,
 } from '../ui/alert-dialog'
 import { useI18n } from '@/i18n'
+import { useConfigForm } from '@/hooks/useConfigForm'
+import { ConfigFormEditor } from './ConfigFormEditor'
+import { getAllFields } from '@/schemas/configSchema'
 
 interface ConfigEditorProps {
   onSaved?: () => void
@@ -36,117 +42,54 @@ interface ConfigEditorProps {
 
 export function ConfigEditor({ onSaved, className }: ConfigEditorProps) {
   const { t } = useI18n()
-  const [content, setContent] = useState('')
-  const [originalContent, setOriginalContent] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [warning, setWarning] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [saveSuccess, setSaveSuccess] = useState(false)
-  const [configPath, setConfigPath] = useState<string>('')
+  const {
+    isLoading,
+    isSaving,
+    isDirty,
+    error,
+    configPath,
+    editorMode,
+    tomlContent,
+    values,
+    showAdvanced,
+    save,
+    reset,
+    refresh,
+    switchMode,
+    setTomlContent,
+    setShowAdvanced,
+    updateValue,
+    getError,
+    isGroupCollapsed,
+    toggleGroupCollapse,
+  } = useConfigForm({ onSaved })
 
-  // 重启提示对话框
+  const [saveSuccess, setSaveSuccess] = useState(false)
   const [showRestartDialog, setShowRestartDialog] = useState(false)
 
-  // 加载配置文件
-  useEffect(() => {
-    loadConfig()
-  }, [])
-
-  const loadConfig = async () => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      // 获取配置文件路径
-      const path = await invoke<string>('get_config_path_string')
-      setConfigPath(path)
-
-      // 读取配置文件内容
-      const configContent = await invoke<string>('read_config_file')
-      setContent(configContent)
-      setOriginalContent(configContent)
-    } catch (e) {
-      setError(String(e))
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  // 检查是否有未保存的更改
-  const hasChanges = content !== originalContent
-
-  // 验证 TOML 格式
-  const validateContent = useCallback(async (value: string): Promise<string | null> => {
-    try {
-      await invoke('validate_toml', { content: value })
-      return null
-    } catch (e) {
-      return String(e)
-    }
-  }, [])
-
-  // 内容变更处理
-  const handleContentChange = async (value: string) => {
-    setContent(value)
-    setSaveSuccess(false)
-
-    // 实时验证（防抖）
-    if (value.trim()) {
-      const validationError = await validateContent(value)
-      setWarning(validationError)
-    } else {
-      setWarning(null)
-    }
-  }
-
-  // 保存配置
+  // 保存处理
   const handleSave = async () => {
-    if (!hasChanges) return
-
-    // 先验证
-    const validationError = await validateContent(content)
-    if (validationError) {
-      setError(validationError)
-      return
-    }
-
-    setIsSaving(true)
-    setError(null)
-
-    try {
-      await invoke('write_config_file', { content })
-      setOriginalContent(content)
+    const success = await save()
+    if (success) {
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
-
-      // 显示重启提示
       setShowRestartDialog(true)
-
-      onSaved?.()
-    } catch (e) {
-      setError(String(e))
-    } finally {
-      setIsSaving(false)
     }
   }
 
-  // 重置到原始内容
+  // 重置处理
   const handleReset = () => {
-    setContent(originalContent)
-    setError(null)
-    setWarning(null)
-    setSaveSuccess(false)
+    reset()
   }
 
-  // 刷新配置
+  // 刷新处理
   const handleRefresh = () => {
-    if (hasChanges) {
-      if (!confirm(t.settings.discardChanges || 'Discard unsaved changes?')) {
+    if (isDirty) {
+      if (!confirm(t.settings?.discardChanges || 'Discard unsaved changes?')) {
         return
       }
     }
-    loadConfig()
+    refresh()
   }
 
   // 重启服务
@@ -155,7 +98,15 @@ export function ConfigEditor({ onSaved, className }: ConfigEditorProps) {
     try {
       await invoke('restart_sidecar')
     } catch (e) {
-      setError(`Failed to restart service: ${e}`)
+      console.error('Failed to restart service:', e)
+    }
+  }
+
+  // 模式切换
+  const handleModeChange = async (advanced: boolean) => {
+    const success = await switchMode(advanced ? 'advanced' : 'form')
+    if (!success) {
+      // 切换失败，保持在当前模式
     }
   }
 
@@ -174,58 +125,94 @@ export function ConfigEditor({ onSaved, className }: ConfigEditorProps) {
         <div>
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            {t.settings.configFile || 'Config File'}
+            {t.settings?.configFile || 'Config File'}
           </h3>
-          <p className="text-sm text-muted-foreground">
-            {configPath}
-          </p>
+          <p className="text-sm text-muted-foreground">{configPath}</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* 保存成功提示 */}
           {saveSuccess && (
             <span className="flex items-center text-sm text-green-600">
               <Check className="h-4 w-4 mr-1" />
-              {t.settings.saved || 'Saved'}
+              {t.settings?.saved || 'Saved'}
             </span>
           )}
 
+          {/* 刷新按钮 */}
           <Button
             variant="ghost"
             size="sm"
             onClick={handleRefresh}
-            title={t.settings.refresh || 'Refresh'}
+            title={t.settings?.refresh || 'Refresh'}
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
 
+          {/* 重置按钮 */}
           <Button
             variant="outline"
             size="sm"
             onClick={handleReset}
-            disabled={!hasChanges || isSaving}
+            disabled={!isDirty || isSaving}
           >
             <RotateCcw className="h-4 w-4 mr-2" />
-            {t.common.reset || 'Reset'}
+            {t.common?.reset || 'Reset'}
           </Button>
 
+          {/* 保存按钮 */}
           <Button
             size="sm"
             onClick={handleSave}
-            disabled={!hasChanges || isSaving || !!warning}
+            disabled={!isDirty || isSaving}
           >
             {isSaving ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                {t.common.saving || 'Saving...'}
+                {t.common?.saving || 'Saving...'}
               </>
             ) : (
               <>
                 <Save className="h-4 w-4 mr-2" />
-                {t.common.save || 'Save'}
+                {t.common?.save || 'Save'}
               </>
             )}
           </Button>
         </div>
+      </div>
+
+      {/* 模式切换和高级选项 */}
+      <div className="flex items-center justify-between px-1">
+        <div className="flex items-center gap-4">
+          {/* 表单/高级模式切换 */}
+          <div className="flex items-center gap-2">
+            <Settings className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              {t.config?.formMode || 'Form Mode'}
+            </span>
+            <Switch
+              checked={editorMode === 'advanced'}
+              onCheckedChange={handleModeChange}
+            />
+            <Code className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              {t.config?.advancedMode || 'Advanced'}
+            </span>
+          </div>
+        </div>
+
+        {/* 显示高级选项（仅在表单模式） */}
+        {editorMode === 'form' && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {t.config?.showAdvanced || 'Show Advanced'}
+            </span>
+            <Switch
+              checked={showAdvanced}
+              onCheckedChange={setShowAdvanced}
+            />
+          </div>
+        )}
       </div>
 
       {/* 错误提示 */}
@@ -236,44 +223,62 @@ export function ConfigEditor({ onSaved, className }: ConfigEditorProps) {
         </div>
       )}
 
-      {/* 警告提示 */}
-      {warning && (
+      {/* 未保存更改提示 */}
+      {isDirty && (
         <div className="flex items-center gap-2 p-3 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200 rounded-lg">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          <span className="text-sm">{warning}</span>
+          <span className="text-sm">
+            {t.settings?.unsavedChanges || 'You have unsaved changes'}
+          </span>
         </div>
       )}
 
-      {/* 编辑器 */}
-      <div className="relative">
-        <textarea
-          value={content}
-          onChange={(e) => handleContentChange(e.target.value)}
-          className={cn(
-            'w-full h-[500px] p-4 font-mono text-sm',
-            'bg-muted/50 border border-[var(--subtle-border)] rounded-lg',
-            'focus:outline-none focus:ring-2 focus:ring-primary/50',
-            'resize-y',
-            warning && 'border-yellow-500'
+      {/* 编辑器内容 */}
+      {editorMode === 'form' ? (
+        <ConfigFormEditor
+          values={values}
+          errors={Object.fromEntries(
+            getAllFieldKeys().map((key) => [key, getError(key) ?? ''])
           )}
-          spellCheck={false}
-          placeholder="# AnyClaw Configuration File&#10;&#10;[llm]&#10;model = 'glm-4.7'&#10;..."
+          onChange={updateValue}
+          isGroupCollapsed={isGroupCollapsed}
+          toggleGroupCollapse={toggleGroupCollapse}
+          showAdvanced={showAdvanced}
         />
-      </div>
+      ) : (
+        <div className="relative">
+          <textarea
+            value={tomlContent}
+            onChange={(e) => setTomlContent(e.target.value)}
+            className={cn(
+              'w-full h-[500px] p-4 font-mono text-sm',
+              'bg-muted/50 border border-[var(--subtle-border)] rounded-lg',
+              'focus:outline-none focus:ring-2 focus:ring-primary/50',
+              'resize-y'
+            )}
+            spellCheck={false}
+            placeholder="# AnyClaw Configuration File&#10;&#10;[llm]&#10;model = 'glm-4.7'&#10;..."
+          />
+        </div>
+      )}
 
       {/* 状态栏 */}
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <div className="flex items-center gap-4">
-          <span>
-            {content.split('\n').length} {t.settings.lines || 'lines'}
-          </span>
-          <span>
-            {content.length} {t.settings.characters || 'characters'}
-          </span>
+          {editorMode === 'advanced' && (
+            <>
+              <span>
+                {tomlContent.split('\n').length} {t.settings?.lines || 'lines'}
+              </span>
+              <span>
+                {tomlContent.length} {t.settings?.characters || 'characters'}
+              </span>
+            </>
+          )}
         </div>
-        {hasChanges && (
+        {isDirty && (
           <span className="text-yellow-600 dark:text-yellow-400">
-            {t.settings.unsavedChanges || 'Unsaved changes'}
+            {t.settings?.unsavedChanges || 'Unsaved changes'}
           </span>
         )}
       </div>
@@ -283,25 +288,29 @@ export function ConfigEditor({ onSaved, className }: ConfigEditorProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t.settings.configSaved || 'Configuration Saved'}
+              {t.settings?.configSaved || 'Configuration Saved'}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t.settings.restartPrompt || 'Configuration has been saved. Restart the service to apply changes?'}
+              {t.settings?.restartPrompt ||
+                'Configuration has been saved. Restart the service to apply changes?'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>
-              {t.settings.later || 'Later'}
-            </AlertDialogCancel>
+            <AlertDialogCancel>{t.settings?.later || 'Later'}</AlertDialogCancel>
             <AlertDialogAction onClick={handleRestart}>
               <RefreshCw className="h-4 w-4 mr-2" />
-              {t.settings.restartNow || 'Restart Now'}
+              {t.settings?.restartNow || 'Restart Now'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   )
+}
+
+// 辅助函数：获取所有字段 key
+function getAllFieldKeys(): string[] {
+  return getAllFields().map((f) => f.key)
 }
 
 export default ConfigEditor
