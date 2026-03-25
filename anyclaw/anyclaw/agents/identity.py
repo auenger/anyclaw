@@ -210,6 +210,72 @@ class IdentityManager:
         logger.info(f"Deleted agent: {agent_id}")
         return True
 
+    def update_identity(self, agent_id: str, **updates) -> Optional[AgentIdentity]:
+        """
+        Update agent identity fields.
+
+        Args:
+            agent_id: Agent ID
+            **updates: Fields to update (name, emoji, avatar, workspace)
+
+        Returns:
+            Updated AgentIdentity if successful, None otherwise
+        """
+        identity = self.get_identity(agent_id)
+        if not identity:
+            return None
+
+        # Apply updates
+        if "name" in updates:
+            identity.name = updates["name"]
+        if "emoji" in updates:
+            identity.emoji = updates["emoji"]
+        if "avatar" in updates:
+            identity.avatar = updates["avatar"]
+        if "workspace" in updates:
+            identity.workspace = updates["workspace"]
+
+        # Update IDENTITY.md file
+        agent_workspace = self.agents_dir / agent_id
+        identity_file = agent_workspace / "IDENTITY.md"
+
+        if identity_file.exists():
+            content = identity_file.read_text(encoding="utf-8")
+            lines = content.split("\n")
+            new_lines = []
+
+            updated_fields = set(updates.keys())
+            found_fields = set()
+
+            for line in lines:
+                stripped = line.strip()
+                if stripped.startswith("- **") and ":" in stripped:
+                    # Parse field name
+                    field_match = stripped.lower()
+                    for field in ["name", "emoji", "avatar", "workspace"]:
+                        if f"**{field}**" in stripped.lower() and field in updates:
+                            # Update this line
+                            if field == "name":
+                                new_lines.append(f"- **Name**: {updates['name']}")
+                            elif field == "emoji":
+                                new_lines.append(f"- **Emoji**: {updates['emoji']}")
+                            elif field == "avatar":
+                                new_lines.append(f"- **Avatar**: {updates['avatar']}")
+                            elif field == "workspace":
+                                new_lines.append(f"- **Workspace**: {updates['workspace']}")
+                            found_fields.add(field)
+                            break
+                    else:
+                        new_lines.append(line)
+                else:
+                    new_lines.append(line)
+
+            # Write updated content
+            identity_file.write_text("\n".join(new_lines), encoding="utf-8")
+
+        logger.info(f"Updated identity for agent: {agent_id}")
+        return identity
+
     def _create_default_identity(self, agent_id: str) -> AgentIdentity:
         """Create a default identity for an agent."""
         return AgentIdentity(

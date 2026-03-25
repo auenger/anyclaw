@@ -16,9 +16,11 @@ import uvicorn
 from rich.console import Console
 
 from anyclaw.api.server import create_app
-from anyclaw.api.deps import set_serve_manager
+from anyclaw.api.deps import set_serve_manager, set_agent_manager
 from anyclaw.config.loader import get_config
 from anyclaw.core.serve import ServeManager
+from anyclaw.agents.manager import AgentManager
+from anyclaw.agents.identity import IdentityManager
 from anyclaw.utils.logging_config import setup_logging, get_log_file_path
 
 app = typer.Typer(help="Run AnyClaw as Tauri sidecar")
@@ -57,6 +59,14 @@ def sidecar(
     manager = ServeManager(config=config, workspace=ws_path)
     set_serve_manager(manager)
 
+    # Create agent manager
+    workspace_path = ws_path or Path.home() / ".anyclaw" / "workspace"
+    identity_manager = IdentityManager(workspace_path)
+    agent_manager = AgentManager(workspace_path, identity_manager)
+
+    # Inject into API deps
+    set_agent_manager(agent_manager)
+
     # Graceful shutdown
     shutdown_event = asyncio.Event()
 
@@ -73,6 +83,10 @@ def sidecar(
             # Initialize serve manager
             manager.initialize()
             logger.info(f"ServeManager initialized with channels: {', '.join(manager.enabled_channels)}")
+
+            # Load all agents
+            await agent_manager.load_all_agents()
+            logger.info(f"AgentManager loaded {len(agent_manager._agents)} agents")
 
             # Start channel service in background (don't await - it blocks)
             manager_task = asyncio.create_task(manager.start())
