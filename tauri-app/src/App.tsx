@@ -3,9 +3,9 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Shell } from './components/layout';
-import { TasksPage } from './components/tasks';
 import { SettingsDialog } from './components/settings';
 import { Agents } from './pages/Agents';
+import { Tasks } from './pages/Tasks';
 import { Memory } from './pages/Memory';
 import { Logs } from './pages/Logs';
 import { Chat } from './pages/Chat';
@@ -215,7 +215,7 @@ export default function App() {
             />
           } />
           <Route path="/agents" element={<Agents />} />
-          <Route path="/tasks" element={<TasksPage port={sidecarStatus.port} />} />
+          <Route path="/tasks" element={<Tasks />} />
           <Route path="/memory" element={<Memory />} />
           <Route path="/logs" element={<Logs />} />
         </Routes>
