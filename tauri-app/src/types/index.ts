@@ -123,3 +123,105 @@ export interface Agent {
   description?: string;
   status: 'idle' | 'busy' | 'error';
 }
+
+// ============ Memory Types ============
+export interface MemoryInfo {
+  id: string;
+  name: string;
+  is_global: boolean;
+  agent_id?: string;
+  exists: boolean;
+  char_count: number;
+}
+
+export interface MemoryContent {
+  id: string;
+  content: string;
+  exists: boolean;
+}
+
+export interface DailyLogInfo {
+  date: string;
+  content: string;
+  char_count: number;
+}
+
+export interface MemoryStats {
+  long_term_exists: boolean;
+  long_term_chars: number;
+  daily_logs_count: number;
+  oldest_log?: string;
+  newest_log?: string;
+}
+
+export interface SearchMatch {
+  source: string;
+  matches: string[];
+}
+
+export interface SearchResponse {
+  results: SearchMatch[];
+}
+
+// ============ Log Types ============
+export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
+export type LogCategory = 'agent' | 'tool' | 'task' | 'system';
+
+export interface SystemLogEntry {
+  time: string;
+  level: LogLevel;
+  category: LogCategory;
+  agent?: string;
+  message: string;
+  details?: Record<string, unknown>;
+  timestamp: string;
+}
+
+export interface SessionLogInfo {
+  session_id: string;
+  project_id: string;
+  channel: string;
+  cwd?: string;
+  git_branch?: string;
+  started_at?: string;
+  ended_at?: string;
+  message_count: number;
+  tool_call_count: number;
+  duration_seconds?: number;
+  path: string;
+}
+
+export interface SessionLogDetail extends SessionLogInfo {
+  records: SessionRecord[];
+}
+
+export interface SessionRecord {
+  type: string;
+  uuid?: string;
+  parent_uuid?: string;
+  timestamp?: string;
+  content?: string;
+  tool_name?: string;
+  tool_input?: Record<string, unknown>;
+  tool_call_id?: string;
+  output?: string;
+  success?: boolean;
+  duration_ms?: number;
+  [key: string]: unknown;
+}
+
+export interface LogSearchResult {
+  session_id: string;
+  path: string;
+  type: string;
+  timestamp?: string;
+  content: Record<string, unknown>;
+}
+
+export interface LogStats {
+  sessions_total: number;
+  sessions_today: number;
+  system_logs_total: number;
+  by_level: Record<string, number>;
+  by_category: Record<string, number>;
+}

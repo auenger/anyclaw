@@ -146,20 +146,6 @@ pending:
     size: M
     dependencies: []
 
-  - id: feat-memory-pages
-    name: Memory 页面功能实现
-    description: 为 Tauri 桌面应用的 Memory 页面实现完整的记忆管理功能，支持全局记忆和 Agent 级记忆的查看、编辑和管理
-    priority: 70
-    size: M
-    dependencies: []
-
-  - id: feat-logs-pages
-    name: Logs 页面功能实现
-    description: 为 Tauri 桌面应用的 Logs 页面实现完整的日志查看功能，支持会话归档日志和系统运行日志的查看、过滤和搜索
-    priority: 70
-    size: M
-    dependencies: []
-
   - id: feat-remove-litellm
     name: 移除 litellm 依赖
     description: 移除 litellm 依赖，创建自有 LLM 抽象层，直接使用各 provider 原生 SDK。背景：litellm 1.82.7-1.82.8 被投毒（TeamPCP 供应链攻击），当前已锁定 1.82.4 安全版本
@@ -176,6 +162,37 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-logs-pages
+    name: Logs 页面功能实现
+    description: 为 Tauri 桌面应用的 Logs 页面实现完整的日志查看功能，支持会话归档日志和系统运行日志的查看、过滤和搜索
+    priority: 70
+    size: M
+    completed_at: "2026-03-25T12:30:00"
+    value_points:
+      - SystemLogCollector 类（Python logging 收集器）
+      - Logs API 路由（6 个端点）
+      - useLogs Hook（状态管理 + API 调用）
+      - Logs 页面重构（会话/系统日志双模式）
+      - 日期/级别/类别过滤
+      - SSE 实时日志流
+      - 完整 i18n 支持
+
+  - id: feat-memory-pages
+    name: Memory 页面功能实现
+    description: 为 Tauri 桌面应用的 Memory 页面实现完整的记忆管理功能，支持全局记忆和 Agent 级记忆的查看、编辑和管理
+    priority: 70
+    size: M
+    completed_at: "2026-03-25T04:45:00"
+    archive_path: features/archive/done-feat-memory-pages
+    value_points:
+      - Memory API 路由（6 个端点）
+      - useMemory Hook（状态管理 + API 调用）
+      - Memory 页面重构（连接 API）
+      - 全局记忆和 Agent 级记忆支持
+      - 每日日志查看
+      - 记忆搜索功能
+      - TypeScript 类型定义
+
   - id: feat-session-concurrency
     name: 会话并发引擎
     description: 实现会话级别的并发处理，支持同时处理多个 chat session 的对话，解决单线程阻塞问题

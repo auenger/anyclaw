@@ -208,6 +208,9 @@ export const zh: Translations = {
     live: '实时',
     totalEntries: '条记录',
     duration: '耗时',
+    sessionArchives: '会话归档',
+    systemLogs: '系统日志',
+    sessionDetail: '会话详情',
   },
   settings: {
     title: '设置',

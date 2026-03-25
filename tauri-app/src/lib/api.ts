@@ -2,7 +2,12 @@
  * API Client for AnyClaw Sidecar
  */
 
-import type { Settings, Skill, SubAgent, CronTask, Agent } from '../types';
+import type {
+  Settings, Skill, SubAgent, CronTask, Agent,
+  MemoryInfo, MemoryContent, DailyLogInfo, MemoryStats, SearchResponse,
+  SystemLogEntry, SessionLogInfo, SessionLogDetail, LogSearchResult, LogStats,
+  LogCategory, LogLevel
+} from '../types';
 import type { ChatItem } from './chat-utils';
 
 const DEFAULT_PORT = 62601;
@@ -163,6 +168,105 @@ export class ApiClient {
   // ============ Stream ============
   getStreamUrl(): string {
     return `${this.baseUrl}/api/stream`;
+  }
+
+  // ============ Memory ============
+  async listMemories(): Promise<MemoryInfo[]> {
+    const response = await fetch(`${this.baseUrl}/api/memory`);
+    return response.json();
+  }
+
+  async getMemory(memoryId: string): Promise<MemoryContent> {
+    const response = await fetch(`${this.baseUrl}/api/memory/${memoryId}`);
+    return response.json();
+  }
+
+  async updateMemory(memoryId: string, content: string): Promise<{ status: string; message: string; char_count: number }> {
+    const response = await fetch(`${this.baseUrl}/api/memory/${memoryId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
+    return response.json();
+  }
+
+  async getDailyLogs(memoryId: string, days: number = 7): Promise<DailyLogInfo[]> {
+    const response = await fetch(`${this.baseUrl}/api/memory/${memoryId}/daily-logs?days=${days}`);
+    return response.json();
+  }
+
+  async getMemoryStats(memoryId: string): Promise<MemoryStats> {
+    const response = await fetch(`${this.baseUrl}/api/memory/${memoryId}/stats`);
+    return response.json();
+  }
+
+  async searchMemory(keyword: string, memoryId?: string): Promise<SearchResponse> {
+    const response = await fetch(`${this.baseUrl}/api/memory/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword, memory_id: memoryId }),
+    });
+    return response.json();
+  }
+
+  // ============ Logs ============
+  async getLogStats(): Promise<LogStats> {
+    const response = await fetch(`${this.baseUrl}/api/logs/stats`);
+    return response.json();
+  }
+
+  async getSessionLogs(
+    date?: string,
+    project?: string,
+    channel?: string,
+    limit: number = 50
+  ): Promise<SessionLogInfo[]> {
+    const params = new URLSearchParams();
+    if (date) params.append('date', date);
+    if (project) params.append('project', project);
+    if (channel) params.append('channel', channel);
+    params.append('limit', String(limit));
+
+    const response = await fetch(`${this.baseUrl}/api/logs/sessions?${params}`);
+    return response.json();
+  }
+
+  async getSessionDetail(sessionId: string): Promise<SessionLogDetail> {
+    const response = await fetch(`${this.baseUrl}/api/logs/sessions/${sessionId}`);
+    return response.json();
+  }
+
+  async searchSessionLogs(query: string, tool?: string, limit: number = 20): Promise<LogSearchResult[]> {
+    const params = new URLSearchParams();
+    params.append('q', query);
+    if (tool) params.append('tool', tool);
+    params.append('limit', String(limit));
+
+    const response = await fetch(`${this.baseUrl}/api/logs/sessions/search?${params}`);
+    return response.json();
+  }
+
+  async getSystemLogs(
+    level?: LogLevel | 'all',
+    category?: LogCategory | 'all',
+    date?: string,
+    search?: string,
+    limit: number = 100
+  ): Promise<SystemLogEntry[]> {
+    const params = new URLSearchParams();
+    if (level && level !== 'all') params.append('level', level);
+    if (category && category !== 'all') params.append('category', category);
+    if (date) params.append('date', date);
+    if (search) params.append('search', search);
+    params.append('limit', String(limit));
+
+    const response = await fetch(`${this.baseUrl}/api/logs/system?${params}`);
+    return response.json();
+  }
+
+  getLogStreamUrl(category?: string): string {
+    const params = category && category !== 'all' ? `?category=${category}` : '';
+    return `${this.baseUrl}/api/logs/stream${params}`;
   }
 }
 

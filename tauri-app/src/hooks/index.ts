@@ -2,6 +2,8 @@ export { useSSE } from './useSSE';
 export { useSettings } from './useSettings';
 export { useSkills } from './useSkills';
 export { useTasks } from './useTasks';
+export { useMemory } from './useMemory';
+export { useLogs } from './useLogs';
 
 // 新增 UI 设计系统 Hooks
 export { useSidebar } from './useSidebar';

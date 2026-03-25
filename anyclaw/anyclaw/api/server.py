@@ -15,6 +15,8 @@ from anyclaw.api.routes.chats import router as chats_router
 from anyclaw.api.routes.messages import router as messages_router
 from anyclaw.api.routes.skills import router as skills_router
 from anyclaw.api.routes.tasks import router as tasks_router
+from anyclaw.api.routes.memory import router as memory_router
+from anyclaw.api.routes.logs import router as logs_router
 from anyclaw.api.sse import router as sse_router
 
 logger = logging.getLogger(__name__)
@@ -26,12 +28,17 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("AnyClaw API server starting...")
 
-    # TODO: Initialize database, cache, etc.
+    # Initialize log collector
+    from anyclaw.utils.log_collector import get_log_collector
+    collector = get_log_collector()
+    collector.add_handler()
+    logger.info("Log collector initialized")
 
     yield
 
     # Shutdown
     logger.info("AnyClaw API server shutting down...")
+    collector.remove_handler()
 
 
 def create_app() -> FastAPI:
@@ -65,6 +72,8 @@ def create_app() -> FastAPI:
     app.include_router(messages_router, prefix="/api", tags=["Messages"])
     app.include_router(skills_router, prefix="/api", tags=["Skills"])
     app.include_router(tasks_router, prefix="/api", tags=["Tasks"])
+    app.include_router(memory_router, prefix="/api", tags=["Memory"])
+    app.include_router(logs_router, prefix="/api", tags=["Logs"])
     app.include_router(sse_router, prefix="/api", tags=["SSE"])
 
     return app

@@ -206,6 +206,9 @@ export const en = {
     live: 'Live',
     totalEntries: 'entries',
     duration: 'Duration',
+    sessionArchives: 'Sessions',
+    systemLogs: 'System Logs',
+    sessionDetail: 'Session Detail',
   },
   settings: {
     title: 'Settings',
