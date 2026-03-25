@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-23T19:45:00"
-  version: 79
+  last_updated: "2026-03-25T15:45:00"
+  version: 85
 
 # 父需求（用于分组追踪)
 parents:
@@ -66,25 +66,18 @@ active: []
 # 等待中的需求（按优先级排序）
 pending:
 
+  - id: feat-context-shuttle
+    name: 上下文穿梭
+    description: 创新的上下文管理策略，通过"思考-压缩-执行"模式按需加载技能，大幅减少 Token 消耗（预估节省 70-90%）
+    priority: 85
+    size: M
+    dependencies: []
+
   - id: feat-session-concurrency
     name: 会话并发引擎
     description: 实现会话级别的并发处理，支持同时处理多个 chat session 的对话，解决单线程阻塞问题
     priority: 80
     size: M
-    dependencies: []
-
-  - id: feat-config-editor
-    name: 配置编辑器与服务控制
-    description: 在 Tauri 桌面应用中添加 config.toml 编辑器和 sidecar 服务控制（停止/重启），方便修改配置后应用新设置
-    priority: 75
-    size: M
-    dependencies: []
-
-  - id: feat-app-bundle
-    name: 桌面应用打包方案
-    description: PyInstaller + Tauri Sidecar 打包方案，实现用户无需 Python 环境即可使用的开箱即用体验
-    priority: 60
-    size: L
     dependencies: []
 
   - id: feat-cron-skill
@@ -110,6 +103,20 @@ pending:
     dependencies: []
     parent: feat-ui-redesign
 
+  - id: feat-memory-pages
+    name: Memory 页面功能实现
+    description: 为 Tauri 桌面应用的 Memory 页面实现完整的记忆管理功能，支持全局记忆和 Agent 级记忆的查看、编辑和管理
+    priority: 70
+    size: M
+    dependencies: []
+
+  - id: feat-logs-pages
+    name: Logs 页面功能实现
+    description: 为 Tauri 桌面应用的 Logs 页面实现完整的日志查看功能，支持会话归档日志和系统运行日志的查看、过滤和搜索
+    priority: 70
+    size: M
+    dependencies: []
+
   - id: feat-path-guard
     name: 路径遍历防护
     description: 阻止路径遍历攻击、符号链接绕过、工作区外访问
@@ -117,11 +124,52 @@ pending:
     size: M
     dependencies: []
 
+  - id: feat-remove-litellm
+    name: 移除 litellm 依赖
+    description: 移除 litellm 依赖，创建自有 LLM 抽象层，直接使用各 provider 原生 SDK。背景：litellm 1.82.7-1.82.8 被投毒（TeamPCP 供应链攻击），当前已锁定 1.82.4 安全版本
+    priority: 55
+    size: L
+    dependencies: []
+    suggested_split:
+      - feat-llm-abstraction
+      - feat-llm-adapters
+      - feat-llm-migration
+
 # 阻塞中的需求
 blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-config-editor
+    name: 配置编辑器与服务控制
+    description: 在 Tauri 桌面应用中添加 config.toml 编辑器和 sidecar 服务控制（停止/重启），方便修改配置后应用新设置
+    priority: 75
+    size: M
+    completed_at: "2026-03-25T15:45:00"
+    archive_path: features/archive/done-feat-config-editor
+    value_points:
+      - Rust 后端配置文件读写命令（read_config_file, write_config_file, validate_toml）
+      - ConfigEditor 组件（TOML 编辑器，实时验证，保存/重置按钮）
+      - ServiceControl 组件（服务状态显示，启动/停止/重启按钮）
+      - SettingsDialog 集成（新增 Config File 和 Service 标签页）
+      - 完整的 i18n 支持（中英文）
+
+  - id: feat-app-bundle
+    name: 桌面应用打包方案
+    description: PyInstaller + Tauri Sidecar 打包方案，实现用户无需 Python 环境即可使用的开箱即用体验
+    priority: 60
+    size: L
+    completed_at: "2026-03-25T11:00:00"
+    archive_path: features/archive/done-feat-app-bundle
+    value_points:
+      - PyInstaller 打包脚本 (build_sidecar.py)
+      - Tauri Sidecar 集成 (lib.rs 完整实现)
+      - 生产/开发模式双支持
+      - 构建脚本 (build-release.sh, build-sidecar.sh)
+      - CI/CD workflows (release.yml, build.yml)
+      - 前端 waitForSidecar 逻辑 (App.tsx)
+      - Sidecar 状态管理和 UI 反馈
+
   - id: feat-pptx-skill
     name: PPTX 演示文稿处理技能
     description: PowerPoint 演示文稿技能，支持创建、模板使用、编辑和内容分析
