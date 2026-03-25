@@ -1,29 +1,95 @@
-import { useState } from 'react'
-import { Plus, Bot } from 'lucide-react'
-import { SidePanel } from '@/components/layout/SidePanel'
-import { useI18n } from '@/i18n'
-import { cn } from '@/lib/utils'
+/**
+ * Agents Page
+ *
+ * Agent 管理页面，使用真实 API
+ */
 
-interface Agent {
-  id: string
-  name: string
-  description?: string
-  model?: string
-}
-
-// Mock data
-const mockAgents: Agent[] = [
-  { id: 'default', name: 'Default Agent', description: 'Default assistant agent', model: 'glm-4.7' },
-  { id: 'researcher', name: 'Research Assistant', description: 'Helps with research tasks', model: 'glm-4.7' },
-]
+import { useState } from 'react';
+import { Plus, AlertCircle } from 'lucide-react';
+import { SidePanel } from '@/components/layout/SidePanel';
+import { AgentList, AgentDetail, CreateAgentDialog, EditAgentDialog } from '@/components/agents';
+import { useAgents } from '@/hooks';
+import { useI18n } from '@/i18n';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import type { Agent, CreateAgentRequest, UpdateAgentRequest } from '@/types';
 
 export function Agents() {
-  const { t } = useI18n()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  // Future: Create agent form
-  // const [showCreateForm, setShowCreateForm] = useState(false)
+  const { t } = useI18n();
+  const {
+    agents,
+    isLoading,
+    error,
+    createAgent,
+    updateAgent,
+    deleteAgent,
+    activateAgent,
+    deactivateAgent,
+  } = useAgents();
 
-  const selectedAgent = mockAgents.find(a => a.id === selectedId)
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
+
+  const selectedAgent = agents.find((a) => a.id === selectedId) || null;
+
+  // 创建 Agent
+  const handleCreate = async (data: CreateAgentRequest): Promise<Agent | null> => {
+    const result = await createAgent(data);
+    if (result) {
+      setSelectedId(result.id);
+    }
+    return result;
+  };
+
+  // 更新 Agent
+  const handleUpdate = async (id: string, data: UpdateAgentRequest): Promise<Agent | null> => {
+    return updateAgent(id, data);
+  };
+
+  // 删除确认
+  const handleDeleteClick = () => {
+    if (selectedAgent && selectedAgent.id !== 'default') {
+      setAgentToDelete(selectedAgent);
+      setShowDeleteConfirm(true);
+    }
+  };
+
+  // 确认删除
+  const handleDeleteConfirm = async () => {
+    if (agentToDelete) {
+      const success = await deleteAgent(agentToDelete.id);
+      if (success) {
+        setSelectedId(null);
+        setShowDeleteConfirm(false);
+        setAgentToDelete(null);
+      }
+    }
+  };
+
+  // 激活 Agent
+  const handleActivate = async () => {
+    if (selectedAgent) {
+      await activateAgent(selectedAgent.id);
+    }
+  };
+
+  // 禁用 Agent
+  const handleDeactivate = async () => {
+    if (selectedAgent) {
+      await deactivateAgent(selectedAgent.id);
+    }
+  };
 
   return (
     <div className="h-full flex">
@@ -33,103 +99,79 @@ export function Agents() {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium">{t.agents.title}</h2>
             <button
-              onClick={() => {/* TODO: Open create agent form */}}
+              onClick={() => setShowCreateDialog(true)}
               className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground"
+              title={t.agents.createAgent}
             >
               <Plus size={16} />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2">
-          {mockAgents.map((agent) => (
-            <button
-              key={agent.id}
-              onClick={() => setSelectedId(agent.id)}
-              className={cn(
-                "w-full text-left p-3 rounded-lg mb-1 transition-colors",
-                selectedId === agent.id
-                  ? "bg-accent text-foreground"
-                  : "hover:bg-accent/50 text-muted-foreground"
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <Bot size={16} />
-                <span className="font-medium truncate">{agent.name}</span>
-              </div>
-              {agent.description && (
-                <p className="text-xs text-muted-foreground mt-1 truncate">
-                  {agent.description}
-                </p>
-              )}
-            </button>
-          ))}
-        </div>
+        <AgentList
+          agents={agents}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+        />
+
+        {/* Error Display */}
+        {error && (
+          <div className="p-2 border-t border-[var(--subtle-border)]">
+            <div className="flex items-center gap-2 text-sm text-red-500">
+              <AlertCircle size={14} />
+              <span className="truncate">{error}</span>
+            </div>
+          </div>
+        )}
       </SidePanel>
 
       {/* Right Panel: Agent Details */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {selectedAgent ? (
-          <>
-            <div className="p-4 border-b border-[var(--subtle-border)]">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">{selectedAgent.name}</h3>
-                <div className="flex gap-2">
-                  <button className="px-3 py-1.5 text-sm rounded-lg border border-[var(--subtle-border)] hover:bg-accent">
-                    {t.common.edit}
-                  </button>
-                  <button className="px-3 py-1.5 text-sm rounded-lg border border-[var(--subtle-border)] hover:bg-accent text-red-500">
-                    {t.common.delete}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs text-muted-foreground uppercase tracking-wide">
-                    {t.agents.id}
-                  </label>
-                  <p className="mt-1 font-mono text-sm">{selectedAgent.id}</p>
-                </div>
-
-                <div>
-                  <label className="text-xs text-muted-foreground uppercase tracking-wide">
-                    {t.agents.model}
-                  </label>
-                  <p className="mt-1 text-sm">{selectedAgent.model || '-'}</p>
-                </div>
-
-                {selectedAgent.description && (
-                  <div>
-                    <label className="text-xs text-muted-foreground uppercase tracking-wide">
-                      {t.tasks.description}
-                    </label>
-                    <p className="mt-1 text-sm">{selectedAgent.description}</p>
-                  </div>
-                )}
-
-                <div>
-                  <label className="text-xs text-muted-foreground uppercase tracking-wide">
-                    {t.agents.skills}
-                  </label>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {t.agents.skillsAll}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center space-y-2">
-              <Bot size={48} className="mx-auto text-muted-foreground/50" />
-              <p className="text-muted-foreground">{t.agents.selectAgent}</p>
-            </div>
-          </div>
-        )}
+        <AgentDetail
+          agent={selectedAgent}
+          isLoading={isLoading}
+          onEdit={() => setShowEditDialog(true)}
+          onDelete={handleDeleteClick}
+          onActivate={handleActivate}
+          onDeactivate={handleDeactivate}
+        />
       </div>
+
+      {/* Create Dialog */}
+      <CreateAgentDialog
+        isOpen={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+        onCreate={handleCreate}
+      />
+
+      {/* Edit Dialog */}
+      <EditAgentDialog
+        isOpen={showEditDialog}
+        agent={selectedAgent}
+        onClose={() => setShowEditDialog(false)}
+        onUpdate={handleUpdate}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.agents.deleteAgent}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t.agents.confirmDelete}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {t.common.delete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
-  )
+  );
 }

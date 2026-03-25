@@ -1,6 +1,7 @@
 export { useSSE } from './useSSE';
 export { useSettings } from './useSettings';
 export { useSkills } from './useSkills';
+export { useAgents } from './useAgents';
 export { useTasks } from './useTasks';
 export { useMemory } from './useMemory';
 export { useLogs } from './useLogs';

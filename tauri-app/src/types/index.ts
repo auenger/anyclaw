@@ -119,9 +119,27 @@ export interface CronTask {
 export interface Agent {
   id: string;
   name: string;
-  model: string;
-  description?: string;
-  status: 'idle' | 'busy' | 'error';
+  emoji: string;
+  avatar: string;
+  enabled: boolean;
+  workspace?: string;
+  sessionCount: number;
+}
+
+export interface CreateAgentRequest {
+  name: string;
+  creature?: string;
+  vibe?: string;
+  emoji?: string;
+  avatar?: string;
+  workspace?: string;
+}
+
+export interface UpdateAgentRequest {
+  name?: string;
+  emoji?: string;
+  avatar?: string;
+  enabled?: boolean;
 }
 
 // ============ Memory Types ============

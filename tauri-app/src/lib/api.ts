@@ -4,6 +4,7 @@
 
 import type {
   Settings, Skill, SubAgent, CronTask, Agent,
+  CreateAgentRequest, UpdateAgentRequest,
   MemoryInfo, MemoryContent, DailyLogInfo, MemoryStats, SearchResponse,
   SystemLogEntry, SessionLogInfo, SessionLogDetail, LogSearchResult, LogStats,
   LogCategory, LogLevel
@@ -72,8 +73,52 @@ export class ApiClient {
   }
 
   // ============ Agents ============
-  async listAgents(): Promise<Agent[]> {
-    const response = await fetch(`${this.baseUrl}/api/agents`);
+  async listAgents(includeDisabled: boolean = false): Promise<Agent[]> {
+    const params = includeDisabled ? '?include_disabled=true' : '';
+    const response = await fetch(`${this.baseUrl}/api/agents${params}`);
+    return response.json();
+  }
+
+  async getAgent(agentId: string): Promise<Agent> {
+    const response = await fetch(`${this.baseUrl}/api/agents/${agentId}`);
+    return response.json();
+  }
+
+  async createAgent(data: CreateAgentRequest): Promise<Agent> {
+    const response = await fetch(`${this.baseUrl}/api/agents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  }
+
+  async updateAgent(agentId: string, data: UpdateAgentRequest): Promise<Agent> {
+    const response = await fetch(`${this.baseUrl}/api/agents/${agentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  }
+
+  async deleteAgent(agentId: string): Promise<void> {
+    await fetch(`${this.baseUrl}/api/agents/${agentId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async activateAgent(agentId: string): Promise<{ status: string; message: string }> {
+    const response = await fetch(`${this.baseUrl}/api/agents/${agentId}/activate`, {
+      method: 'POST',
+    });
+    return response.json();
+  }
+
+  async deactivateAgent(agentId: string): Promise<{ status: string; message: string }> {
+    const response = await fetch(`${this.baseUrl}/api/agents/${agentId}/deactivate`, {
+      method: 'POST',
+    });
     return response.json();
   }
 
