@@ -232,7 +232,9 @@ class Settings(BaseSettings):
     enable_session_cache: bool = Field(default=True, description="是否启用会话内存缓存")
 
     # 会话并发配置
-    max_concurrent_sessions: int = Field(default=5, ge=1, le=50, description="最大并发会话数")
+    max_concurrent_sessions: int = Field(
+        default=3, ge=1, le=50, description="最大并发会话数"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="allow"
