@@ -217,6 +217,73 @@ fn get_platform() -> String {
     { "unknown".to_string() }
 }
 
+// ============ 配置文件命令 ============
+
+/// 获取配置文件路径
+fn get_config_path() -> Result<std::path::PathBuf, String> {
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map_err(|_| "Cannot determine home directory")?;
+    Ok(std::path::PathBuf::from(home).join(".anyclaw").join("config.toml"))
+}
+
+/// 读取配置文件内容
+#[tauri::command]
+fn read_config_file() -> Result<String, String> {
+    let config_path = get_config_path()?;
+    if !config_path.exists() {
+        return Err("Config file not found. Please run 'anyclaw config init' first.".to_string());
+    }
+    std::fs::read_to_string(&config_path)
+        .map_err(|e| format!("Failed to read config file: {}", e))
+}
+
+/// 写入配置文件内容
+#[tauri::command]
+fn write_config_file(content: String) -> Result<(), String> {
+    // 先验证 TOML 格式
+    validate_toml(content.clone())?;
+
+    let config_path = get_config_path()?;
+
+    // 确保目录存在
+    if let Some(parent) = config_path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create config directory: {}", e))?;
+    }
+
+    // 写入文件
+    std::fs::write(&config_path, &content)
+        .map_err(|e| format!("Failed to write config file: {}", e))?;
+
+    log::info!("Config file saved to {:?}", config_path);
+    Ok(())
+}
+
+/// 验证 TOML 格式
+#[tauri::command]
+fn validate_toml(content: String) -> Result<(), String> {
+    content.parse::<toml::Value>()
+        .map(|_| ())
+        .map_err(|e| format!("TOML parse error at line {}, column {}: {}",
+            e.span().map(|s| s.start).unwrap_or(0) / 100 + 1,
+            e.span().map(|s| s.start).unwrap_or(0) % 100 + 1,
+            e.message()))
+}
+
+/// 获取配置文件路径（字符串形式）
+#[tauri::command]
+fn get_config_path_string() -> Result<String, String> {
+    get_config_path()
+        .map(|p| p.to_string_lossy().to_string())
+}
+
+/// 检查配置文件是否存在
+#[tauri::command]
+fn config_file_exists() -> bool {
+    get_config_path().map(|p| p.exists()).unwrap_or(false)
+}
+
 // ============ 辅助函数 ============
 
 /// 查找可用的 Python 环境
@@ -671,6 +738,11 @@ pub fn run() {
             get_settings,
             set_setting,
             get_platform,
+            read_config_file,
+            write_config_file,
+            validate_toml,
+            get_config_path_string,
+            config_file_exists,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
