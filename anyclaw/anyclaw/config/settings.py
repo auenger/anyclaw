@@ -8,6 +8,7 @@
 
 from pathlib import Path
 from typing import Dict, List, Optional
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -184,7 +185,8 @@ class Settings(BaseSettings):
     # 搜索工具配置
     search_allow_all_paths: bool = Field(
         default=True,
-        description="搜索工具：是否允许搜索所有路径（非危险路径）。设为 false 时仅允许 workspace 和 extra_allowed_dirs",
+        description="搜索工具：是否允许搜索所有路径（非危险路径）"
+        "设为 false 时仅允许 workspace 和 extra_allowed_dirs",
     )
     search_extra_allowed_dirs: List[str] = Field(
         default_factory=list, description="搜索工具：额外允许搜索的目录列表"
@@ -228,6 +230,9 @@ class Settings(BaseSettings):
     )
 
     enable_session_cache: bool = Field(default=True, description="是否启用会话内存缓存")
+
+    # 会话并发配置
+    max_concurrent_sessions: int = Field(default=5, ge=1, le=50, description="最大并发会话数")
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="allow"

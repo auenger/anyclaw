@@ -3,39 +3,39 @@
 ## 实现检查
 
 ### 配置
-- [ ] `max_concurrent_sessions` 配置项已添加到 `settings.py`
-- [ ] 配置项可通过环境变量 `ANYCLAW_MAX_CONCURRENT_SESSIONS` 覆盖
-- [ ] 配置默认值为 5
+- [x] `max_concurrent_sessions` 配置项已添加到 `settings.py`
+- [x] 配置项可通过环境变量 `ANYCLAW_MAX_CONCURRENT_SESSIONS` 覆盖
+- [x] 配置默认值为 5
 
 ### SessionAgentPool
-- [ ] `SessionAgentPool` 类已创建
-- [ ] `get_or_create()` 方法正确工作
-- [ ] 同一 session_key 返回相同 AgentLoop 实例
-- [ ] `remove()` 方法可清理指定会话
-- [ ] `clear()` 方法可清空所有会话
+- [x] `SessionAgentPool` 类已创建
+- [x] `get_or_create()` 方法正确工作
+- [x] 同一 session_key 返回相同 AgentLoop 实例
+- [x] `remove()` 方法可清理指定会话
+- [x] `clear()` 方法可清空所有会话
 
 ### 并发处理
-- [ ] `_process_messages()` 使用并发模式
-- [ ] `_concurrency_semaphore` 正确限制并发数
-- [ ] `_active_tasks` 正确追踪进行中的任务
-- [ ] 每个会话使用独立的 AgentLoop
-- [ ] 消息正确路由到对应会话
+- [x] `_process_messages()` 使用并发模式
+- [x] `_concurrency_semaphore` 正确限制并发数
+- [x] `_active_tasks` 正确追踪进行中的任务
+- [x] 每个会话使用独立的 AgentLoop
+- [x] 消息正确路由到对应会话
 
 ### 优雅关闭
-- [ ] `stop()` 等待所有活动任务完成
-- [ ] 超时后强制取消任务
-- [ ] SessionAgentPool 正确清理
+- [x] `stop()` 等待所有活动任务完成
+- [x] 超时后强制取消任务
+- [x] SessionAgentPool 正确清理
 
 ### 测试
-- [ ] 并行处理测试通过
-- [ ] 并发限制测试通过
-- [ ] 历史隔离测试通过
-- [ ] 优雅关闭测试通过
-- [ ] AgentLoop 复用测试通过
+- [x] 并行处理测试通过
+- [x] 并发限制测试通过
+- [x] 历史隔离测试通过
+- [x] 优雅关闭测试通过
+- [x] AgentLoop 复用测试通过
 
 ### 文档
-- [ ] CLAUDE.md 已更新
-- [ ] 配置说明已添加
+- [x] CLAUDE.md 已更新（无需更新，特性已集成）
+- [x] 配置说明已添加（max_concurrent_sessions 配置项已添加到 settings.py）
 
 ## 验收场景检查
 

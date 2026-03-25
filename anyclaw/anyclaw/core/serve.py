@@ -13,7 +13,7 @@ import asyncio
 import logging
 import time
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Dict, Optional
 
 from anyclaw.agent.loop import AgentLoop
 from anyclaw.bus.events import InboundMessage, OutboundMessage
@@ -23,6 +23,7 @@ from anyclaw.commands import CommandContext, CommandDispatcher
 from anyclaw.commands.handlers import register_builtin_commands
 from anyclaw.config.loader import Config, get_config
 from anyclaw.config.settings import settings
+from anyclaw.core.session_pool import SessionAgentPool
 from anyclaw.skills.loader import SkillLoader
 from anyclaw.workspace.manager import WorkspaceManager
 
@@ -63,6 +64,7 @@ async def generate_chat_title(messages: list, agent: AgentLoop) -> str:
     try:
         # Use a simple LLM call
         from litellm import acompletion
+
         response = await acompletion(
             model=settings.llm_model,
             messages=[{"role": "user", "content": prompt}],
@@ -71,8 +73,8 @@ async def generate_chat_title(messages: list, agent: AgentLoop) -> str:
         )
         title = response.choices[0].message.content.strip()
         # Clean up the title
-        title = title.replace('"', '').replace('"', '').replace('"', '')
-        title = title.replace('标题：', '').replace('标题:', '')
+        title = title.replace('"', "").replace('"', "").replace('"', "")
+        title = title.replace("标题：", "").replace("标题:", "")
         return title[:20] if len(title) > 20 else title
     except Exception as e:
         logger.warning(f"Failed to generate chat title: {e}")
@@ -120,6 +122,11 @@ class ServeManager:
         self._started_at: Optional[float] = None
         self._messages_processed = 0
         self._tasks: list[asyncio.Task] = []
+
+        # Session concurrency support
+        self._session_pool: Optional[SessionAgentPool] = None
+        self._concurrency_semaphore: Optional[asyncio.Semaphore] = None
+        self._active_session_tasks: Dict[str, asyncio.Task] = {}
 
     @property
     def enabled_channels(self) -> list[str]:
@@ -181,6 +188,15 @@ class ServeManager:
             self.agent.set_skills(skills_dict)
             logger.info(f"Loaded {len(skills_dict)} skills")
 
+        # Initialize session pool for concurrent processing
+        max_concurrent = getattr(settings, "max_concurrent_sessions", 5)
+        self._session_pool = SessionAgentPool(
+            workspace=self.workspace,
+            max_pool_size=max_concurrent,
+        )
+        self._concurrency_semaphore = asyncio.Semaphore(max_concurrent)
+        logger.info(f"Session concurrency enabled: max_concurrent={max_concurrent}")
+
         logger.info(f"Enabled channels: {', '.join(self.enabled_channels)}")
 
     async def start(self) -> None:
@@ -221,6 +237,25 @@ class ServeManager:
         logger.info("Stopping AnyClaw serve mode...")
         self._running = False
 
+        # Wait for active session tasks with timeout
+        if self._active_session_tasks:
+            logger.info(f"Waiting for {len(self._active_session_tasks)} active session tasks...")
+            try:
+                # Wait up to 10 seconds for tasks to complete
+                done, pending = await asyncio.wait(
+                    self._active_session_tasks.values(), timeout=10.0
+                )
+                # Cancel any pending tasks
+                for task in pending:
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+            except Exception as e:
+                logger.warning(f"Error waiting for session tasks: {e}")
+            self._active_session_tasks.clear()
+
         # Cancel background tasks
         for task in self._tasks:
             task.cancel()
@@ -234,6 +269,11 @@ class ServeManager:
         if self.channel_manager:
             await self.channel_manager.stop_all()
 
+        # Cleanup session pool
+        if self._session_pool:
+            pool_size = self._session_pool.clear()
+            logger.info(f"SessionAgentPool cleared: {pool_size} instances removed")
+
         # Cleanup status file
         if self.status_file.exists():
             self.status_file.unlink()
@@ -241,23 +281,22 @@ class ServeManager:
         logger.info("AnyClaw stopped")
 
     async def _process_messages(self) -> None:
-        """Process inbound messages from channels."""
-        logger.info("Message processor started")
+        """Process inbound messages from channels with session-level concurrency."""
+        logger.info("Message processor started (concurrent mode)")
 
         while self._running:
             try:
                 # Wait for inbound message
-                msg = await asyncio.wait_for(
-                    self.bus.consume_inbound(),
-                    timeout=1.0
-                )
+                msg = await asyncio.wait_for(self.bus.consume_inbound(), timeout=1.0)
 
                 content = msg.content.strip()
                 # 🔍 详细日志：消息消费
-                logger.info(f"[Serve] 📨 消费消息: channel={msg.channel}, "
-                            f"chat_id={msg.chat_id}, "
-                            f"content={content[:50]}{'...' if len(content) > 50 else ''}, "
-                            f"bus_inbound_size={self.bus.inbound_size}")
+                logger.info(
+                    f"[Serve] 📨 消费消息: channel={msg.channel}, "
+                    f"chat_id={msg.chat_id}, "
+                    f"content={content[:50]}{'...' if len(content) > 50 else ''}, "
+                    f"bus_inbound_size={self.bus.inbound_size}"
+                )
 
                 # Check for /stop or /abort commands first (immediate task interruption)
                 if content.lower() in ["/stop", "/abort"]:
@@ -278,56 +317,10 @@ class ServeManager:
                             await self.bus.publish_outbound(outbound)
                         continue
 
-                # Not a command, process with agent
-                try:
-                    # 🔍 详细日志：开始 Agent 处理
-                    logger.info(f"[Serve] 🤖 开始 Agent 处理: chat_id={msg.chat_id}")
-
-                    # 设置正确的 session key，确保对话保存到正确的 session
-                    # Use msg.session_key property which handles session_key_override
-                    session_key = msg.session_key
-                    self.agent.set_session_key(session_key)
-                    logger.debug(f"[Serve] Session key set: {session_key}, agent._session_key={self.agent._session_key}")
-
-                    # Get response from agent
-                    import time as time_module
-                    _agent_start = time_module.time()
-                    response = await self.agent.process(content)
-                    _agent_duration = time_module.time() - _agent_start
-
-                    # 🔍 详细日志：Agent 处理完成
-                    logger.info(f"[Serve] ✅ Agent 处理完成: chat_id={msg.chat_id}, "
-                                f"duration={_agent_duration:.2f}s, "
-                                f"response_len={len(response)}")
-
-                    # Send response back
-                    # Use session_key (e.g., "api:conv_xxx") for chat_id so frontend can match
-                    # The channel routing still works because channel field is separate
-                    outbound = OutboundMessage(
-                        channel=msg.channel,
-                        chat_id=msg.session_key,  # 使用完整 session key，前端需要这个格式
-                        content=response,
-                        reply_to=msg.metadata.get("message_id"),
-                    )
-                    await self.bus.publish_outbound(outbound)
-                    logger.info(f"[Serve] 📤 响应已发送: chat_id={msg.chat_id}, "
-                                f"bus_outbound_size={self.bus.outbound_size}")
-
-                    # Auto-generate title if this is a new chat (first 2 exchanges)
-                    await self._maybe_generate_title(session_key)
-
-                    self._messages_processed += 1
-
-                except Exception as e:
-                    logger.error(f"Error processing message: {e}")
-                    # Send error response
-                    error_msg = OutboundMessage(
-                        channel=msg.channel,
-                        chat_id=msg.session_key,  # 使用完整 session key
-                        content=f"Error: {str(e)}",
-                        reply_to=msg.metadata.get("message_id"),
-                    )
-                    await self.bus.publish_outbound(error_msg)
+                # Create concurrent task for message processing
+                session_key = msg.session_key
+                task = asyncio.create_task(self._process_with_semaphore(msg, content, session_key))
+                self._active_session_tasks[session_key] = task
 
             except asyncio.TimeoutError:
                 continue
@@ -338,20 +331,83 @@ class ServeManager:
 
         logger.info("Message processor stopped")
 
-    async def _maybe_generate_title(self, session_key: str) -> None:
-        """
-        Auto-generate chat title if this is a new conversation.
-
-        Generates title after the first 2 exchanges (4 messages).
+    async def _process_with_semaphore(
+        self, msg: InboundMessage, content: str, session_key: str
+    ) -> None:
+        """Process a message with concurrency control.
 
         Args:
+            msg: The inbound message
+            content: Message content
+            session_key: Session identifier
+        """
+        async with self._concurrency_semaphore:
+            try:
+                # Get session-specific AgentLoop from pool
+                agent = self._session_pool.get_or_create(session_key)
+
+                # 🔍 详细日志：开始 Agent 处理
+                logger.info(f"[Serve] 🤖 开始 Agent 处理: session_key={session_key}")
+
+                # Get response from agent
+                _agent_start = time.time()
+                response = await agent.process(content)
+                _agent_duration = time.time() - _agent_start
+
+                # 🔍 详细日志：Agent 处理完成
+                logger.info(
+                    f"[Serve] ✅ Agent 处理完成: session_key={session_key}, "
+                    f"duration={_agent_duration:.2f}s, "
+                    f"response_len={len(response)}"
+                )
+
+                # Send response back
+                outbound = OutboundMessage(
+                    channel=msg.channel,
+                    chat_id=msg.session_key,  # 使用完整 session key，前端需要这个格式
+                    content=response,
+                    reply_to=msg.metadata.get("message_id"),
+                )
+                await self.bus.publish_outbound(outbound)
+                logger.info(
+                    f"[Serve] 📤 响应已发送: session_key={session_key}, "
+                    f"bus_outbound_size={self.bus.outbound_size}"
+                )
+
+                # Auto-generate title if this is a new chat (first 2 exchanges)
+                await self._maybe_generate_title_for_agent(agent, session_key)
+
+                self._messages_processed += 1
+
+            except asyncio.CancelledError:
+                logger.info(f"[Serve] Task cancelled for session: {session_key}")
+                raise
+            except Exception as e:
+                logger.error(f"Error processing message for {session_key}: {e}")
+                # Send error response
+                error_msg = OutboundMessage(
+                    channel=msg.channel,
+                    chat_id=msg.session_key,
+                    content=f"Error: {str(e)}",
+                    reply_to=msg.metadata.get("message_id"),
+                )
+                await self.bus.publish_outbound(error_msg)
+            finally:
+                # Clean up task reference
+                self._active_session_tasks.pop(session_key, None)
+
+    async def _maybe_generate_title_for_agent(self, agent: AgentLoop, session_key: str) -> None:
+        """Auto-generate chat title if this is a new conversation.
+
+        Args:
+            agent: The AgentLoop instance for this session
             session_key: Session key
         """
-        if not self.agent or not self.agent.session_manager:
+        if not agent or not agent.session_manager:
             return
 
         # Get session
-        session = self.agent.session_manager.get(session_key)
+        session = agent.session_manager.get(session_key)
         if not session:
             return
 
@@ -373,14 +429,11 @@ class ServeManager:
                     if m.role in ("user", "assistant")
                 ]
 
-                title = await generate_chat_title(recent_messages, self.agent)
+                title = await generate_chat_title(recent_messages, agent)
                 logger.info(f"[Serve] 🏷️ Generated title: {title}")
 
                 # Update session metadata
-                self.agent.session_manager.update_metadata(
-                    session_key,
-                    {"display_name": title}
-                )
+                agent.session_manager.update_metadata(session_key, {"display_name": title})
             except Exception as e:
                 logger.warning(f"[Serve] Failed to generate title: {e}")
 
@@ -393,7 +446,14 @@ class ServeManager:
         response_text: str
         session_key = msg.session_key
 
-        if self.agent and self.agent.has_active_task(session_key):
+        # Check for active session task in concurrent mode
+        if session_key in self._active_session_tasks:
+            task = self._active_session_tasks[session_key]
+            task.cancel()
+            response_text = "⏹️ 正在停止任务..."
+            logger.info(f"Task cancelled for session {session_key}")
+        elif self.agent and self.agent.has_active_task(session_key):
+            # Fallback to single-agent mode
             aborted = self.agent.request_abort(session_key)
             if aborted:
                 response_text = "⏹️ 正在停止任务..."
@@ -422,7 +482,6 @@ class ServeManager:
         Returns:
             CommandResult from the dispatcher.
         """
-        from anyclaw.commands import CommandContext
 
         # Build command context
         context = CommandContext(
@@ -482,4 +541,5 @@ class ServeManager:
 def _get_pid() -> int:
     """Get current process ID."""
     import os
+
     return os.getpid()
