@@ -17,6 +17,8 @@ from anyclaw.api.routes.skills import router as skills_router
 from anyclaw.api.routes.tasks import router as tasks_router
 from anyclaw.api.routes.memory import router as memory_router
 from anyclaw.api.routes.logs import router as logs_router
+from anyclaw.api.routes.providers import router as providers_router
+from anyclaw.api.routes.cron import router as cron_router
 from anyclaw.api.sse import router as sse_router
 
 logger = logging.getLogger(__name__)
@@ -74,6 +76,8 @@ def create_app() -> FastAPI:
     app.include_router(tasks_router, prefix="/api", tags=["Tasks"])
     app.include_router(memory_router, prefix="/api", tags=["Memory"])
     app.include_router(logs_router, prefix="/api", tags=["Logs"])
+    app.include_router(providers_router, prefix="/api", tags=["Providers"])
+    app.include_router(cron_router, prefix="/api", tags=["Cron"])
     app.include_router(sse_router, prefix="/api", tags=["SSE"])
 
     return app

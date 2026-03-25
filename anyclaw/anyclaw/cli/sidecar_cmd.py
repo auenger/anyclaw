@@ -16,11 +16,13 @@ import uvicorn
 from rich.console import Console
 
 from anyclaw.api.server import create_app
-from anyclaw.api.deps import set_serve_manager, set_agent_manager
+from anyclaw.api.deps import set_serve_manager, set_agent_manager, set_cron_service, set_cron_log_store
 from anyclaw.config.loader import get_config
 from anyclaw.core.serve import ServeManager
 from anyclaw.agents.manager import AgentManager
 from anyclaw.agents.identity import IdentityManager
+from anyclaw.cron.service import CronService
+from anyclaw.cron.logs import CronLogStore
 from anyclaw.utils.logging_config import setup_logging, get_log_file_path
 
 app = typer.Typer(help="Run AnyClaw as Tauri sidecar")
@@ -64,8 +66,18 @@ def sidecar(
     identity_manager = IdentityManager(workspace_path)
     agent_manager = AgentManager(workspace_path, identity_manager)
 
+    # Create cron service
+    data_path = workspace_path / "data"
+    data_path.mkdir(parents=True, exist_ok=True)
+    cron_service = CronService(
+        store_path=data_path / "cron_jobs.json",
+        log_store=CronLogStore(data_path / "cron_logs.jsonl"),
+    )
+
     # Inject into API deps
     set_agent_manager(agent_manager)
+    set_cron_service(cron_service)
+    set_cron_log_store(cron_service.log_store)
 
     # Graceful shutdown
     shutdown_event = asyncio.Event()
@@ -87,6 +99,10 @@ def sidecar(
             # Load all agents
             await agent_manager.load_all_agents()
             logger.info(f"AgentManager loaded {len(agent_manager._agents)} agents")
+
+            # Start cron service
+            await cron_service.start()
+            logger.info("CronService started")
 
             # Start channel service in background (don't await - it blocks)
             manager_task = asyncio.create_task(manager.start())
@@ -121,6 +137,7 @@ def sidecar(
             raise
         finally:
             # Cleanup
+            cron_service.stop()
             await manager.stop()
             logger.info("Sidecar stopped")
 
