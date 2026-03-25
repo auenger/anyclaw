@@ -243,3 +243,88 @@ export interface LogStats {
   by_level: Record<string, number>;
   by_category: Record<string, number>;
 }
+
+// ============ Provider Types ============
+export type { Provider, ProviderDetail, ProviderConfig, TestResult } from './providers';
+
+// Re-export for convenience
+export type { Provider as ProviderInfo } from './providers';
+
+// ============ Cron Job Types ============
+export type ScheduleType = 'interval' | 'cron' | 'once';
+export type JobStatus = 'active' | 'paused' | 'completed';
+export type RunStatus = 'success' | 'error';
+
+export interface CronSchedule {
+  type: 'every' | 'cron' | 'at';
+  valueMs?: number;
+  expr?: string;
+  tz?: string;
+  atMs?: number;
+}
+
+export interface CronJobState {
+  nextRunAtMs: number | null;
+  lastRunAtMs: number | null;
+  lastStatus?: 'ok' | 'error' | 'skipped';
+  lastError?: string;
+  consecutiveFailures: number;
+}
+
+export interface CronJob {
+  id: string;
+  name: string;
+  description?: string;
+  agentId: string;
+  chatId: string;
+  prompt: string;
+  enabled: boolean;
+  schedule: CronSchedule;
+  state: CronJobState;
+  createdAtMs: number;
+  updatedAtMs: number;
+}
+
+export interface CreateJobRequest {
+  name: string;
+  description?: string;
+  agent_id: string;
+  chat_id: string;
+  prompt: string;
+  schedule: {
+    type: ScheduleType;
+    value_ms?: number;
+    expr?: string;
+    tz?: string;
+    at_ms?: number;
+  };
+}
+
+export interface UpdateJobRequest {
+  name?: string;
+  description?: string;
+  prompt?: string;
+  schedule?: {
+    type: ScheduleType;
+    value_ms?: number;
+    expr?: string;
+    tz?: string;
+    at_ms?: number;
+  };
+  enabled?: boolean;
+}
+
+export interface RunLog {
+  id: number;
+  jobId: string;
+  runAtMs: number;
+  durationMs: number;
+  status: RunStatus;
+  result?: string;
+  error?: string;
+}
+
+export interface RunResult {
+  success: boolean;
+  message: string;
+}

@@ -7,11 +7,16 @@ import type {
   CreateAgentRequest, UpdateAgentRequest,
   MemoryInfo, MemoryContent, DailyLogInfo, MemoryStats, SearchResponse,
   SystemLogEntry, SessionLogInfo, SessionLogDetail, LogSearchResult, LogStats,
-  LogCategory, LogLevel
+  LogCategory, LogLevel, Provider, ProviderDetail, ProviderConfig, TestResult,
+  CronJob, CreateJobRequest, UpdateJobRequest, RunLog, RunResult
 } from '../types';
 import type { ChatItem } from './chat-utils';
 
 const DEFAULT_PORT = 62601;
+
+export function getApiUrl(port: number = DEFAULT_PORT): string {
+  return `http://127.0.0.1:${port}`;
+}
 
 export class ApiClient {
   private baseUrl: string;
@@ -312,6 +317,98 @@ export class ApiClient {
   getLogStreamUrl(category?: string): string {
     const params = category && category !== 'all' ? `?category=${category}` : '';
     return `${this.baseUrl}/api/logs/stream${params}`;
+  }
+
+  // ============ Providers ============
+  async listProviders(): Promise<Provider[]> {
+    const response = await fetch(`${this.baseUrl}/api/providers`);
+    return response.json();
+  }
+
+  async getProvider(name: string): Promise<ProviderDetail> {
+    const response = await fetch(`${this.baseUrl}/api/providers/${name}`);
+    return response.json();
+  }
+
+  async updateProvider(name: string, config: ProviderConfig): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${this.baseUrl}/api/providers/${name}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+    return response.json();
+  }
+
+  async testProvider(name: string, config?: ProviderConfig): Promise<TestResult> {
+    const response = await fetch(`${this.baseUrl}/api/providers/${name}/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config || {}),
+    });
+    return response.json();
+  }
+
+  async setDefaultProvider(name: string): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${this.baseUrl}/api/providers/${name}/set-default`, {
+      method: 'POST',
+    });
+    return response.json();
+  }
+
+  // ============ Cron Jobs ============
+  async getCronJobs(enabled?: boolean): Promise<CronJob[]> {
+    const params = enabled !== undefined ? `?enabled=${enabled}` : '';
+    const response = await fetch(`${this.baseUrl}/api/cron/jobs${params}`);
+    return response.json();
+  }
+
+  async getCronJob(id: string): Promise<CronJob> {
+    const response = await fetch(`${this.baseUrl}/api/cron/jobs/${id}`);
+    return response.json();
+  }
+
+  async createCronJob(data: CreateJobRequest): Promise<CronJob> {
+    const response = await fetch(`${this.baseUrl}/api/cron/jobs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  }
+
+  async updateCronJob(id: string, data: UpdateJobRequest): Promise<CronJob> {
+    const response = await fetch(`${this.baseUrl}/api/cron/jobs/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  }
+
+  async deleteCronJob(id: string): Promise<{ status: string; message: string }> {
+    const response = await fetch(`${this.baseUrl}/api/cron/jobs/${id}`, {
+      method: 'DELETE',
+    });
+    return response.json();
+  }
+
+  async cloneCronJob(id: string): Promise<CronJob> {
+    const response = await fetch(`${this.baseUrl}/api/cron/jobs/${id}/clone`, {
+      method: 'POST',
+    });
+    return response.json();
+  }
+
+  async runCronJob(id: string): Promise<RunResult> {
+    const response = await fetch(`${this.baseUrl}/api/cron/jobs/${id}/run`, {
+      method: 'POST',
+    });
+    return response.json();
+  }
+
+  async getCronJobLogs(id: string, limit: number = 50): Promise<RunLog[]> {
+    const response = await fetch(`${this.baseUrl}/api/cron/jobs/${id}/logs?limit=${limit}`);
+    return response.json();
   }
 }
 

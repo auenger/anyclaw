@@ -26,6 +26,7 @@ class ProviderConfig(BaseModel):
 
     api_key: str = ""
     api_base: Optional[str] = None
+    base_url: Optional[str] = None  # Alias for api_base
     extra_headers: Optional[Dict[str, str]] = None
 
 

@@ -5,6 +5,16 @@ export { useAgents } from './useAgents';
 export { useTasks } from './useTasks';
 export { useMemory } from './useMemory';
 export { useLogs } from './useLogs';
+export { useCronJobs } from './useCronJobs';
+
+// Provider Hooks
+export {
+  useProviders,
+  useProvider,
+  useUpdateProvider,
+  useTestProvider,
+  useSetDefaultProvider,
+} from './useProviders';
 
 // 新增 UI 设计系统 Hooks
 export { useSidebar } from './useSidebar';
