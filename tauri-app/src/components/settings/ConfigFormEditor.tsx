@@ -30,17 +30,19 @@ export function ConfigFormEditor({
 }: ConfigFormEditorProps) {
   const { t } = useI18n()
 
-  // 获取分组标签 - 使用类型安全的方式
+  // 获取分组标签 - 去掉 "config." 前缀
   const getGroupLabel = (group: ConfigGroupSchema): string => {
     const config = t.config as Record<string, string>
-    return config[group.label] || group.label
+    const labelKey = group.label.replace(/^config\./, '')
+    return config[labelKey] || config[group.label] || group.label
   }
 
-  // 获取分组描述
+  // 获取分组描述 - 去掉 "config." 前缀
   const getGroupDescription = (group: ConfigGroupSchema): string | undefined => {
     if (!group.description) return undefined
     const config = t.config as Record<string, string>
-    return config[group.description] || group.description
+    const descKey = group.description.replace(/^config\./, '')
+    return config[descKey] || config[group.description] || group.description
   }
 
   // 计算分组中已配置的字段数量

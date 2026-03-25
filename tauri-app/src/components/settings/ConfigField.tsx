@@ -59,9 +59,13 @@ export function ConfigField({
   }
 
   // 获取标签和描述 - 使用类型安全的方式
+  // Schema 中的 label 格式是 "config.agent.name"，需要去掉 "config." 前缀
   const config = t.config as Record<string, string>
-  const label = config[field.label] || field.label
-  const description = field.description ? (config[field.description] || field.description) : null
+  const labelKey = field.label.replace(/^config\./, '')
+  const label = config[labelKey] || config[field.label] || field.label
+  const description = field.description
+    ? (config[field.description.replace(/^config\./, '')] || config[field.description] || field.description)
+    : null
 
   // 渲染字段组件
   const renderFieldComponent = () => {
