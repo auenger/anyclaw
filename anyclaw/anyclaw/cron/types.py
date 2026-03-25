@@ -40,6 +40,31 @@ class CronJobState:
     last_run_at_ms: Optional[int] = None
     last_status: Optional[Literal["ok", "error", "skipped"]] = None
     last_error: Optional[str] = None
+    # Resilience fields
+    consecutive_failures: int = 0
+    running_since_ms: Optional[int] = None
+
+
+@dataclass
+class CronRunLog:
+    """Execution log record for a cron job."""
+    id: int
+    job_id: str
+    run_at_ms: int
+    duration_ms: int
+    status: Literal["success", "error"]
+    result: Optional[str] = None
+    error: Optional[str] = None
+
+
+@dataclass
+class CronPayload:
+    """What to do when a job runs (alias for compatibility)."""
+    kind: Literal["system_event", "agent_turn"] = "agent_turn"
+    message: str = ""
+    deliver: bool = False
+    channel: Optional[str] = None
+    to: Optional[str] = None
 
 
 @dataclass

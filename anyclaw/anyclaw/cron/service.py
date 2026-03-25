@@ -6,16 +6,34 @@ import logging
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Coroutine, Optional
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional
 
 from .parser import compute_next_run_ms
-from .types import CronJob, CronJobState, CronPayload, CronSchedule, CronStore
+from .types import CronJob, CronJobState, CronPayload, CronRunLog, CronSchedule, CronStore
+
+if TYPE_CHECKING:
+    from .logs import CronLogStore
 
 logger = logging.getLogger(__name__)
+
+# Backoff delays in ms: 30s, 1m, 5m, 15m, 60m
+BACKOFF_DELAYS = [30_000, 60_000, 300_000, 900_000, 3_600_000]
+# Maximum consecutive failures before auto-pause
+MAX_CONSECUTIVE_FAILURES = 5
+# Stuck task detection threshold (5 minutes)
+STUCK_THRESHOLD_MS = 5 * 60 * 1000
 
 
 def _now_ms() -> int:
     return int(time.time() * 1000)
+
+
+def calculate_backoff_delay(consecutive_failures: int) -> int:
+    """Calculate backoff delay in ms based on consecutive failures."""
+    if consecutive_failures <= 0:
+        return 0
+    idx = min(consecutive_failures - 1, len(BACKOFF_DELAYS) - 1)
+    return BACKOFF_DELAYS[idx]
 
 
 def _compute_next_run(schedule: CronSchedule, now_ms: int) -> Optional[int]:
@@ -42,13 +60,16 @@ class CronService:
         self,
         store_path: Path,
         on_job: Optional[Callable[[CronJob], Coroutine[Any, Any, Optional[str]]]] = None,
+        log_store: Optional["CronLogStore"] = None,
     ):
         self.store_path = store_path
         self.on_job = on_job
+        self.log_store = log_store
         self._store: Optional[CronStore] = None
         self._last_mtime: float = 0.0
         self._timer_task: Optional[asyncio.Task[None]] = None
         self._running = False
+        self._log_counter = 0
 
     def _load_store(self) -> CronStore:
         """Load jobs from disk. Reloads automatically if file was modified externally."""
@@ -66,6 +87,7 @@ class CronService:
                 jobs = []
                 for j in data.get("jobs", []):
                     schedule_data = j.get("schedule", {})
+                    state_data = j.get("state", {})
                     jobs.append(CronJob(
                         id=j["id"],
                         name=j["name"],
@@ -85,10 +107,12 @@ class CronService:
                             to=j.get("payload", {}).get("to"),
                         ),
                         state=CronJobState(
-                            next_run_at_ms=j.get("state", {}).get("nextRunAtMs"),
-                            last_run_at_ms=j.get("state", {}).get("lastRunAtMs"),
-                            last_status=j.get("state", {}).get("lastStatus"),
-                            last_error=j.get("state", {}).get("lastError"),
+                            next_run_at_ms=state_data.get("nextRunAtMs"),
+                            last_run_at_ms=state_data.get("lastRunAtMs"),
+                            last_status=state_data.get("lastStatus"),
+                            last_error=state_data.get("lastError"),
+                            consecutive_failures=state_data.get("consecutiveFailures", 0),
+                            running_since_ms=state_data.get("runningSinceMs"),
                         ),
                         created_at_ms=j.get("createdAtMs", 0),
                         updated_at_ms=j.get("updatedAtMs", 0),
@@ -136,6 +160,8 @@ class CronService:
                         "lastRunAtMs": j.state.last_run_at_ms,
                         "lastStatus": j.state.last_status,
                         "lastError": j.state.last_error,
+                        "consecutiveFailures": j.state.consecutive_failures,
+                        "runningSinceMs": j.state.running_since_ms,
                     },
                     "createdAtMs": j.created_at_ms,
                     "updatedAtMs": j.updated_at_ms,
@@ -201,10 +227,13 @@ class CronService:
         self._timer_task = asyncio.create_task(tick())
 
     async def _on_timer(self) -> None:
-        """Handle timer tick - run due jobs."""
+        """Handle timer tick - check stuck tasks and run due jobs."""
         self._load_store()
         if not self._store:
             return
+
+        # Phase 4: Check for stuck tasks first
+        await self._recover_stuck_tasks()
 
         now = _now_ms()
         due_jobs = [
@@ -218,38 +247,132 @@ class CronService:
         self._save_store()
         self._arm_timer()
 
+    async def _recover_stuck_tasks(self) -> None:
+        """Detect and recover tasks that have been running too long."""
+        if not self._store:
+            return
+
+        now = _now_ms()
+        cutoff = now - STUCK_THRESHOLD_MS
+
+        for job in self._store.jobs:
+            if job.state.running_since_ms and job.state.running_since_ms < cutoff:
+                # Task is stuck - record error and apply recovery
+                logger.warning(f"Cron: task '{job.name}' ({job.id}) stuck since {job.state.running_since_ms}")
+
+                # Record error log
+                await self._append_log(
+                    job,
+                    job.state.running_since_ms,
+                    now - job.state.running_since_ms,
+                    "error",
+                    None,
+                    f"Task execution timed out (exceeded {STUCK_THRESHOLD_MS // 1000}s)"
+                )
+
+                # Increment failure count
+                job.state.consecutive_failures += 1
+                job.state.running_since_ms = None
+
+                # Check if should auto-pause
+                if job.state.consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                    job.enabled = False
+                    job.state.last_status = "error"
+                    job.state.last_error = f"{job.state.consecutive_failures} consecutive failures, auto-paused"
+                    logger.error(f"Cron: task '{job.name}' auto-paused after {job.state.consecutive_failures} failures")
+                else:
+                    # Apply backoff
+                    backoff = calculate_backoff_delay(job.state.consecutive_failures)
+                    job.state.next_run_at_ms = now + backoff
+                    job.state.last_status = "error"
+                    job.state.last_error = "Task execution timed out"
+
+    async def _append_log(
+        self,
+        job: CronJob,
+        run_at_ms: int,
+        duration_ms: int,
+        status: str,
+        result: Optional[str],
+        error: Optional[str],
+    ) -> None:
+        """Append execution log if log_store is configured."""
+        if not self.log_store:
+            return
+
+        self._log_counter += 1
+        log = CronRunLog(
+            id=self._log_counter,
+            job_id=job.id,
+            run_at_ms=run_at_ms,
+            duration_ms=duration_ms,
+            status=status,  # type: ignore
+            result=result[:500] if result else None,
+            error=error,
+        )
+        await self.log_store.append(log)
+
     async def _execute_job(self, job: CronJob) -> None:
-        """Execute a single job."""
+        """Execute a single job with logging and backoff support."""
         start_ms = _now_ms()
+        job.state.running_since_ms = start_ms
         logger.info(f"Cron: executing job '{job.name}' ({job.id})")
 
         try:
-            _response = None
+            response = None
             if self.on_job:
-                _response = await self.on_job(job)
+                response = await self.on_job(job)
 
+            duration_ms = _now_ms() - start_ms
+
+            # Record success log
+            await self._append_log(job, start_ms, duration_ms, "success", response, None)
+
+            # Reset failure count on success
+            job.state.consecutive_failures = 0
             job.state.last_status = "ok"
             job.state.last_error = None
-            logger.info(f"Cron: job '{job.name}' completed")
+            logger.info(f"Cron: job '{job.name}' completed in {duration_ms}ms")
 
         except Exception as e:
+            duration_ms = _now_ms() - start_ms
+            error_msg = str(e)
+
+            # Record error log
+            await self._append_log(job, start_ms, duration_ms, "error", None, error_msg)
+
+            # Increment failure count
+            job.state.consecutive_failures += 1
             job.state.last_status = "error"
-            job.state.last_error = str(e)
+            job.state.last_error = error_msg
             logger.error(f"Cron: job '{job.name}' failed: {e}")
 
-        job.state.last_run_at_ms = start_ms
-        job.updated_at_ms = _now_ms()
-
-        # Handle one-shot jobs
-        if job.schedule.kind == "at":
-            if job.delete_after_run:
-                self._store.jobs = [j for j in self._store.jobs if j.id != job.id]
-            else:
+            # Check if should auto-pause
+            if job.state.consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
                 job.enabled = False
-                job.state.next_run_at_ms = None
-        else:
-            # Compute next run
-            job.state.next_run_at_ms = _compute_next_run(job.schedule, _now_ms())
+                job.state.last_error = f"{job.state.consecutive_failures} consecutive failures, auto-paused"
+                logger.error(f"Cron: task '{job.name}' auto-paused after {job.state.consecutive_failures} failures")
+
+        finally:
+            job.state.running_since_ms = None
+            job.state.last_run_at_ms = start_ms
+            job.updated_at_ms = _now_ms()
+
+            # Handle one-shot jobs
+            if job.schedule.kind == "at":
+                if job.delete_after_run:
+                    self._store.jobs = [j for j in self._store.jobs if j.id != job.id]
+                else:
+                    job.enabled = False
+                    job.state.next_run_at_ms = None
+            elif job.enabled and job.state.last_status == "error":
+                # Apply backoff on failure (if not auto-paused)
+                backoff = calculate_backoff_delay(job.state.consecutive_failures)
+                job.state.next_run_at_ms = _now_ms() + backoff
+                logger.info(f"Cron: job '{job.name}' backoff {backoff}ms after {job.state.consecutive_failures} failures")
+            elif job.enabled:
+                # Normal scheduling
+                job.state.next_run_at_ms = _compute_next_run(job.schedule, _now_ms())
 
     # ========== Public API ==========
 
@@ -320,6 +443,8 @@ class CronService:
                 job.enabled = enabled
                 job.updated_at_ms = _now_ms()
                 if enabled:
+                    # Reset consecutive failures when re-enabling
+                    job.state.consecutive_failures = 0
                     job.state.next_run_at_ms = _compute_next_run(job.schedule, _now_ms())
                 else:
                     job.state.next_run_at_ms = None
