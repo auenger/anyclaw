@@ -224,6 +224,7 @@ export default function App() {
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         initialTab={settingsTab as 'general' | 'models' | 'about' | undefined}
+        port={sidecarStatus.port}
       />
     </BrowserRouter>
   );

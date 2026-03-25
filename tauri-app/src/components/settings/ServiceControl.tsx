@@ -15,7 +15,6 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
-  Clock,
 } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
@@ -27,28 +26,11 @@ type SidecarStatus = 'Stopped' | 'Starting' | 'Running' | 'Stopping' | 'Error'
 interface SidecarInfo {
   status: SidecarStatus
   port: number
-  pid: number | null
-  uptime_seconds: number
   message: string
 }
 
 interface ServiceControlProps {
   className?: string
-}
-
-// 格式化运行时间
-function formatUptime(seconds: number): string {
-  if (seconds < 60) {
-    return `${seconds}s`
-  } else if (seconds < 3600) {
-    const minutes = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${minutes}m ${secs}s`
-  } else {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    return `${hours}h ${minutes}m`
-  }
 }
 
 // 状态颜色和图标映射
@@ -65,12 +47,9 @@ export function ServiceControl({ className }: ServiceControlProps) {
   const [status, setStatus] = useState<SidecarInfo>({
     status: 'Stopped',
     port: 62601,
-    pid: null,
-    uptime_seconds: 0,
     message: '',
   })
   const [isOperating, setIsOperating] = useState(false)
-  const [uptime, setUptime] = useState(0)
 
   // 加载状态
   useEffect(() => {
@@ -81,9 +60,6 @@ export function ServiceControl({ className }: ServiceControlProps) {
   useEffect(() => {
     const unlisten = listen<SidecarInfo>('sidecar-status', (event) => {
       setStatus(event.payload)
-      if (event.payload.status === 'Running') {
-        setUptime(event.payload.uptime_seconds)
-      }
       setIsOperating(false)
     })
 
@@ -92,27 +68,10 @@ export function ServiceControl({ className }: ServiceControlProps) {
     }
   }, [])
 
-  // 更新运行时间
-  useEffect(() => {
-    if (status.status !== 'Running') {
-      setUptime(0)
-      return
-    }
-
-    const interval = setInterval(() => {
-      setUptime((prev) => prev + 1)
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [status.status])
-
   const loadStatus = async () => {
     try {
       const info = await invoke<SidecarInfo>('get_sidecar_status')
       setStatus(info)
-      if (info.status === 'Running') {
-        setUptime(info.uptime_seconds)
-      }
     } catch (e) {
       console.error('Failed to load sidecar status:', e)
     }
@@ -196,23 +155,6 @@ export function ServiceControl({ className }: ServiceControlProps) {
             <div className="space-y-1">
               <div className="text-sm text-muted-foreground">{t.settings.port || 'Port'}</div>
               <div className="font-mono">{status.port}</div>
-            </div>
-
-            <div className="space-y-1">
-              <div className="text-sm text-muted-foreground">{t.settings.pid || 'PID'}</div>
-              <div className="font-mono">
-                {status.pid ? status.pid : '-'}
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <div className="text-sm text-muted-foreground flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {t.settings.uptime || 'Uptime'}
-              </div>
-              <div className="font-mono">
-                {isRunning ? formatUptime(uptime) : '-'}
-              </div>
             </div>
 
             <div className="space-y-1">

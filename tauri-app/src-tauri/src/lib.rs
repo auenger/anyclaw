@@ -6,7 +6,7 @@ use tauri::image::Image;
 use tauri_plugin_store::StoreExt;
 use tauri_plugin_shell::ShellExt;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use std::process::{Child, Command, Stdio};
 
 /// Sidecar 进程状态
@@ -33,6 +33,7 @@ pub struct SidecarInfo {
 struct AppState {
     sidecar_status: Arc<Mutex<SidecarInfo>>,
     sidecar_process: Arc<Mutex<Option<Child>>>,
+    start_time: Arc<Mutex<Option<Instant>>>,
 }
 
 /// 检查是否为生产模式（打包后的应用）
@@ -79,8 +80,20 @@ fn get_sidecar_binary_name() -> String {
 #[tauri::command]
 fn get_sidecar_status(app: AppHandle) -> Result<SidecarInfo, String> {
     let state = app.state::<AppState>();
-    let status = state.sidecar_status.lock().unwrap();
-    Ok(status.clone())
+    let status = state.sidecar_status.lock().unwrap().clone();
+    let start_time = state.start_time.lock().unwrap();
+
+    // 动态计算 uptime
+    let uptime_seconds = if matches!(status.status, SidecarStatus::Running) {
+        start_time.map(|t| t.elapsed().as_secs()).unwrap_or(0)
+    } else {
+        0
+    };
+
+    Ok(SidecarInfo {
+        uptime_seconds,
+        ..status
+    })
 }
 
 #[tauri::command]
@@ -149,6 +162,10 @@ async fn start_sidecar(app: AppHandle) -> Result<String, String> {
         status.uptime_seconds = 0;
         status.message = "Sidecar is running".to_string();
         let _ = app.emit("sidecar-status", &*status);
+
+        // 记录启动时间
+        let mut start_time = state.start_time.lock().unwrap();
+        *start_time = Some(Instant::now());
     }
 
     Ok(format!("Sidecar started on port {}", port))
@@ -180,6 +197,10 @@ async fn stop_sidecar(app: AppHandle) -> Result<String, String> {
         status.uptime_seconds = 0;
         status.message = "Sidecar stopped".to_string();
         let _ = app.emit("sidecar-status", &*status);
+
+        // 清除启动时间
+        let mut start_time = state.start_time.lock().unwrap();
+        *start_time = None;
     }
 
     Ok("Sidecar stopped".to_string())
@@ -712,6 +733,7 @@ pub fn run() {
             app.manage(AppState {
                 sidecar_status,
                 sidecar_process: Arc::new(Mutex::new(None)),
+                start_time: Arc::new(Mutex::new(None)),
             });
 
             create_tray_icon(app.handle());

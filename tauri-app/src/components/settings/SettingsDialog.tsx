@@ -14,9 +14,10 @@ interface SettingsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   initialTab?: Tab
+  port?: number
 }
 
-export function SettingsDialog({ open, onOpenChange, initialTab = 'general' }: SettingsDialogProps) {
+export function SettingsDialog({ open, onOpenChange, initialTab = 'general', port }: SettingsDialogProps) {
   const { t } = useI18n()
   const [currentTab, setCurrentTab] = useState<Tab>(initialTab)
 
@@ -74,7 +75,7 @@ export function SettingsDialog({ open, onOpenChange, initialTab = 'general' }: S
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {currentTab === 'general' && <GeneralPanel />}
-          {currentTab === 'models' && <ModelsPanel />}
+          {currentTab === 'models' && <ModelsPanel port={port} />}
           {currentTab === 'config' && <ConfigEditor />}
           {currentTab === 'service' && <ServiceControl />}
           {currentTab === 'about' && <AboutPanel />}

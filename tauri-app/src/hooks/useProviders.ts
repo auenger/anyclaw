@@ -8,7 +8,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { getApiUrl } from '@/lib/api'
 import type { Provider, ProviderDetail, ProviderConfig, TestResult } from '@/types/providers'
 
-export function useProviders() {
+const DEFAULT_PORT = 62601
+
+export function useProviders(port?: number) {
   const [providers, setProviders] = useState<Provider[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -18,7 +20,7 @@ export function useProviders() {
     setError(null)
 
     try {
-      const response = await fetch(`${getApiUrl()}/providers`)
+      const response = await fetch(`${getApiUrl(port ?? DEFAULT_PORT)}/api/providers`)
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`)
       }
@@ -29,7 +31,7 @@ export function useProviders() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [port])
 
   useEffect(() => {
     fetchProviders()
@@ -38,7 +40,7 @@ export function useProviders() {
   return { providers, isLoading, error, refetch: fetchProviders }
 }
 
-export function useProvider(name: string) {
+export function useProvider(name: string, port?: number) {
   const [provider, setProvider] = useState<ProviderDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -50,7 +52,7 @@ export function useProvider(name: string) {
     setError(null)
 
     try {
-      const response = await fetch(`${getApiUrl()}/providers/${name}`)
+      const response = await fetch(`${getApiUrl(port ?? DEFAULT_PORT)}/api/providers/${name}`)
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`)
       }
@@ -61,7 +63,7 @@ export function useProvider(name: string) {
     } finally {
       setIsLoading(false)
     }
-  }, [name])
+  }, [name, port])
 
   useEffect(() => {
     fetchProvider()
@@ -70,7 +72,7 @@ export function useProvider(name: string) {
   return { provider, isLoading, error, refetch: fetchProvider }
 }
 
-export function useUpdateProvider() {
+export function useUpdateProvider(port?: number) {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -79,7 +81,7 @@ export function useUpdateProvider() {
     setError(null)
 
     try {
-      const response = await fetch(`${getApiUrl()}/providers/${name}`, {
+      const response = await fetch(`${getApiUrl(port ?? DEFAULT_PORT)}/api/providers/${name}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
@@ -97,12 +99,12 @@ export function useUpdateProvider() {
     } finally {
       setIsSaving(false)
     }
-  }, [])
+  }, [port])
 
   return { updateProvider, isSaving, error }
 }
 
-export function useTestProvider() {
+export function useTestProvider(port?: number) {
   const [isTesting, setIsTesting] = useState(false)
   const [result, setResult] = useState<TestResult | null>(null)
 
@@ -114,7 +116,7 @@ export function useTestProvider() {
     setResult(null)
 
     try {
-      const response = await fetch(`${getApiUrl()}/providers/${name}/test`, {
+      const response = await fetch(`${getApiUrl(port ?? DEFAULT_PORT)}/api/providers/${name}/test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config || {}),
@@ -139,12 +141,12 @@ export function useTestProvider() {
     } finally {
       setIsTesting(false)
     }
-  }, [])
+  }, [port])
 
   return { testProvider, isTesting, result }
 }
 
-export function useSetDefaultProvider() {
+export function useSetDefaultProvider(port?: number) {
   const [isSetting, setIsSetting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -153,7 +155,7 @@ export function useSetDefaultProvider() {
     setError(null)
 
     try {
-      const response = await fetch(`${getApiUrl()}/providers/${name}/set-default`, {
+      const response = await fetch(`${getApiUrl(port ?? DEFAULT_PORT)}/api/providers/${name}/set-default`, {
         method: 'POST',
       })
 
@@ -169,7 +171,7 @@ export function useSetDefaultProvider() {
     } finally {
       setIsSetting(false)
     }
-  }, [])
+  }, [port])
 
   return { setDefaultProvider, isSetting, error }
 }

@@ -15,18 +15,19 @@ import type { Provider } from '@/types/providers'
 interface ProviderCardProps {
   provider: Provider
   onRefresh: () => void
+  port?: number
 }
 
-function ProviderCard({ provider, onRefresh }: ProviderCardProps) {
+function ProviderCard({ provider, onRefresh, port }: ProviderCardProps) {
   const { t } = useI18n()
   const [showApiKey, setShowApiKey] = useState(false)
   const [apiKey, setApiKey] = useState('')
   const [baseUrl, setBaseUrl] = useState(provider.base_url || '')
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
 
-  const { updateProvider, isSaving } = useUpdateProvider()
-  const { testProvider, isTesting } = useTestProvider()
-  const { setDefaultProvider, isSetting } = useSetDefaultProvider()
+  const { updateProvider, isSaving } = useUpdateProvider(port)
+  const { testProvider, isTesting } = useTestProvider(port)
+  const { setDefaultProvider, isSetting } = useSetDefaultProvider(port)
 
   const handleSave = async () => {
     const success = await updateProvider(provider.name, {
@@ -67,14 +68,14 @@ function ProviderCard({ provider, onRefresh }: ProviderCardProps) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <h4 className="font-medium">{provider.display_name}</h4>
-          {provider.is_configured && (
+          {provider.is_default && (
             <span className="flex items-center text-xs text-green-600 dark:text-green-400">
               <Check size={12} className="mr-1" />
               {t.settings.currentSelection}
             </span>
           )}
         </div>
-        {provider.is_configured && (
+        {provider.is_default && (
           <button
             onClick={handleSetDefault}
             disabled={isSetting}
@@ -183,9 +184,13 @@ function ProviderCard({ provider, onRefresh }: ProviderCardProps) {
   )
 }
 
-export function ModelsPanel() {
+interface ModelsPanelProps {
+  port?: number
+}
+
+export function ModelsPanel({ port }: ModelsPanelProps) {
   const { t } = useI18n()
-  const { providers, isLoading, error, refetch } = useProviders()
+  const { providers, isLoading, error, refetch } = useProviders(port)
 
   if (isLoading) {
     return (
@@ -229,6 +234,7 @@ export function ModelsPanel() {
             key={provider.name}
             provider={provider}
             onRefresh={refetch}
+            port={port}
           />
         ))}
       </div>
