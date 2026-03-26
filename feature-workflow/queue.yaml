@@ -77,13 +77,6 @@ active: []
 # 等待中的需求（按优先级排序）
 pending:
 
-  - id: feat-agent-session-workspace
-    name: Agent Session 存储位置修复
-    description: 修复非默认 Agent 的 session 保存到错误目录的问题，让每个 Agent 的 session 保存到其对应的 workspace
-    priority: 90
-    size: S
-    dependencies: []
-
   - id: feat-models-panel
     name: 模型配置页面完善
     description: 完善 ModelsPanel 组件，连接后端 API，实现 Provider 配置管理、模型选择和连接测试功能
@@ -169,6 +162,17 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-agent-session-workspace
+    name: Agent Session 存储位置修复
+    description: 修复非默认 Agent 的 session 保存到错误目录的问题，让每个 Agent 的 session 保存到其对应的 workspace
+    priority: 90
+    size: S
+    completed_at: "2026-03-26T14:15:00"
+    value_points:
+      - SessionAgentPool.get_or_create() 检查 workspace 是否与默认不同
+      - 非默认 workspace 创建独立的 SessionManager
+      - 默认 workspace 继续使用共享 SessionManager
+
   - id: feat-chat-agent-selector
     name: Chat Agent 选择器
     description: 在 Chat 页面添加 Agent 切换功能，支持选择不同 Agent 进行对话，消息路由到对应 workspace
