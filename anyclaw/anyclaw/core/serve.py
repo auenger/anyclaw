@@ -177,9 +177,32 @@ class ServeManager:
                 "[channels.discord]\nenabled = true\ntoken = 'your-token'"
             )
 
-        # Initialize agent
+        # Create shared SessionManager for all AgentLoop instances
+        # This ensures session data consistency across the pool and API
+        shared_session_manager = None
+        session_enabled = getattr(settings, "session_enabled", True)
+        if session_enabled:
+            from anyclaw.session.manager import SessionManager, SessionManagerConfig
+
+            session_config = SessionManagerConfig(
+                workspace=self.workspace,
+                sessions_dir=self.workspace / settings.sessions_dir,
+                max_history_messages=getattr(settings, "max_history_messages", 500),
+                enable_persistence=getattr(settings, "enable_session_persistence", True),
+                enable_memory_cache=getattr(settings, "enable_session_cache", True),
+            )
+            try:
+                shared_session_manager = SessionManager(session_config)
+                logger.info(f"Shared SessionManager created: sessions_dir={session_config.sessions_dir}")
+            except Exception as e:
+                logger.error(f"Failed to create shared SessionManager: {e}")
+
+        # Initialize agent with shared SessionManager
         logger.info("Initializing agent...")
-        self.agent = AgentLoop(workspace=self.workspace)
+        self.agent = AgentLoop(
+            workspace=self.workspace,
+            session_manager=shared_session_manager,  # 使用共享的 SessionManager
+        )
 
         # Load skills
         skill_loader = SkillLoader()
@@ -189,10 +212,12 @@ class ServeManager:
             logger.info(f"Loaded {len(skills_dict)} skills")
 
         # Initialize session pool for concurrent processing
+        # Pass shared SessionManager to ensure all AgentLoops use the same instance
         max_concurrent = getattr(settings, "max_concurrent_sessions", 5)
         self._session_pool = SessionAgentPool(
             workspace=self.workspace,
             max_pool_size=max_concurrent,
+            session_manager=shared_session_manager,  # 传递共享的 SessionManager
         )
         self._concurrency_semaphore = asyncio.Semaphore(max_concurrent)
         logger.info(f"Session concurrency enabled: max_concurrent={max_concurrent}")
