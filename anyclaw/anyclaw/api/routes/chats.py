@@ -132,11 +132,15 @@ def _session_to_chat_item(session_info: dict) -> ChatItem:
     # Extract avatar from metadata
     avatar = _extract_avatar(session_info)
 
+    # Extract agent_id from metadata (default to "default")
+    metadata = session_info.get("metadata", {})
+    agent_id = metadata.get("agent_id", "default")
+
     return ChatItem(
         chat_id=key,  # 完整 key，如 "api:conv_1711084800"
         conversation_id=conversation_id,  # 短 ID，如 "conv_1711084800"
         name=name,
-        agent_id="default",
+        agent_id=agent_id,
         channel=channel,
         last_message_time=session_info.get("updated_at", ""),
         last_message=last_message,

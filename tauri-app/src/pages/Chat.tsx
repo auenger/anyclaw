@@ -211,6 +211,7 @@ function ChatContent() {
               agents={agents}
               selectedAgentId={agentId}
               onAgentChange={setAgentId}
+              lockAgent={!isNewChat && !!chatId}
             />
           </div>
         </div>

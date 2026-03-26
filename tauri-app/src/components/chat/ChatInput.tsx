@@ -21,7 +21,7 @@ import {
   AttachmentPreview,
   AttachmentInfo,
 } from "@/components/ai-elements/attachments";
-import { Bot, PlusIcon } from "lucide-react";
+import { Bot, PlusIcon, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const MAX_FILES = 10;
@@ -71,9 +71,11 @@ export interface ChatInputProps {
   status?: "submitted" | "streaming" | "ready" | "error";
   disabled?: boolean;
   placeholder?: string;
-  agents?: Array<{ id: string; name: string }>;
+  agents?: Array<{ id: string; name: string; emoji?: string }>;
   selectedAgentId?: string;
   onAgentChange?: (agentId: string) => void;
+  /** Lock agent selection - when true, agent selector is disabled */
+  lockAgent?: boolean;
   className?: string;
 }
 
@@ -86,6 +88,7 @@ export function ChatInput({
   agents = [],
   selectedAgentId,
   onAgentChange,
+  lockAgent = false,
   className,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -128,30 +131,45 @@ export function ChatInput({
           <PromptInputFooter className="border-0 p-0 gap-1">
             <PromptInputTools className="gap-0.5">
               <AddAttachmentButton />
-              {agents.length > 1 && onAgentChange && (
-                <PromptInputSelect
-                  value={selectedAgentId || agents[0]?.id || ""}
-                  onValueChange={onAgentChange}
-                >
-                  <PromptInputSelectTrigger
-                    className="h-7 text-xs gap-1 bg-transparent border-0 hover:bg-muted"
-                    data-testid="agent-selector"
+              {agents.length > 0 && (
+                lockAgent ? (
+                  // Locked agent display - show current agent, disabled selection
+                  <div
+                    className="h-7 text-xs gap-1 bg-muted/50 border border-subtle-border rounded-md px-2 cursor-not-allowed flex items-center"
+                    title="对话中无法切换 Agent，请新建对话"
                   >
-                    <Bot className="h-3.5 w-3.5" />
-                    <PromptInputSelectValue />
-                  </PromptInputSelectTrigger>
-                  <PromptInputSelectContent>
-                    {agents.map((a) => (
-                      <PromptInputSelectItem
-                        key={a.id}
-                        value={a.id}
-                        data-testid={`agent-option-${a.id}`}
+                    <Lock className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-muted-foreground">
+                      {agents.find(a => a.id === selectedAgentId)?.name || agents[0]?.name || "Agent"}
+                    </span>
+                  </div>
+                ) : (
+                  onAgentChange && (
+                    <PromptInputSelect
+                      value={selectedAgentId || agents[0]?.id || ""}
+                      onValueChange={onAgentChange}
+                    >
+                      <PromptInputSelectTrigger
+                        className="h-7 text-xs gap-1 bg-transparent border-0 hover:bg-muted"
+                        data-testid="agent-selector"
                       >
-                        {a.name}
-                      </PromptInputSelectItem>
-                    ))}
-                  </PromptInputSelectContent>
-                </PromptInputSelect>
+                        <Bot className="h-3.5 w-3.5" />
+                        <PromptInputSelectValue />
+                      </PromptInputSelectTrigger>
+                      <PromptInputSelectContent>
+                        {agents.map((a) => (
+                          <PromptInputSelectItem
+                            key={a.id}
+                            value={a.id}
+                            data-testid={`agent-option-${a.id}`}
+                          >
+                            {a.name}
+                          </PromptInputSelectItem>
+                        ))}
+                      </PromptInputSelectContent>
+                    </PromptInputSelect>
+                  )
+                )
               )}
             </PromptInputTools>
             <PromptInputSubmit

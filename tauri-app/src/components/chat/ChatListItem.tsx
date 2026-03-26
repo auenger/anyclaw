@@ -24,6 +24,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 
 interface ChatListItemProps {
   chat: ChatItem;
@@ -143,16 +144,24 @@ export function ChatListItem({
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <span className="text-[13px] font-medium truncate flex-1 text-foreground">
-              {chat.name === t.chat.newChat
-                ? new Date(chat.last_message_time).toLocaleString([], {
-                    month: "numeric",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : chat.name}
-            </span>
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <span className="text-[13px] font-medium truncate text-foreground">
+                {chat.name === t.chat.newChat
+                  ? new Date(chat.last_message_time).toLocaleString([], {
+                      month: "numeric",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : chat.name}
+              </span>
+              {/* Agent badge - only show for non-default agents */}
+              {chat.agent_id && chat.agent_id !== "default" && (
+                <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 shrink-0 font-normal">
+                  {chat.agent_id}
+                </Badge>
+              )}
+            </div>
           )}
           <div className="relative shrink-0">
             <span className="text-[10px] text-muted-foreground group-hover:opacity-0 transition-opacity duration-200">
