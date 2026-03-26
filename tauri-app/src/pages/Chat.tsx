@@ -361,8 +361,13 @@ export function Chat({ sidecarStatus }: ChatProps) {
     const loadAgents = async () => {
       try {
         const agentList = await api.listAgents();
+        // Normalize agents: use id as fallback when name is empty
+        const normalized = (agentList || []).map((a: Agent) => ({
+          ...a,
+          name: a.name || a.id,
+        }));
         // Sort agents: default first, then by name
-        const sorted = (agentList || []).sort((a: Agent, b: Agent) => {
+        const sorted = normalized.sort((a: Agent, b: Agent) => {
           if (a.id === "default") return -1;
           if (b.id === "default") return 1;
           return (a.name || "").localeCompare(b.name || "");

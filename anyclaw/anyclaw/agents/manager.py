@@ -107,9 +107,11 @@ class Agent:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
+        # Use id as fallback when name is empty
+        display_name = self.identity.name or self.agent_id
         return {
             "id": self.agent_id,
-            "name": self.identity.name,
+            "name": display_name,
             "avatar": self.identity.avatar,
             "emoji": self.identity.emoji,
             "workspace": str(self.workspace.get_path()),
