@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from anyclaw.api.deps import get_serve_manager
+from anyclaw.session.manager import SessionManager, SessionManagerConfig
 
 router = APIRouter()
 
@@ -227,22 +228,61 @@ async def get_chat(chat_id: str) -> ChatDetail:
     Raises:
         HTTPException: If chat not found
     """
+    from anyclaw.api.deps import get_agent_manager
+
     manager = get_serve_manager()
 
-    # Check if session_manager is available
-    if not manager.agent or not manager.agent.session_manager:
-        raise HTTPException(status_code=404, detail="Session manager not available")
+    # First, try default workspace
+    session = None
+    if manager.agent and manager.agent.session_manager:
+        session = manager.agent.session_manager.get(chat_id)
+        if not session:
+            # 尝试补充前缀（兼容旧版 API）
+            for prefix in ["api:", "cli:", "channel:"]:
+                session = manager.agent.session_manager.get(f"{prefix}{chat_id}")
+                if session and session.messages:
+                    break
+                session = None
 
-    # chat_id 已经是完整的 session key，直接查找
-    session = manager.agent.session_manager.get(chat_id)
-
+    # If not found in default workspace, search other agent workspaces
     if not session:
-        # 尝试补充前缀（兼容旧版 API）
-        for prefix in ["api:", "cli:", "channel:"]:
-            session = manager.agent.session_manager.get(f"{prefix}{chat_id}")
-            if session and session.messages:
-                break
-            session = None
+        try:
+            agent_manager = get_agent_manager()
+            agents = agent_manager.list_agents(include_disabled=False)
+
+            for agent_info in agents:
+                agent_id = agent_info.get("id", "")
+                if agent_id == "default":
+                    continue  # Already checked
+
+                agent_workspace = Path(agent_info.get("workspace", ""))
+                if not agent_workspace.exists():
+                    continue
+
+                try:
+                    session_config = SessionManagerConfig(
+                        workspace=agent_workspace,
+                        sessions_dir=agent_workspace / "sessions",
+                    )
+                    session_mgr = SessionManager(session_config)
+
+                    # Try direct lookup
+                    session = session_mgr.get(chat_id)
+                    if session:
+                        break
+
+                    # Try with prefixes
+                    for prefix in ["api:", "cli:", "channel:"]:
+                        session = session_mgr.get(f"{prefix}{chat_id}")
+                        if session and session.messages:
+                            break
+                    if session:
+                        break
+                except Exception as e:
+                    logger.debug(f"Failed to lookup chat in agent {agent_id}: {e}")
+                    continue
+        except RuntimeError:
+            pass  # AgentManager not available
 
     if not session:
         raise HTTPException(status_code=404, detail=f"Chat {chat_id} not found")
