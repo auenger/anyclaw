@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-25T22:00:00"
-  version: 91
+  last_updated: "2026-03-26T19:30:00"
+  version: 94
 
 # 父需求（用于分组追踪)
 parents:
@@ -72,7 +72,16 @@ parents:
       - feat-tasks-ui
 
 # 正在开发的需求
-active: []
+active:
+  - id: feat-chat-history-bug
+    name: 对话历史记录持久化 Bug 修复
+    description: 修复 Tauri 桌面应用中对话历史记录显示不完全、切换对话后历史消失的问题
+    priority: 90
+    size: S
+    dependencies: []
+    branch: feature/chat-history-bug
+    worktree: ../AnyClaw-chat-history-bug
+    started_at: "2026-03-26T19:30:00"
 
 # 等待中的需求（按优先级排序）
 pending:
@@ -162,6 +171,21 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-config-consistency
+    name: 配置系统一致性修复
+    description: 修复 Python loader.py 和 Tauri configSchema.ts 之间的配置不一致问题，添加缺失的 commands 配置模型和前端 channels/mcp_servers 表单支持
+    priority: 75
+    size: S
+    completed_at: "2026-03-26T01:30:00"
+    archive_path: features/archive/done-feat-config-consistency
+    value_points:
+      - CommandsConfig 和 CommandsPermissionsConfig 类 (loader.py)
+      - Config 类添加 commands 字段
+      - channelsFields 配置字段 (CLI/Feishu/Discord)
+      - mcpServerFields 配置占位字段
+      - configGroups 添加 channels 和 mcp_servers 分组
+      - 完整 i18n 翻译 (中英文)
+
   - id: feat-config-form-editor
     name: 配置表单编辑器
     description: 将配置文件页面从原始 TOML 编辑器升级为基于 Schema 的表单式配置界面，提供用户友好的配置编辑体验
