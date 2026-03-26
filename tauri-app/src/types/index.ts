@@ -195,47 +195,6 @@ export interface SystemLogEntry {
   timestamp: string;
 }
 
-export interface SessionLogInfo {
-  session_id: string;
-  project_id: string;
-  channel: string;
-  cwd?: string;
-  git_branch?: string;
-  started_at?: string;
-  ended_at?: string;
-  message_count: number;
-  tool_call_count: number;
-  duration_seconds?: number;
-  path: string;
-}
-
-export interface SessionLogDetail extends SessionLogInfo {
-  records: SessionRecord[];
-}
-
-export interface SessionRecord {
-  type: string;
-  uuid?: string;
-  parent_uuid?: string;
-  timestamp?: string;
-  content?: string;
-  tool_name?: string;
-  tool_input?: Record<string, unknown>;
-  tool_call_id?: string;
-  output?: string;
-  success?: boolean;
-  duration_ms?: number;
-  [key: string]: unknown;
-}
-
-export interface LogSearchResult {
-  session_id: string;
-  path: string;
-  type: string;
-  timestamp?: string;
-  content: Record<string, unknown>;
-}
-
 export interface LogStats {
   sessions_total: number;
   sessions_today: number;

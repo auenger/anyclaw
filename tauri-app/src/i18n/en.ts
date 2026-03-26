@@ -220,6 +220,8 @@ export const en = {
     sessionArchives: 'Sessions',
     systemLogs: 'System Logs',
     sessionDetail: 'Session Detail',
+    today: 'Today',
+    byLevel: 'By level',
   },
   settings: {
     title: 'Settings',

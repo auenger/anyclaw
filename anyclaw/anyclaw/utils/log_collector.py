@@ -1,21 +1,30 @@
 """System Log Collector
 
 Collects Python logging module output for the API.
+Supports both in-memory storage and file persistence.
 """
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 import threading
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import List, Optional, Iterator
 from typing_extensions import Literal
 
 
 LogLevel = Literal["DEBUG", "INFO", "WARN", "WARNING", "ERROR", "CRITICAL"]
 LogCategory = Literal["agent", "tool", "task", "system"]
+
+# Default log directory
+DEFAULT_LOG_DIR = Path.home() / ".anyclaw" / "logs"
+# Keep logs for N days
+DEFAULT_RETENTION_DAYS = 7
 
 
 @dataclass
@@ -44,9 +53,13 @@ class LogEntry:
             result["details"] = self.details
         return result
 
+    def to_jsonl(self) -> str:
+        """Convert to JSONL format (single line JSON)."""
+        return json.dumps(self.to_dict(), ensure_ascii=False)
+
 
 class LogCollectorHandler(logging.Handler):
-    """Custom logging handler that collects logs in memory."""
+    """Custom logging handler that collects logs in memory and persists to file."""
 
     def __init__(self, collector: "SystemLogCollector", *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -121,15 +134,16 @@ class LogCollectorHandler(logging.Handler):
 
 class SystemLogCollector:
     """
-    Collects system logs in memory for API access.
+    Collects system logs in memory and persists to file.
 
     Thread-safe singleton that captures Python logging output.
+    Logs are stored both in memory (for fast access) and on disk (for persistence).
     """
 
     _instance: Optional["SystemLogCollector"] = None
     _lock = threading.Lock()
 
-    def __new__(cls, max_entries: int = 1000):
+    def __new__(cls, max_entries: int = 1000, log_dir: Optional[Path] = None):
         """Singleton pattern."""
         if cls._instance is None:
             with cls._lock:
@@ -138,7 +152,7 @@ class SystemLogCollector:
                     cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, max_entries: int = 1000):
+    def __init__(self, max_entries: int = 1000, log_dir: Optional[Path] = None):
         """Initialize the collector."""
         if self._initialized:
             return
@@ -147,7 +161,22 @@ class SystemLogCollector:
         self._entries: deque[LogEntry] = deque(maxlen=max_entries)
         self._handler: Optional[LogCollectorHandler] = None
         self._subscribers: List[object] = []
+
+        # File persistence
+        self._log_dir = log_dir or DEFAULT_LOG_DIR
+        self._current_date: Optional[str] = None
+        self._file_handle: Optional[object] = None
+        self._file_lock = threading.Lock()
+
+        # Retention
+        self._retention_days = DEFAULT_RETENTION_DAYS
+
         self._initialized = True
+
+    @property
+    def log_dir(self) -> Path:
+        """Get log directory path."""
+        return self._log_dir
 
     def add_handler(self, level: int = logging.DEBUG) -> None:
         """Add the custom handler to Python logging."""
@@ -170,10 +199,16 @@ class SystemLogCollector:
         root_logger.removeHandler(self._handler)
         self._handler = None
 
+        # Close file handle
+        self._close_file_handle()
+
     def add_entry(self, entry: LogEntry) -> None:
-        """Add a log entry."""
+        """Add a log entry to memory and persist to file."""
         with self._lock:
             self._entries.append(entry)
+
+        # Persist to file
+        self._persist_entry(entry)
 
         # Notify subscribers
         for subscriber in self._subscribers:
@@ -182,6 +217,110 @@ class SystemLogCollector:
                     subscriber.on_log_entry(entry)
             except Exception:
                 pass
+
+    def _get_log_file_path(self, date_str: str) -> Path:
+        """Get log file path for a specific date."""
+        return self._log_dir / f"system-{date_str}.jsonl"
+
+    def _get_current_date(self) -> str:
+        """Get current date string (YYYY-MM-DD)."""
+        return datetime.now().strftime("%Y-%m-%d")
+
+    def _ensure_log_dir(self) -> None:
+        """Ensure log directory exists."""
+        if not self._log_dir.exists():
+            self._log_dir.mkdir(parents=True, exist_ok=True)
+            # Set restrictive permissions
+            os.chmod(self._log_dir, 0o700)
+
+    def _get_file_handle(self, date_str: str):
+        """Get or create file handle for the given date."""
+        with self._file_lock:
+            if self._current_date != date_str or self._file_handle is None:
+                # Close previous handle
+                self._close_file_handle()
+
+                # Ensure directory exists
+                self._ensure_log_dir()
+
+                # Open new file
+                file_path = self._get_log_file_path(date_str)
+                self._file_handle = open(file_path, "a", encoding="utf-8")
+                self._current_date = date_str
+
+                # Set restrictive permissions on file
+                os.chmod(file_path, 0o600)
+
+            return self._file_handle
+
+    def _close_file_handle(self) -> None:
+        """Close the current file handle."""
+        with self._file_lock:
+            if self._file_handle is not None:
+                try:
+                    self._file_handle.close()
+                except Exception:
+                    pass
+                self._file_handle = None
+                self._current_date = None
+
+    def _persist_entry(self, entry: LogEntry) -> None:
+        """Persist a log entry to file."""
+        try:
+            # Extract date from timestamp
+            date_str = entry.timestamp[:10]  # YYYY-MM-DD
+
+            # Get file handle (will rotate if date changed)
+            fh = self._get_file_handle(date_str)
+
+            # Write entry as JSONL
+            fh.write(entry.to_jsonl() + "\n")
+            fh.flush()
+
+        except Exception:
+            # Don't let file write errors affect logging
+            pass
+
+    def _read_logs_from_file(self, date_str: str) -> List[dict]:
+        """Read logs from a specific date file."""
+        file_path = self._get_log_file_path(date_str)
+
+        if not file_path.exists():
+            return []
+
+        logs = []
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        try:
+                            logs.append(json.loads(line))
+                        except json.JSONDecodeError:
+                            continue
+        except Exception:
+            pass
+
+        return logs
+
+    def _cleanup_old_logs(self) -> None:
+        """Clean up logs older than retention period."""
+        if not self._log_dir.exists():
+            return
+
+        cutoff_date = datetime.now()
+        from datetime import timedelta
+        cutoff_date = cutoff_date - timedelta(days=self._retention_days)
+        cutoff_str = cutoff_date.strftime("%Y-%m-%d")
+
+        try:
+            for log_file in self._log_dir.glob("system-*.jsonl"):
+                # Extract date from filename
+                date_part = log_file.stem.replace("system-", "")
+                if date_part < cutoff_str:
+                    log_file.unlink()
+        except Exception:
+            pass
 
     def get_logs(
         self,
@@ -204,30 +343,67 @@ class SystemLogCollector:
         Returns:
             List of log entry dictionaries
         """
-        with self._lock:
-            entries = list(self._entries)
+        today = self._get_current_date()
 
-        # Filter by level
-        if level and level != "all":
-            entries = [e for e in entries if e.level == level]
+        # Determine source: memory or file
+        if date and date != today:
+            # Historical date - read from file
+            raw_logs = self._read_logs_from_file(date)
+        else:
+            # Today or no date - read from memory
+            with self._lock:
+                raw_logs = [e.to_dict() for e in self._entries]
 
-        # Filter by category
-        if category and category != "all":
-            entries = [e for e in entries if e.category == category]
+        # Apply filters
+        filtered = []
+        for log in raw_logs:
+            # Filter by level
+            if level and level != "all" and log.get("level") != level:
+                continue
 
-        # Filter by date
-        if date:
-            entries = [e for e in entries if e.timestamp.startswith(date)]
+            # Filter by category
+            if category and category != "all" and log.get("category") != category:
+                continue
 
-        # Search in message
-        if search:
-            search_lower = search.lower()
-            entries = [e for e in entries if search_lower in e.message.lower()]
+            # Filter by date (for memory logs)
+            if date and log.get("timestamp", "").startswith(date) is False:
+                continue
 
-        # Apply limit (most recent first)
-        entries = entries[-limit:] if len(entries) > limit else entries
+            # Search in message
+            if search:
+                search_lower = search.lower()
+                if search_lower not in log.get("message", "").lower():
+                    continue
 
-        return [e.to_dict() for e in entries]
+            filtered.append(log)
+
+        # Apply limit (most recent last)
+        if len(filtered) > limit:
+            filtered = filtered[-limit:]
+
+        return filtered
+
+    def get_available_dates(self) -> List[str]:
+        """Get list of dates that have log files."""
+        dates = []
+
+        if not self._log_dir.exists():
+            return dates
+
+        try:
+            for log_file in self._log_dir.glob("system-*.jsonl"):
+                date_part = log_file.stem.replace("system-", "")
+                if len(date_part) == 10 and date_part.count("-") == 2:
+                    dates.append(date_part)
+        except Exception:
+            pass
+
+        # Add today if not in list (in-memory logs)
+        today = self._get_current_date()
+        if today not in dates:
+            dates.append(today)
+
+        return sorted(dates, reverse=True)
 
     def get_stats(self) -> dict:
         """Get log statistics."""
@@ -252,7 +428,7 @@ class SystemLogCollector:
         return stats
 
     def clear(self) -> None:
-        """Clear all log entries."""
+        """Clear all log entries from memory (does not delete files)."""
         with self._lock:
             self._entries.clear()
 
