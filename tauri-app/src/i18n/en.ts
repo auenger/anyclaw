@@ -400,6 +400,27 @@ export const en = {
     // Session
     'session.maxConcurrent': 'Max Concurrent Sessions',
     'session.maxConcurrentDesc': 'Number of sessions to process simultaneously',
+    // Channels - CLI
+    'channels.cliEnabled': 'Enable CLI Channel',
+    'channels.cliEnabledDesc': 'Enable command-line interface channel',
+    'channels.cliPrompt': 'Prompt',
+    'channels.cliAgentName': 'Agent Name',
+    // Channels - Feishu
+    'channels.feishuEnabled': 'Enable Feishu Channel',
+    'channels.feishuEnabledDesc': 'Enable Feishu/Lark integration',
+    'channels.feishuAppId': 'App ID',
+    'channels.feishuAppSecret': 'App Secret',
+    'channels.feishuEncryptKey': 'Encrypt Key',
+    'channels.feishuVerificationToken': 'Verification Token',
+    // Channels - Discord
+    'channels.discordEnabled': 'Enable Discord Channel',
+    'channels.discordEnabledDesc': 'Enable Discord bot integration',
+    'channels.discordToken': 'Bot Token',
+    'channels.discordGroupPolicy': 'Group Policy',
+    // MCP Servers
+    'mcpServers.note': 'MCP Servers',
+    'mcpServers.noteDesc': 'MCP servers are configured in Advanced mode. Switch to Advanced to edit mcp_servers section.',
+    'mcpServers.notePlaceholder': 'Use Advanced mode to configure MCP servers',
     // Groups
     'groups.agent': 'Agent',
     'groups.agentDesc': 'Basic configuration',
@@ -407,6 +428,10 @@ export const en = {
     'groups.llmDesc': 'Model and generation parameters',
     'groups.providers': 'Provider Configuration',
     'groups.providersDesc': 'API Keys and custom endpoints',
+    'groups.channels': 'Channels',
+    'groups.channelsDesc': 'CLI, Feishu, Discord channels',
+    'groups.mcpServers': 'MCP Servers',
+    'groups.mcpServersDesc': 'Model Context Protocol servers',
     'groups.security': 'Security',
     'groups.securityDesc': 'Access control and protection',
     'groups.memory': 'Memory System',

@@ -183,6 +183,29 @@ class ToolsConfig(BaseModel):
     max_iterations: int = 10
 
 
+class CommandsPermissionsConfig(BaseModel):
+    """命令权限配置"""
+
+    default: str = "*"
+    compact: Optional[str] = None
+    model: Optional[str] = None
+    agent: Optional[str] = None
+    session: Optional[str] = None
+
+
+class CommandsConfig(BaseModel):
+    """命令配置"""
+
+    admins: List[str] = Field(default_factory=list)
+    permissions: Optional[CommandsPermissionsConfig] = None
+
+
+class SessionConfig(BaseModel):
+    """会话配置"""
+
+    max_concurrent_sessions: int = 3
+
+
 class Config(BaseModel):
     """根配置"""
 
@@ -196,6 +219,8 @@ class Config(BaseModel):
     compression: CompressionConfig = Field(default_factory=CompressionConfig)
     streaming: StreamingConfig = Field(default_factory=StreamingConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
+    session: SessionConfig = Field(default_factory=SessionConfig)
+    commands: CommandsConfig = Field(default_factory=CommandsConfig)
 
 
 # 配置文件路径

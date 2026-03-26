@@ -402,6 +402,27 @@ export const zh: Translations = {
     // Session
     'session.maxConcurrent': '最大并发会话',
     'session.maxConcurrentDesc': '同时处理的会话数量',
+    // Channels - CLI
+    'channels.cliEnabled': '启用 CLI 通道',
+    'channels.cliEnabledDesc': '启用命令行接口通道',
+    'channels.cliPrompt': '提示符',
+    'channels.cliAgentName': '智能体名称',
+    // Channels - Feishu
+    'channels.feishuEnabled': '启用飞书通道',
+    'channels.feishuEnabledDesc': '启用飞书/Lark 集成',
+    'channels.feishuAppId': '应用 ID',
+    'channels.feishuAppSecret': '应用密钥',
+    'channels.feishuEncryptKey': '加密密钥',
+    'channels.feishuVerificationToken': '验证令牌',
+    // Channels - Discord
+    'channels.discordEnabled': '启用 Discord 通道',
+    'channels.discordEnabledDesc': '启用 Discord 机器人集成',
+    'channels.discordToken': '机器人令牌',
+    'channels.discordGroupPolicy': '群组策略',
+    // MCP Servers
+    'mcpServers.note': 'MCP 服务器',
+    'mcpServers.noteDesc': 'MCP 服务器需在高级模式中配置。切换到高级模式以编辑 mcp_servers 配置。',
+    'mcpServers.notePlaceholder': '使用高级模式配置 MCP 服务器',
     // Groups
     'groups.agent': '智能体',
     'groups.agentDesc': '基本配置',
@@ -409,6 +430,10 @@ export const zh: Translations = {
     'groups.llmDesc': '模型和生成参数',
     'groups.providers': 'Provider 配置',
     'groups.providersDesc': 'API Key 和自定义端点',
+    'groups.channels': '通道配置',
+    'groups.channelsDesc': 'CLI、飞书、Discord 通道',
+    'groups.mcpServers': 'MCP 服务器',
+    'groups.mcpServersDesc': 'Model Context Protocol 服务器',
     'groups.security': '安全设置',
     'groups.securityDesc': '访问控制和防护',
     'groups.memory': '记忆系统',

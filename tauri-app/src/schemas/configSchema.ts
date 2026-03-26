@@ -13,6 +13,8 @@ import {
   Activity,
   Wrench,
   Users,
+  MessageSquare,
+  Server,
 } from 'lucide-react'
 import type { ConfigGroupSchema, ConfigFieldSchema } from '@/types/config'
 
@@ -444,6 +446,124 @@ const sessionFields: ConfigFieldSchema[] = [
 ]
 
 /**
+ * Channels 配置分组
+ */
+const channelsFields: ConfigFieldSchema[] = [
+  // CLI Channel
+  {
+    key: 'channels.cli.enabled',
+    type: 'boolean',
+    label: 'config.channels.cliEnabled',
+    description: 'config.channels.cliEnabledDesc',
+    default: true,
+    group: 'channels',
+  },
+  {
+    key: 'channels.cli.prompt',
+    type: 'string',
+    label: 'config.channels.cliPrompt',
+    default: 'You: ',
+    group: 'channels',
+    advanced: true,
+  },
+  {
+    key: 'channels.cli.agent_name',
+    type: 'string',
+    label: 'config.channels.cliAgentName',
+    default: 'AnyClaw',
+    group: 'channels',
+    advanced: true,
+  },
+  // Feishu Channel
+  {
+    key: 'channels.feishu.enabled',
+    type: 'boolean',
+    label: 'config.channels.feishuEnabled',
+    description: 'config.channels.feishuEnabledDesc',
+    default: false,
+    group: 'channels',
+  },
+  {
+    key: 'channels.feishu.app_id',
+    type: 'string',
+    label: 'config.channels.feishuAppId',
+    default: '',
+    group: 'channels',
+    condition: { field: 'channels.feishu.enabled', value: true, operator: 'eq' },
+  },
+  {
+    key: 'channels.feishu.app_secret',
+    type: 'string',
+    label: 'config.channels.feishuAppSecret',
+    default: '',
+    group: 'channels',
+    sensitive: true,
+    condition: { field: 'channels.feishu.enabled', value: true, operator: 'eq' },
+  },
+  {
+    key: 'channels.feishu.encrypt_key',
+    type: 'string',
+    label: 'config.channels.feishuEncryptKey',
+    default: '',
+    group: 'channels',
+    advanced: true,
+    condition: { field: 'channels.feishu.enabled', value: true, operator: 'eq' },
+  },
+  {
+    key: 'channels.feishu.verification_token',
+    type: 'string',
+    label: 'config.channels.feishuVerificationToken',
+    default: '',
+    group: 'channels',
+    advanced: true,
+    condition: { field: 'channels.feishu.enabled', value: true, operator: 'eq' },
+  },
+  // Discord Channel
+  {
+    key: 'channels.discord.enabled',
+    type: 'boolean',
+    label: 'config.channels.discordEnabled',
+    description: 'config.channels.discordEnabledDesc',
+    default: false,
+    group: 'channels',
+  },
+  {
+    key: 'channels.discord.token',
+    type: 'string',
+    label: 'config.channels.discordToken',
+    default: '',
+    group: 'channels',
+    sensitive: true,
+    condition: { field: 'channels.discord.enabled', value: true, operator: 'eq' },
+  },
+  {
+    key: 'channels.discord.group_policy',
+    type: 'enum',
+    label: 'config.channels.discordGroupPolicy',
+    default: 'mention',
+    group: 'channels',
+    validation: { enum: ['mention', 'open'] },
+    condition: { field: 'channels.discord.enabled', value: true, operator: 'eq' },
+  },
+]
+
+/**
+ * MCP Servers 配置分组 (仅显示说明，实际配置通过 Advanced 模式编辑)
+ * 由于 mcp_servers 是动态字典结构，表单模式只显示基本说明
+ */
+const mcpServerFields: ConfigFieldSchema[] = [
+  {
+    key: '_mcp_servers_note',
+    type: 'string',
+    label: 'config.mcpServers.note',
+    description: 'config.mcpServers.noteDesc',
+    default: '',
+    group: 'mcp_servers',
+    placeholder: 'config.mcpServers.notePlaceholder',
+  },
+]
+
+/**
  * 配置分组定义
  */
 export const configGroups: ConfigGroupSchema[] = [
@@ -472,12 +592,30 @@ export const configGroups: ConfigGroupSchema[] = [
     order: 3,
   },
   {
+    id: 'channels',
+    label: 'config.groups.channels',
+    description: 'config.groups.channelsDesc',
+    icon: MessageSquare,
+    fields: channelsFields,
+    order: 4,
+    defaultCollapsed: true,
+  },
+  {
+    id: 'mcp_servers',
+    label: 'config.groups.mcpServers',
+    description: 'config.groups.mcpServersDesc',
+    icon: Server,
+    fields: mcpServerFields,
+    order: 5,
+    defaultCollapsed: true,
+  },
+  {
     id: 'security',
     label: 'config.groups.security',
     description: 'config.groups.securityDesc',
     icon: Shield,
     fields: securityFields,
-    order: 4,
+    order: 6,
     defaultCollapsed: true,
   },
   {
@@ -486,7 +624,7 @@ export const configGroups: ConfigGroupSchema[] = [
     description: 'config.groups.memoryDesc',
     icon: Brain,
     fields: memoryFields,
-    order: 5,
+    order: 7,
   },
   {
     id: 'compression',
@@ -494,7 +632,7 @@ export const configGroups: ConfigGroupSchema[] = [
     description: 'config.groups.compressionDesc',
     icon: Minimize2,
     fields: compressionFields,
-    order: 6,
+    order: 8,
     defaultCollapsed: true,
   },
   {
@@ -503,7 +641,7 @@ export const configGroups: ConfigGroupSchema[] = [
     description: 'config.groups.streamingDesc',
     icon: Activity,
     fields: streamingFields,
-    order: 7,
+    order: 9,
     defaultCollapsed: true,
   },
   {
@@ -512,7 +650,7 @@ export const configGroups: ConfigGroupSchema[] = [
     description: 'config.groups.toolsDesc',
     icon: Wrench,
     fields: toolsFields,
-    order: 8,
+    order: 10,
     defaultCollapsed: true,
   },
   {
@@ -521,7 +659,7 @@ export const configGroups: ConfigGroupSchema[] = [
     description: 'config.groups.sessionDesc',
     icon: Users,
     fields: sessionFields,
-    order: 9,
+    order: 11,
     defaultCollapsed: true,
   },
 ]
