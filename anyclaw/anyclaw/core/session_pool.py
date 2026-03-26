@@ -6,9 +6,12 @@ import asyncio
 import logging
 import time
 from pathlib import Path
-from typing import Dict
+from typing import TYPE_CHECKING, Dict, Optional
 
 from anyclaw.agent.loop import AgentLoop
+
+if TYPE_CHECKING:
+    from anyclaw.session.manager import SessionManager
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +22,9 @@ class SessionAgentPool:
 
     Each session gets its own AgentLoop instance for complete isolation.
     The pool manages creation, reuse, and cleanup of AgentLoop instances.
+
+    IMPORTANT: All AgentLoop instances share the same SessionManager to ensure
+    session data consistency across the pool and the main ServeManager.
     """
 
     def __init__(
@@ -26,6 +32,7 @@ class SessionAgentPool:
         workspace: Path,
         max_pool_size: int = 10,
         idle_timeout: float = 300.0,
+        session_manager: Optional["SessionManager"] = None,  # 共享的 SessionManager
     ):
         """
         Initialize the session agent pool.
@@ -34,10 +41,12 @@ class SessionAgentPool:
             workspace: Workspace path for AgentLoop instances
             max_pool_size: Maximum number of AgentLoop instances in pool
             idle_timeout: Idle timeout in seconds for cleanup
+            session_manager: Shared SessionManager instance for all AgentLoops
         """
         self.workspace = workspace
         self.max_pool_size = max_pool_size
         self.idle_timeout = idle_timeout
+        self._shared_session_manager = session_manager  # 共享的 SessionManager
 
         # Pool storage: session_key -> (AgentLoop, last_access_time)
         self._pool: Dict[str, tuple[AgentLoop, float]] = {}
@@ -45,7 +54,8 @@ class SessionAgentPool:
 
         logger.info(
             f"SessionAgentPool initialized: workspace={workspace}, "
-            f"max_size={max_pool_size}, idle_timeout={idle_timeout}s"
+            f"max_size={max_pool_size}, idle_timeout={idle_timeout}s, "
+            f"shared_session_manager={session_manager is not None}"
         )
 
     def get_or_create(self, session_key: str) -> AgentLoop:
@@ -66,13 +76,14 @@ class SessionAgentPool:
             logger.debug(f"SessionAgentPool: Reused AgentLoop for {session_key}")
             return agent
 
-        # Create new AgentLoop
+        # Create new AgentLoop with shared SessionManager
         logger.info(f"SessionAgentPool: Creating new AgentLoop for {session_key}")
         agent = AgentLoop(
             workspace=self.workspace,
             enable_session_manager=True,
             enable_message_tool=True,
             enable_archive=True,
+            session_manager=self._shared_session_manager,  # 使用共享的 SessionManager
         )
 
         # Set session key

@@ -57,6 +57,7 @@ class AgentLoop:
         enable_session_manager: bool = True,  # 新增：是否启用 SessionManager
         enable_message_tool: bool = True,  # 新增：是否启用 MessageTool
         enable_archive: bool = True,  # 新增：是否启用会话归档
+        session_manager: Optional["SessionManager"] = None,  # 新增：外部注入的 SessionManager
     ):
         self.history = ConversationHistory(max_length=10)
         self.skills: Dict[str, SkillDefinition] = {}
@@ -75,9 +76,12 @@ class AgentLoop:
         self._active_tasks: Dict[str, asyncio.Task] = {}
         self._abort_flags: Dict[str, bool] = {}
 
-        # SessionManager（可选）
-        self.session_manager: Optional["SessionManager"] = None
-        if enable_session_manager:
+        # SessionManager（可选）- 支持外部注入或内部创建
+        self.session_manager: Optional["SessionManager"] = session_manager
+        if self.session_manager:
+            # 使用外部注入的 SessionManager
+            logger.info(f"AgentLoop using shared SessionManager, workspace={self.workspace}")
+        elif enable_session_manager:
             from anyclaw.session.manager import SessionManager, SessionManagerConfig
 
             # 检查是否启用 SessionManager
