@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException
@@ -152,19 +153,63 @@ def _session_to_chat_item(session_info: dict) -> ChatItem:
 
 @router.get("/chats", response_model=list[ChatItem])
 async def list_chats() -> list[ChatItem]:
-    """List all chat sessions.
+    """List all chat sessions from all agent workspaces.
 
     Returns:
-        List of ChatItem
+        List of ChatItem from all agents
     """
-    manager = get_serve_manager()
+    from anyclaw.api.deps import get_agent_manager
+    from anyclaw.session.manager import SessionManager, SessionManagerConfig
+    from anyclaw.config.settings import settings
 
-    # Get sessions from SessionManager (via agent)
+    chats: list[ChatItem] = []
+
+    # Get all agent workspaces
+    try:
+        agent_manager = get_agent_manager()
+        agents = agent_manager.list_agents(include_disabled=False)
+    except RuntimeError:
+        # AgentManager not initialized, fallback to default only
+        agents = []
+
+    # Always include default workspace
+    manager = get_serve_manager()
     if manager.agent and manager.agent.session_manager:
         sessions = manager.agent.session_manager.list_sessions()
-        chats = [_session_to_chat_item(s) for s in sessions]
-    else:
-        chats = []
+        for s in sessions:
+            chat_item = _session_to_chat_item(s)
+            chat_item.agent_id = "default"  # Explicitly set default
+            chats.append(chat_item)
+
+    # Collect sessions from each agent workspace
+    for agent_info in agents:
+        agent_id = agent_info.get("id", "")
+        if agent_id == "default":
+            continue  # Already handled above
+
+        agent_workspace = Path(agent_info.get("workspace", ""))
+        if not agent_workspace.exists():
+            continue
+
+        # Create a temporary SessionManager for this workspace
+        try:
+            session_config = SessionManagerConfig(
+                workspace=agent_workspace,
+                sessions_dir=agent_workspace / "sessions",
+            )
+            session_mgr = SessionManager(session_config)
+            sessions = session_mgr.list_sessions()
+
+            for s in sessions:
+                chat_item = _session_to_chat_item(s)
+                chat_item.agent_id = agent_id  # Set agent_id from agent
+                chats.append(chat_item)
+        except Exception as e:
+            logger.warning(f"Failed to list sessions for agent {agent_id}: {e}")
+            continue
+
+    # Sort by updated_at descending
+    chats.sort(key=lambda x: x.last_message_time, reverse=True)
 
     return chats
 
