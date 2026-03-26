@@ -77,6 +77,13 @@ active: []
 # 等待中的需求（按优先级排序）
 pending:
 
+  - id: feat-agent-session-workspace
+    name: Agent Session 存储位置修复
+    description: 修复非默认 Agent 的 session 保存到错误目录的问题，让每个 Agent 的 session 保存到其对应的 workspace
+    priority: 90
+    size: S
+    dependencies: []
+
   - id: feat-models-panel
     name: 模型配置页面完善
     description: 完善 ModelsPanel 组件，连接后端 API，实现 Provider 配置管理、模型选择和连接测试功能

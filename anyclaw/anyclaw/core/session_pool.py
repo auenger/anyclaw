@@ -80,15 +80,34 @@ class SessionAgentPool:
             logger.debug(f"SessionAgentPool: Reused AgentLoop for {session_key}")
             return agent
 
-        # Create new AgentLoop with shared SessionManager
-        logger.info(f"SessionAgentPool: Creating new AgentLoop for {session_key} with workspace={effective_workspace}")
-        agent = AgentLoop(
-            workspace=effective_workspace,
-            enable_session_manager=True,
-            enable_message_tool=True,
-            enable_archive=True,
-            session_manager=self._shared_session_manager,  # 使用共享的 SessionManager
+        # Determine whether to use shared SessionManager
+        # Only use shared SessionManager when using the default workspace
+        # For agent-specific workspaces, let AgentLoop create its own SessionManager
+        use_shared_session_manager = (
+            self._shared_session_manager is not None
+            and effective_workspace == self.workspace
         )
+
+        if use_shared_session_manager:
+            # Use shared SessionManager (for default workspace)
+            logger.info(f"SessionAgentPool: Creating AgentLoop for {session_key} with workspace={effective_workspace} (shared SessionManager)")
+            agent = AgentLoop(
+                workspace=effective_workspace,
+                enable_session_manager=True,
+                enable_message_tool=True,
+                enable_archive=True,
+                session_manager=self._shared_session_manager,
+            )
+        else:
+            # Let AgentLoop create its own SessionManager (for agent-specific workspace)
+            logger.info(f"SessionAgentPool: Creating AgentLoop for {session_key} with workspace={effective_workspace} (dedicated SessionManager)")
+            agent = AgentLoop(
+                workspace=effective_workspace,
+                enable_session_manager=True,
+                enable_message_tool=True,
+                enable_archive=True,
+                session_manager=None,  # AgentLoop will create its own
+            )
 
         # Set session key
         agent.set_session_key(session_key)
