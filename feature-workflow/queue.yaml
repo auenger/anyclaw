@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-26T20:00:00"
-  version: 95
+  last_updated: "2026-03-26T22:30:00"
+  version: 98
 
 # 父需求（用于分组追踪)
 parents:
@@ -162,6 +162,21 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-chat-agent-selector
+    name: Chat Agent 选择器
+    description: 在 Chat 页面添加 Agent 切换功能，支持选择不同 Agent 进行对话，消息路由到对应 workspace
+    priority: 82
+    size: M
+    completed_at: "2026-03-26T22:30:00"
+    archive_path: features/archive/done-feat-chat-agent-selector
+    value_points:
+      - Chat.tsx 添加 agents 列表加载和 localStorage 持久化
+      - chatCtx.tsx 支持 initialAgentId 和 agentId 持久化
+      - InboundMessage 添加 agent_id 字段
+      - messages.py 传递 agent_id 到 InboundMessage
+      - ServeManager 添加 AgentManager 依赖
+      - SessionAgentPool 支持不同 workspace 参数
+
   - id: feat-chat-history-bug
     name: 对话历史记录持久化 Bug 修复
     description: 修复 Tauri 桌面应用中对话历史记录显示不完全、切换对话后历史消失的问题
