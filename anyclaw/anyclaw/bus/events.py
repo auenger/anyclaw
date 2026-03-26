@@ -19,6 +19,7 @@ class InboundMessage:
     media: list[str] = field(default_factory=list)  # Media file paths
     metadata: dict[str, Any] = field(default_factory=dict)  # Channel-specific data
     session_key_override: Optional[str] = None  # Optional override for thread-scoped sessions
+    agent_id: Optional[str] = None  # Target agent ID for message routing
 
     @property
     def session_key(self) -> str:

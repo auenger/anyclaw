@@ -86,6 +86,7 @@ async def send_message(request: SendMessageRequest) -> SendMessageResponse:
         content=request.content,
         metadata=request.metadata or {},
         session_key_override=session_key_override,
+        agent_id=request.agent_id,  # Pass agent_id for routing
     )
 
     # Publish to bus

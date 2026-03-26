@@ -58,16 +58,20 @@ class SessionAgentPool:
             f"shared_session_manager={session_manager is not None}"
         )
 
-    def get_or_create(self, session_key: str) -> AgentLoop:
+    def get_or_create(self, session_key: str, workspace: Optional[Path] = None) -> AgentLoop:
         """
         Get or create an AgentLoop for the given session.
 
         Args:
             session_key: Session identifier
+            workspace: Optional workspace path (defaults to pool's default workspace)
 
         Returns:
             AgentLoop instance for the session
         """
+        # Use provided workspace or default
+        effective_workspace = workspace or self.workspace
+
         # Check if exists in pool
         if session_key in self._pool:
             agent, _ = self._pool[session_key]
@@ -77,9 +81,9 @@ class SessionAgentPool:
             return agent
 
         # Create new AgentLoop with shared SessionManager
-        logger.info(f"SessionAgentPool: Creating new AgentLoop for {session_key}")
+        logger.info(f"SessionAgentPool: Creating new AgentLoop for {session_key} with workspace={effective_workspace}")
         agent = AgentLoop(
-            workspace=self.workspace,
+            workspace=effective_workspace,
             enable_session_manager=True,
             enable_message_tool=True,
             enable_archive=True,
@@ -94,18 +98,19 @@ class SessionAgentPool:
 
         return agent
 
-    async def get_or_create_async(self, session_key: str) -> AgentLoop:
+    async def get_or_create_async(self, session_key: str, workspace: Optional[Path] = None) -> AgentLoop:
         """
         Async version of get_or_create with lock protection.
 
         Args:
             session_key: Session identifier
+            workspace: Optional workspace path (defaults to pool's default workspace)
 
         Returns:
             AgentLoop instance for the session
         """
         async with self._lock:
-            return self.get_or_create(session_key)
+            return self.get_or_create(session_key, workspace)
 
     def remove(self, session_key: str) -> bool:
         """

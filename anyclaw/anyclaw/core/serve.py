@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from anyclaw.agent.loop import AgentLoop
+from anyclaw.agents.manager import AgentManager
 from anyclaw.bus.events import InboundMessage, OutboundMessage
 from anyclaw.bus.queue import MessageBus
 from anyclaw.channels.manager import ChannelManager
@@ -96,6 +97,7 @@ class ServeManager:
         config: Optional[Config] = None,
         workspace: Optional[Path] = None,
         status_file: Optional[Path] = None,
+        agent_manager: Optional[AgentManager] = None,
     ):
         """Initialize serve manager.
 
@@ -103,6 +105,7 @@ class ServeManager:
             config: Configuration (default: load from file)
             workspace: Workspace path
             status_file: Path to status file
+            agent_manager: AgentManager for multi-agent routing
         """
         self.config = config or get_config()
         self.workspace = workspace or Path(self.config.agent.workspace).expanduser()
@@ -112,6 +115,7 @@ class ServeManager:
         self.bus = MessageBus()
         self.channel_manager: Optional[ChannelManager] = None
         self.agent: Optional[AgentLoop] = None
+        self.agent_manager = agent_manager  # AgentManager for multi-agent routing
 
         # Command dispatcher for handling /model, /stop, etc.
         self._command_dispatcher = CommandDispatcher()
@@ -368,8 +372,18 @@ class ServeManager:
         """
         async with self._concurrency_semaphore:
             try:
-                # Get session-specific AgentLoop from pool
-                agent = self._session_pool.get_or_create(session_key)
+                # Determine workspace based on agent_id
+                target_workspace = self.workspace  # Default workspace
+                if msg.agent_id and self.agent_manager:
+                    agent = self.agent_manager.get_agent(msg.agent_id)
+                    if agent:
+                        target_workspace = agent.workspace.get_path()
+                        logger.info(f"[Serve] 🎯 Routing to agent '{msg.agent_id}' workspace: {target_workspace}")
+                    else:
+                        logger.warning(f"[Serve] ⚠️ Agent '{msg.agent_id}' not found, using default workspace")
+
+                # Get session-specific AgentLoop from pool with target workspace
+                agent = self._session_pool.get_or_create(session_key, workspace=target_workspace)
 
                 # 🔍 详细日志：开始 Agent 处理
                 logger.info(f"[Serve] 🤖 开始 Agent 处理: session_key={session_key}")

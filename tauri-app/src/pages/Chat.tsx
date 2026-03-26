@@ -16,6 +16,13 @@ import type { Attachment, Message } from "@/hooks/useChat";
 import type { ChatItem } from "@/lib/chat-utils";
 import type { SidecarStatus } from "@/types";
 import { useChatStore } from "@/stores/chat";
+
+// Agent type for agent selector
+interface Agent {
+  id: string;
+  name: string;
+  emoji?: string;
+}
 import {
   AlertDialog,
   AlertDialogAction,
@@ -331,6 +338,9 @@ function SSEHandler({ sidecarStatus, onRefreshChats }: { sidecarStatus: SidecarS
   return null;
 }
 
+// LocalStorage key for persisting selected agent
+const LAST_AGENT_ID_KEY = "anyclaw_last_agent_id";
+
 // Outer component that provides context
 interface ChatProps {
   sidecarStatus?: SidecarStatus;
@@ -341,6 +351,43 @@ export function Chat({ sidecarStatus }: ChatProps) {
 
   // Track refresh trigger for ChatProvider
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Agent list state
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [initialAgentId, setInitialAgentId] = useState<string | null>(null);
+
+  // Load agents from API
+  useEffect(() => {
+    const loadAgents = async () => {
+      try {
+        const agentList = await api.listAgents();
+        // Sort agents: default first, then by name
+        const sorted = (agentList || []).sort((a: Agent, b: Agent) => {
+          if (a.id === "default") return -1;
+          if (b.id === "default") return 1;
+          return (a.name || "").localeCompare(b.name || "");
+        });
+        setAgents(sorted);
+
+        // Load last selected agent from localStorage
+        const lastAgentId = localStorage.getItem(LAST_AGENT_ID_KEY);
+        // Verify the saved agent still exists
+        if (lastAgentId && sorted.some((a: Agent) => a.id === lastAgentId)) {
+          setInitialAgentId(lastAgentId);
+        } else if (sorted.length > 0) {
+          // Default to first agent (usually "default")
+          setInitialAgentId(sorted[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to load agents:", error);
+        // Fallback to default agent
+        setAgents([{ id: "default", name: "Default Agent" }]);
+        setInitialAgentId("default");
+      }
+    };
+
+    loadAgents();
+  }, [api]);
 
   // Fetch chat list from API
   const handleFetchChatList = useCallback(async (): Promise<ChatItem[]> => {
@@ -447,9 +494,8 @@ export function Chat({ sidecarStatus }: ChatProps) {
     <>
       {sidecarStatus && <SSEHandler sidecarStatus={sidecarStatus} onRefreshChats={handleRefreshChats} />}
       <ChatProvider
-        agents={[
-          { id: 'default', name: 'Default Agent' },
-        ]}
+        agents={agents}
+        initialAgentId={initialAgentId ?? undefined}
         onFetchChatList={handleFetchChatList}
         onLoadChat={handleLoadChat}
         onDeleteChat={handleDeleteChat}

@@ -57,14 +57,14 @@ def sidecar(
     config = get_config()
     ws_path = Path(data_dir) if data_dir else None
 
-    # Create serve manager
-    manager = ServeManager(config=config, workspace=ws_path)
-    set_serve_manager(manager)
-
-    # Create agent manager
+    # Create agent manager first (needed by ServeManager)
     workspace_path = ws_path or Path.home() / ".anyclaw" / "workspace"
     identity_manager = IdentityManager(workspace_path)
     agent_manager = AgentManager(workspace_path, identity_manager)
+
+    # Create serve manager with agent_manager
+    manager = ServeManager(config=config, workspace=ws_path, agent_manager=agent_manager)
+    set_serve_manager(manager)
 
     # Create cron service
     data_path = workspace_path / "data"

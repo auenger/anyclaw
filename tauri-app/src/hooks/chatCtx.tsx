@@ -50,6 +50,9 @@ interface ChatProviderProps {
   refreshTrigger?: number  // External trigger to refresh chat list
 }
 
+// localStorage key for persisting agent selection
+const LAST_AGENT_ID_KEY = 'anyclaw_lastAgentId'
+
 export function ChatProvider({
   children,
   agents = [{ id: 'default', name: 'Default Agent' }],
@@ -61,9 +64,22 @@ export function ChatProvider({
   onFetchChatList,
   refreshTrigger,
 }: ChatProviderProps) {
-  const [agentId, setAgentId] = useState(initialAgentId || agents[0]?.id || 'default')
+  // Initialize agentId from: initialAgentId > localStorage > first agent > 'default'
+  const [agentId, setAgentIdState] = useState(() => {
+    // Priority: initialAgentId > localStorage > first agent > 'default'
+    if (initialAgentId) return initialAgentId
+    const saved = localStorage.getItem(LAST_AGENT_ID_KEY)
+    if (saved && agents.some(a => a.id === saved)) return saved
+    return agents[0]?.id || 'default'
+  })
   const [chatList, setChatList] = useState<ChatItem[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Wrapper for setAgentId that persists to localStorage
+  const setAgentId = useCallback((id: string) => {
+    setAgentIdState(id)
+    localStorage.setItem(LAST_AGENT_ID_KEY, id)
+  }, [])
 
   const activeChatId = useChatStore((s) => s.activeChatId)
   const chats = useChatStore((s) => s.chats)
