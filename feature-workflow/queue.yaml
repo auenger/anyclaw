@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-26T22:30:00"
-  version: 98
+  last_updated: "2026-03-26T23:30:00"
+  version: 99
 
 # 父需求（用于分组追踪)
 parents:
@@ -72,7 +72,15 @@ parents:
       - feat-tasks-ui
 
 # 正在开发的需求
-active: []
+active:
+  - id: feat-optimize-logs-page
+    name: Logs 页面优化
+    description: 移除会话归档 Tab，实现系统日志持久化，修复日期选择功能
+    priority: 50
+    size: M
+    dependencies: []
+    branch: feature/optimize-logs-page
+    started_at: "2026-03-26T23:35:00"
 
 # 等待中的需求（按优先级排序）
 pending:

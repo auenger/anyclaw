@@ -222,6 +222,8 @@ export const zh: Translations = {
     sessionArchives: '会话归档',
     systemLogs: '系统日志',
     sessionDetail: '会话详情',
+    today: '今天',
+    byLevel: '按级别',
   },
   settings: {
     title: '设置',

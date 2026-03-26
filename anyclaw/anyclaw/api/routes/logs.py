@@ -248,6 +248,17 @@ async def get_system_logs(
     return [SystemLogEntry(**log) for log in logs]
 
 
+@router.get("/logs/dates", response_model=List[str])
+async def get_log_available_dates() -> List[str]:
+    """Get list of dates that have log files.
+
+    Returns:
+        List of date strings (YYYY-MM-DD) in descending order
+    """
+    collector = get_log_collector()
+    return collector.get_available_dates()
+
+
 @router.get("/logs/stream")
 async def stream_logs(
     category: Optional[str] = Query(None, description="Filter by category"),
