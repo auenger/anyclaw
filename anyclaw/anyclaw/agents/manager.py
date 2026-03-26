@@ -315,11 +315,36 @@ class AgentManager:
         }
 
     async def load_all_agents(self) -> List[Agent]:
-        """Load all agents from disk."""
-        # Load identities
+        """Load all agents from disk.
+
+        This includes:
+        1. The root workspace as "default" agent
+        2. All agents in the agents/ subdirectory
+        """
+        # First, register the root workspace as "default" agent
+        root_identity = self.identity_manager.get_root_identity()
+        root_workspace = AgentWorkspace(self.root_workspace)
+        root_catalog = AgentToolCatalog(root_workspace.get_config_dir() / "tools.json")
+
+        default_agent = Agent(
+            agent_id="default",
+            identity=root_identity,
+            workspace=root_workspace,
+            tool_catalog=root_catalog,
+            enabled=True,
+        )
+        self._agents["default"] = default_agent
+        self._default_agent_id = "default"
+        logger.info("Registered root workspace as 'default' agent")
+
+        # Then load additional agents from agents/ subdirectory
         identities = self.identity_manager.list_agents()
 
         for agent_id, identity in identities.items():
+            # Skip if already exists (shouldn't happen, but safety check)
+            if agent_id in self._agents:
+                continue
+
             # Create workspace
             agent_workspace = AgentWorkspace(self.agents_dir / agent_id)
 
@@ -340,6 +365,6 @@ class AgentManager:
 
             self._agents[agent_id] = agent
 
-        logger.info(f"Loaded {len(self._agents)} agents from disk")
+        logger.info(f"Loaded {len(self._agents)} agents (1 default + {len(self._agents) - 1} additional)")
 
         return list(self._agents.values())

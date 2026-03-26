@@ -740,7 +740,7 @@ pub fn run() {
 
             let store = app.store("settings.json").unwrap();
             if !store.has("preferred_port") {
-                store.set("preferred_port", 62616_u16);
+                store.set("preferred_port", 62601_u16);
             }
 
             // 检测运行模式并记录日志

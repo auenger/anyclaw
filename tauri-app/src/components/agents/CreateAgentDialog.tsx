@@ -196,14 +196,17 @@ export function CreateAgentDialog({ isOpen, onClose, onCreate }: CreateAgentDial
           {/* Workspace (optional) */}
           <div>
             <label className="block text-sm font-medium mb-1">
-              {t.agents.workspace} ({t.common.developing})
+              {t.agents.workspace}
             </label>
             <Input
               value={workspace}
               onChange={(e) => setWorkspace(e.target.value)}
-              placeholder="~/.anyclaw/agents/my-agent"
+              placeholder={t.agents.workspacePlaceholder || "留空使用默认路径"}
               disabled={isCreating}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              {t.agents.workspaceDesc || "指定 Agent 的工作目录，留空则在默认位置创建"}
+            </p>
           </div>
 
           {/* Error */}

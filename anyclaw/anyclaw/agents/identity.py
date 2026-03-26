@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 
 from anyclaw.config.settings import settings
+from anyclaw.workspace.templates import sync_workspace_templates
 
 
 logger = logging.getLogger(__name__)
@@ -108,7 +109,7 @@ class IdentityManager:
         workspace: str = "",
     ) -> AgentIdentity:
         """
-        Create a new agent identity.
+        Create a new agent identity with full workspace structure.
 
         Args:
             agent_id: Agent ID
@@ -122,38 +123,45 @@ class IdentityManager:
         Returns:
             Created AgentIdentity
         """
-        # Create agent workspace
-        agent_workspace = self.agents_dir / agent_id
+        # Determine workspace path
+        if workspace:
+            agent_workspace = Path(workspace)
+        else:
+            agent_workspace = self.agents_dir / agent_id
+
+        # Create workspace directory
         agent_workspace.mkdir(parents=True, exist_ok=True)
 
-        # Create IDENTITY.md template
+        # Sync workspace templates (creates SOUL.md, USER.md, memory/, skills/, etc.)
+        sync_workspace_templates(agent_workspace, silent=True)
+
+        # Override SOUL.md with agent-specific content
+        soul_template = self._generate_soul_template(
+            name=name,
+            creature=creature,
+            vibe=vibe,
+            workspace=str(agent_workspace),
+            emoji=emoji,
+        )
+        soul_file = agent_workspace / "SOUL.md"
+        soul_file.write_text(soul_template, encoding="utf-8")
+
+        # Create IDENTITY.md
         identity_template = self._generate_identity_template(
             name=name,
             creature=creature,
             vibe=vibe,
             emoji=emoji,
             avatar=avatar,
-            workspace=workspace,
+            workspace=str(agent_workspace),
         )
-
         identity_file = agent_workspace / "IDENTITY.md"
         identity_file.write_text(identity_template, encoding="utf-8")
 
-        # Create SOUL.md template
-        soul_template = self._generate_soul_template(
-            name=name,
-            creature=creature,
-            vibe=vibe,
-        workspace=workspace,
-        )
-
-        soul_file = agent_workspace / "SOUL.md"
-        soul_file.write_text(soul_template, encoding="utf-8")
-
-        # Create workspace directory
-        if workspace:
-            workspace_dir = Path(workspace)
-            workspace_dir.mkdir(parents=True, exist_ok=True)
+        # Create additional directories for agent workspace
+        (agent_workspace / "sessions").mkdir(exist_ok=True)
+        (agent_workspace / "data").mkdir(exist_ok=True)
+        (agent_workspace / "files").mkdir(exist_ok=True)
 
         # Create AgentIdentity object
         identity = AgentIdentity(
@@ -161,11 +169,94 @@ class IdentityManager:
             name=name,
             avatar=avatar,
             emoji=emoji,
-            workspace=str(workspace) if workspace else "",
+            workspace=str(agent_workspace),
         )
 
-        logger.info(f"Created agent identity: {agent_id} - {name}")
+        logger.info(f"Created agent identity: {agent_id} - {name} at {agent_workspace}")
         return identity
+
+    def get_root_identity(self) -> AgentIdentity:
+        """
+        Get the root workspace identity (default agent).
+
+        The root workspace is the main workspace (~/.anyclaw/workspace/)
+        which serves as the default agent.
+
+        Returns:
+            AgentIdentity for the root workspace
+        """
+        # Check if SOUL.md exists in root workspace
+        soul_file = self.root_workspace / "SOUL.md"
+
+        name = "Default"
+        emoji = "🤖"
+        workspace = str(self.root_workspace)
+
+        if soul_file.exists():
+            try:
+                content = soul_file.read_text(encoding="utf-8")
+                # Skip frontmatter (between --- lines)
+                if content.startswith("---"):
+                    parts = content.split("---", 2)
+                    if len(parts) >= 3:
+                        content = parts[2]
+
+                # Parse name from SOUL.md using various patterns
+                for line in content.split("\n"):
+                    line = line.strip()
+                    if not line:
+                        continue
+
+                    line_lower = line.lower()
+
+                    # Pattern: "_You're Name, ..." (italicized introduction)
+                    if line.startswith("_") and ("you're " in line_lower or "you are " in line_lower):
+                        # Find the name after "You're"
+                        idx = line_lower.find("you're ")
+                        if idx >= 0:
+                            rest = line[idx + 7:].strip()
+                            # Remove trailing underscore and punctuation
+                            rest = rest.rstrip("_.,")
+                            extracted = self._extract_name_from_line(rest)
+                            if extracted and len(extracted) < 30:  # Sanity check
+                                name = extracted
+                                break
+                        continue
+
+                    # Pattern: "I am Name" or "I'm Name"
+                    if line_lower.startswith("i am ") or line_lower.startswith("i'm "):
+                        prefix_len = 5 if line_lower.startswith("i am ") else 4
+                        rest = line[prefix_len:].strip()
+                        extracted = self._extract_name_from_line(rest)
+                        if extracted and len(extracted) < 30:
+                            name = extracted
+                            break
+            except Exception as e:
+                logger.warning(f"Failed to parse SOUL.md: {e}")
+
+        return AgentIdentity(
+            agent_id="default",
+            name=name,
+            avatar="",
+            emoji=emoji,
+            workspace=workspace,
+        )
+
+    def _extract_name_from_line(self, text: str) -> Optional[str]:
+        """Extract name from a line like 'Yilia, not a chatbot' or 'Claude (🤖)'."""
+        # Remove trailing clauses like ", not a chatbot"
+        if "," in text:
+            text = text.split(",")[0].strip()
+
+        # Handle "Name (emoji)" pattern
+        if "(" in text:
+            text = text.split("(")[0].strip()
+
+        # Handle "Name - description" pattern
+        if " - " in text:
+            text = text.split(" - ")[0].strip()
+
+        return text if text else None
 
     def list_agents(self) -> Dict[str, AgentIdentity]:
         """
@@ -365,6 +456,7 @@ Notes:
         creature: str,
         vibe: str,
         workspace: str,
+        emoji: str = "🤖",
     ) -> str:
         """Generate SOUL.md template content."""
         return f"""# Soul

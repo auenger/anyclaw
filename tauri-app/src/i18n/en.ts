@@ -63,6 +63,8 @@ export const en = {
     pageTitle: 'Agent Management',
     status: 'Status',
     workspace: 'Workspace',
+    workspacePlaceholder: 'e.g. /path/to/workspace',
+    workspaceDesc: 'Custom workspace path, leave empty for default location',
     config: 'Config',
     configFound: 'agent.yaml found',
     noConfig: 'No config file',

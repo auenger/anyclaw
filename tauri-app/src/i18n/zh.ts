@@ -65,6 +65,8 @@ export const zh: Translations = {
     pageTitle: '智能体管理',
     status: '状态',
     workspace: '工作区',
+    workspacePlaceholder: '例如 /path/to/workspace',
+    workspaceDesc: '指定 Agent 的工作目录，留空则在默认位置创建',
     config: '配置',
     configFound: '已找到 agent.yaml',
     noConfig: '无配置文件',
