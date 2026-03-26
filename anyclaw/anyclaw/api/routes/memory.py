@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from anyclaw.config.loader import get_config
+from anyclaw.agents.identity import IdentityManager
 
 logger = logging.getLogger(__name__)
 
@@ -76,31 +77,59 @@ class SearchRequest(BaseModel):
     memory_id: Optional[str] = None
 
 
-def get_memory_dir() -> Path:
-    """Get memory directory path."""
+def get_root_workspace() -> Path:
+    """Get root workspace path."""
     config = get_config()
-    workspace = Path(config.agent.workspace).expanduser()
-    return workspace / "memory"
+    return Path(config.agent.workspace).expanduser()
+
+
+def get_memory_dir(agent_id: Optional[str] = None) -> Path:
+    """Get memory directory path for global or specific agent.
+
+    Args:
+        agent_id: If None, returns global memory dir; otherwise agent's memory dir
+
+    Returns:
+        Path to memory directory
+    """
+    root_workspace = get_root_workspace()
+
+    if agent_id is None or agent_id == "MEMORY" or agent_id == "global":
+        # Global memory
+        return root_workspace / "memory"
+    else:
+        # Agent memory - get agent's workspace
+        identity_manager = IdentityManager(root_workspace)
+        identity = identity_manager.get_identity(agent_id)
+
+        if identity and identity.workspace:
+            agent_workspace = Path(identity.workspace).expanduser()
+        else:
+            # Fallback to default agent workspace
+            agent_workspace = root_workspace / "agents" / agent_id
+
+        return agent_workspace / "memory"
 
 
 def get_memory_path(memory_id: str) -> Path:
     """Get memory file path."""
-    memory_dir = get_memory_dir()
-    if memory_id == "MEMORY" or memory_id == "global":
-        return memory_dir / "MEMORY.md"
-    else:
-        # Agent memory
-        return memory_dir / "agents" / f"{memory_id}.md"
+    memory_dir = get_memory_dir(memory_id)
+    return memory_dir / "MEMORY.md"
+
+
+def get_identity_manager() -> IdentityManager:
+    """Get identity manager instance."""
+    return IdentityManager(get_root_workspace())
 
 
 @router.get("/memory")
 async def list_memories() -> list[MemoryInfo]:
     """List all memories."""
-    memory_dir = get_memory_dir()
     memories = []
 
     # Global memory
-    global_memory = memory_dir / "MEMORY.md"
+    global_memory_dir = get_memory_dir()
+    global_memory = global_memory_dir / "MEMORY.md"
     global_exists = global_memory.exists()
     global_chars = len(global_memory.read_text()) if global_exists else 0
 
@@ -114,23 +143,32 @@ async def list_memories() -> list[MemoryInfo]:
         )
     )
 
-    # Agent memories
-    config = get_config()
-    workspace = Path(config.agent.workspace).expanduser()
-    agents_dir = workspace / "agents"
+    # Agent memories - iterate agents and get their memory from their workspace
+    root_workspace = get_root_workspace()
+    agents_dir = root_workspace / "agents"
+    identity_manager = get_identity_manager()
 
     if agents_dir.exists():
         for agent_dir in agents_dir.iterdir():
             if agent_dir.is_dir():
-                memory_file = agent_dir / "MEMORY.md"
+                agent_id = agent_dir.name
+
+                # Get agent's memory directory from agent's workspace
+                agent_memory_dir = get_memory_dir(agent_id)
+                memory_file = agent_memory_dir / "MEMORY.md"
                 exists = memory_file.exists()
                 chars = len(memory_file.read_text()) if exists else 0
+
+                # Get agent name from identity
+                identity = identity_manager.get_identity(agent_id)
+                agent_name = identity.name if identity else agent_id
+
                 memories.append(
                     MemoryInfo(
-                        id=agent_dir.name,
-                        name=f"{agent_dir.name} Memory",
+                        id=agent_id,
+                        name=f"{agent_name} Memory",
                         is_global=False,
-                        agent_id=agent_dir.name,
+                        agent_id=agent_id,
                         exists=exists,
                         char_count=chars,
                     )
@@ -172,7 +210,7 @@ async def update_memory(memory_id: str, request: UpdateMemoryRequest) -> dict:
 @router.get("/memory/{memory_id}/daily-logs")
 async def get_daily_logs(memory_id: str, days: int = 7) -> list[DailyLogInfo]:
     """Get daily logs."""
-    memory_dir = get_memory_dir()
+    memory_dir = get_memory_dir(memory_id)
     logs = []
 
     # Get daily logs directory
@@ -209,7 +247,7 @@ async def get_memory_stats(memory_id: str) -> MemoryStats:
     long_term_chars = len(memory_path.read_text()) if long_term_exists else 0
 
     # Count daily logs
-    memory_dir = get_memory_dir()
+    memory_dir = get_memory_dir(memory_id)
     daily_dir = memory_dir / "daily"
     daily_logs_count = 0
     oldest_log = None
@@ -235,19 +273,37 @@ async def get_memory_stats(memory_id: str) -> MemoryStats:
 async def search_memory(request: SearchRequest) -> SearchResponse:
     """Search memory content."""
     results = []
-    memory_dir = get_memory_dir()
-
-    if not memory_dir.exists():
-        return SearchResponse(results=results)
-
     keyword = request.keyword.lower()
     target_id = request.memory_id
 
-    # Search in memory files
-    for md_file in memory_dir.glob("**/*.md"):
-        if target_id and target_id not in str(md_file):
-            continue
+    if target_id:
+        # Search in specific memory
+        memory_dir = get_memory_dir(target_id)
+        if memory_dir.exists():
+            _search_in_dir(memory_dir, keyword, results)
+    else:
+        # Search in all memories
+        # 1. Global memory
+        global_memory_dir = get_memory_dir()
+        if global_memory_dir.exists():
+            _search_in_dir(global_memory_dir, keyword, results)
 
+        # 2. Agent memories
+        root_workspace = get_root_workspace()
+        agents_dir = root_workspace / "agents"
+        if agents_dir.exists():
+            for agent_dir in agents_dir.iterdir():
+                if agent_dir.is_dir():
+                    agent_memory_dir = get_memory_dir(agent_dir.name)
+                    if agent_memory_dir.exists():
+                        _search_in_dir(agent_memory_dir, keyword, results)
+
+    return SearchResponse(results=results)
+
+
+def _search_in_dir(memory_dir: Path, keyword: str, results: list) -> None:
+    """Search for keyword in memory directory."""
+    for md_file in memory_dir.glob("**/*.md"):
         try:
             content = md_file.read_text()
             lines = content.split("\n")
@@ -270,5 +326,3 @@ async def search_memory(request: SearchRequest) -> SearchResponse:
                 )
         except Exception as e:
             logger.warning(f"Error searching {md_file}: {e}")
-
-    return SearchResponse(results=results)
