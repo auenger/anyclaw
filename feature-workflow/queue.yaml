@@ -2,8 +2,8 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-26T22:30:00"
-  version: 98
+  last_updated: "2026-03-27T12:00:00"
+  version: 99
 
 # 父需求（用于分组追踪)
 parents:
@@ -162,6 +162,39 @@ blocked: []
 
 # 已完成的需求
 completed:
+  - id: feat-logs-page-refactor
+    name: Logs 页面重构
+    description: 重构 Logs 页面：移除会话归档，只保留系统日志，接入日期选择和持久化日志查看
+    priority: 75
+    size: S
+    completed_at: "2026-03-27T12:00:00"
+    value_points:
+      - 移除会话归档 Tab 和 session 相关 UI
+      - 日期选择器改为下拉列表（显示可用日期）
+      - "今天"快捷按钮
+      - useLogs Hook 精简（移除 session 逻辑，添加 availableDates）
+      - API Client 移除 session 方法，添加 getAvailableDates
+      - Stats footer 仅显示系统日志统计
+      - i18n 更新（中英文）
+
+  - id: feat-log-persistence
+    name: 日志文件持久化
+    description: 为 SystemLogCollector 添加后台线程文件持久化，支持按日期查看历史日志和自动清理，不阻塞事件循环
+    priority: 70
+    size: M
+    completed_at: "2026-03-27T10:00:00"
+    archive_path: features/archive/done-feat-log-persistence
+    value_points:
+      - SystemLogCollector 后台线程写入（生产者-消费者模式）
+      - JSONL 按日期分割文件（~/.anyclaw/logs/）
+      - add_entry() 非阻塞（内存+queue.put_nowait）
+      - 历史日志文件读取（get_logs date=historical）
+      - get_available_dates() 日期列表 API
+      - 日志自动清理（默认保留 7 天）
+      - GET /api/logs/dates 端点
+      - 文件/目录权限安全（0o600/0o700）
+      - 21 个新增测试覆盖所有场景
+
   - id: feat-agent-session-workspace
     name: Agent Session 存储位置修复
     description: 修复非默认 Agent 的 session 保存到错误目录的问题，让每个 Agent 的 session 保存到其对应的 workspace

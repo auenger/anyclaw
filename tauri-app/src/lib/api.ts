@@ -6,7 +6,7 @@ import type {
   Settings, Skill, SubAgent, CronTask, Agent,
   CreateAgentRequest, UpdateAgentRequest,
   MemoryInfo, MemoryContent, DailyLogInfo, MemoryStats, SearchResponse,
-  SystemLogEntry, SessionLogInfo, SessionLogDetail, LogSearchResult, LogStats,
+  SystemLogEntry, LogStats,
   LogCategory, LogLevel, Provider, ProviderDetail, ProviderConfig, TestResult,
   CronJob, CreateJobRequest, UpdateJobRequest, RunLog, RunResult
 } from '../types';
@@ -265,34 +265,8 @@ export class ApiClient {
     return response.json();
   }
 
-  async getSessionLogs(
-    date?: string,
-    project?: string,
-    channel?: string,
-    limit: number = 50
-  ): Promise<SessionLogInfo[]> {
-    const params = new URLSearchParams();
-    if (date) params.append('date', date);
-    if (project) params.append('project', project);
-    if (channel) params.append('channel', channel);
-    params.append('limit', String(limit));
-
-    const response = await fetch(`${this.baseUrl}/api/logs/sessions?${params}`);
-    return response.json();
-  }
-
-  async getSessionDetail(sessionId: string): Promise<SessionLogDetail> {
-    const response = await fetch(`${this.baseUrl}/api/logs/sessions/${sessionId}`);
-    return response.json();
-  }
-
-  async searchSessionLogs(query: string, tool?: string, limit: number = 20): Promise<LogSearchResult[]> {
-    const params = new URLSearchParams();
-    params.append('q', query);
-    if (tool) params.append('tool', tool);
-    params.append('limit', String(limit));
-
-    const response = await fetch(`${this.baseUrl}/api/logs/sessions/search?${params}`);
+  async getAvailableDates(): Promise<string[]> {
+    const response = await fetch(`${this.baseUrl}/api/logs/dates`);
     return response.json();
   }
 

@@ -216,10 +216,9 @@ export const en = {
     loadOlder: 'Loading older logs...',
     live: 'Live',
     totalEntries: 'entries',
-    duration: 'Duration',
-    sessionArchives: 'Sessions',
-    systemLogs: 'System Logs',
-    sessionDetail: 'Session Detail',
+    today: 'Today',
+    availableDates: 'Available dates',
+    totalLogs: 'Total logs',
   },
   settings: {
     title: 'Settings',

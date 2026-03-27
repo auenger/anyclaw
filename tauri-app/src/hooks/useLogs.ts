@@ -1,9 +1,9 @@
 /**
  * useLogs Hook
  *
- * Provides log management functionality:
- * - Session logs (from SessionArchiveManager)
+ * Provides system log management functionality:
  * - System logs (from SystemLogCollector)
+ * - Available dates for historical log viewing
  * - Real-time log streaming via SSE
  */
 
@@ -11,9 +11,6 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { getApiClient } from '../lib/api';
 import type {
   SystemLogEntry,
-  SessionLogInfo,
-  SessionLogDetail,
-  LogSearchResult,
   LogStats,
   LogCategory,
   LogLevel,
@@ -21,75 +18,30 @@ import type {
 
 export interface UseLogsReturn {
   // State
-  sessionLogs: SessionLogInfo[];
   systemLogs: SystemLogEntry[];
-  selectedSession: SessionLogDetail | null;
+  availableDates: string[];
   stats: LogStats | null;
   isLoading: boolean;
   error: string | null;
   isLive: boolean;
 
   // Actions
-  loadSessionLogs: (date?: string, project?: string, channel?: string) => Promise<void>;
-  loadSessionDetail: (sessionId: string) => Promise<void>;
   loadSystemLogs: (level?: LogLevel | 'all', category?: LogCategory | 'all', date?: string, search?: string) => Promise<void>;
-  searchSessions: (query: string, tool?: string) => Promise<LogSearchResult[]>;
+  loadAvailableDates: () => Promise<void>;
   loadStats: () => Promise<void>;
   toggleLive: () => void;
-  clearSelection: () => void;
   refresh: () => Promise<void>;
 }
 
 export function useLogs(port?: number): UseLogsReturn {
-  const [sessionLogs, setSessionLogs] = useState<SessionLogInfo[]>([]);
   const [systemLogs, setSystemLogs] = useState<SystemLogEntry[]>([]);
-  const [selectedSession, setSelectedSession] = useState<SessionLogDetail | null>(null);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [stats, setStats] = useState<LogStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
 
   const eventSourceRef = useRef<EventSource | null>(null);
-
-  // Load session logs
-  const loadSessionLogs = useCallback(async (
-    date?: string,
-    project?: string,
-    channel?: string
-  ) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const api = getApiClient(port);
-      const data = await api.getSessionLogs(date, project, channel);
-      setSessionLogs(data);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load session logs';
-      setError(errorMessage);
-      console.error('Failed to load session logs:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [port]);
-
-  // Load session detail
-  const loadSessionDetail = useCallback(async (sessionId: string) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const api = getApiClient(port);
-      const data = await api.getSessionDetail(sessionId);
-      setSelectedSession(data);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load session detail';
-      setError(errorMessage);
-      console.error('Failed to load session detail:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [port]);
 
   // Load system logs
   const loadSystemLogs = useCallback(async (
@@ -114,17 +66,14 @@ export function useLogs(port?: number): UseLogsReturn {
     }
   }, [port]);
 
-  // Search sessions
-  const searchSessions = useCallback(async (
-    query: string,
-    tool?: string
-  ): Promise<LogSearchResult[]> => {
+  // Load available dates
+  const loadAvailableDates = useCallback(async () => {
     try {
       const api = getApiClient(port);
-      return api.searchSessionLogs(query, tool);
+      const data = await api.getAvailableDates();
+      setAvailableDates(data);
     } catch (err) {
-      console.error('Failed to search sessions:', err);
-      return [];
+      console.error('Failed to load available dates:', err);
     }
   }, [port]);
 
@@ -144,17 +93,13 @@ export function useLogs(port?: number): UseLogsReturn {
     setIsLive((prev) => !prev);
   }, []);
 
-  // Clear selection
-  const clearSelection = useCallback(() => {
-    setSelectedSession(null);
-  }, []);
-
   // Refresh all data
   const refresh = useCallback(async () => {
     await Promise.all([
       loadStats(),
+      loadAvailableDates(),
     ]);
-  }, [loadStats]);
+  }, [loadStats, loadAvailableDates]);
 
   // Handle SSE connection for live logs
   useEffect(() => {
@@ -197,23 +142,20 @@ export function useLogs(port?: number): UseLogsReturn {
   // Initial load
   useEffect(() => {
     loadStats();
-  }, [loadStats]);
+    loadAvailableDates();
+  }, [loadStats, loadAvailableDates]);
 
   return {
-    sessionLogs,
     systemLogs,
-    selectedSession,
+    availableDates,
     stats,
     isLoading,
     error,
     isLive,
-    loadSessionLogs,
-    loadSessionDetail,
     loadSystemLogs,
-    searchSessions,
+    loadAvailableDates,
     loadStats,
     toggleLive,
-    clearSelection,
     refresh,
   };
 }

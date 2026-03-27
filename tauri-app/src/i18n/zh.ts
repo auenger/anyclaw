@@ -218,10 +218,9 @@ export const zh: Translations = {
     loadOlder: '加载更旧的日志...',
     live: '实时',
     totalEntries: '条记录',
-    duration: '耗时',
-    sessionArchives: '会话归档',
-    systemLogs: '系统日志',
-    sessionDetail: '会话详情',
+    today: '今天',
+    availableDates: '可用日期',
+    totalLogs: '总日志数',
   },
   settings: {
     title: '设置',
