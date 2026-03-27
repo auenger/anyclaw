@@ -266,8 +266,14 @@ export class ApiClient {
   }
 
   async getAvailableDates(): Promise<string[]> {
-    const response = await fetch(`${this.baseUrl}/api/logs/dates`);
-    return response.json();
+    try {
+      const response = await fetch(`${this.baseUrl}/api/logs/dates`);
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
   }
 
   async getSystemLogs(
