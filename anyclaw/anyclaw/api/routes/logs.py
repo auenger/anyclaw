@@ -222,6 +222,17 @@ async def get_session_log(session_id: str) -> SessionLogDetail:
     )
 
 
+@router.get("/logs/dates", response_model=List[str])
+async def get_available_dates() -> List[str]:
+    """Get list of dates with available system logs.
+
+    Returns:
+        Sorted list of date strings (YYYY-MM-DD), most recent first
+    """
+    collector = get_log_collector()
+    return collector.get_available_dates()
+
+
 @router.get("/logs/system", response_model=List[SystemLogEntry])
 async def get_system_logs(
     level: Optional[str] = Query(None, description="Filter by level (DEBUG, INFO, WARN, ERROR)"),

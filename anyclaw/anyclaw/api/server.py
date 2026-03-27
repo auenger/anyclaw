@@ -34,12 +34,14 @@ async def lifespan(app: FastAPI):
     from anyclaw.utils.log_collector import get_log_collector
     collector = get_log_collector()
     collector.add_handler()
+    collector.start_file_persistence()
     logger.info("Log collector initialized")
 
     yield
 
     # Shutdown
     logger.info("AnyClaw API server shutting down...")
+    collector.stop_file_persistence()
     collector.remove_handler()
 
 
