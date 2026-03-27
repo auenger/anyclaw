@@ -30,6 +30,11 @@
 - ⚙️ **配置编辑器** - 桌面端配置编辑和服务控制
 - 🔀 **会话并发** - 会话级并发消息处理
 
+### ACP 协议 (规划中)
+- 🔌 **ACP Server** - 被 IDE (Zed/JetBrains) 连接，作为 ACP Agent
+- 🤝 **ACP Client** - 连接外部 Agent (Claude Code/Gemini CLI)
+- 🌉 **ACP-MCP 桥接** - 通过 MCP 调用外部 ACP Agent 作为工具
+
 ### 安全功能
 - 🛡️ **SSRF 防护** - 网络请求安全保护
 - 🔐 **路径防护** - 路径遍历攻击防护 (PathGuard)
@@ -39,8 +44,8 @@
 
 ## 项目状态
 
-- **完成特性**: 71 个
-- **测试数量**: 1094 个
+- **完成特性**: 77 个
+- **测试数量**: 1094+ 个
 - **测试状态**: ✅ 全部通过
 
 ## 快速开始
@@ -118,6 +123,11 @@ anyclaw chat --stream
 | `anyclaw token status` | Token 使用状态 |
 | `anyclaw memory show` | 显示记忆内容 |
 | `anyclaw compress status` | 上下文压缩状态 |
+| `anyclaw acp serve` | 启动 ACP Server (被 IDE 连接) |
+| `anyclaw acp list` | 列出已配置的 ACP Agent |
+| `anyclaw acp add <name>` | 添加 ACP Agent 配置 |
+| `anyclaw acp remove <name>` | 移除 ACP Agent 配置 |
+| `anyclaw acp test <name>` | 测试 ACP Agent 连接 |
 | `anyclaw version` | 显示版本 |
 
 ## 工作区结构
@@ -264,6 +274,7 @@ anyclaw/
 ├── skills/       # 技能系统
 ├── channels/     # 交互频道 (CLI, Feishu, Discord)
 ├── api/          # FastAPI 服务端
+├── acp/          # ACP 协议 (规划中)
 ├── mcp/          # MCP 客户端
 ├── security/     # 安全模块 (SSRF, PathGuard, Sanitizer, Credentials)
 ├── workspace/    # 工作区管理
@@ -294,6 +305,7 @@ anyclaw/
 - [x] 配置编辑器与服务控制
 - [x] 日志系统 (会话/系统日志)
 - [x] Cron API 与弹性调度
+- [ ] ACP 协议集成 (Server/Client/MCP 桥接)
 - [ ] Web UI
 - [ ] 插件系统
 

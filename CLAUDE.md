@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot 和 OpenClaw 的核心优势。项目采用 Python 3.11+ 开发，使用 Poetry 管理依赖，同时提供 Tauri 跨平台桌面应用。
 
-**项目状态**: 71 个特性完成，1094 个测试通过 ✅
+**项目状态**: 77 个特性完成，1094+ 个测试通过 ✅
 
 ### 核心特性
 
@@ -46,6 +46,12 @@ AnyClaw 是一个轻量级、可扩展的 AI 智能体框架，融合了 nanobot
 - ✅ **会话并发** - 会话级并发消息处理
 - ✅ **Cron API** - 完整的 Cron 管理 REST API
 - ✅ **Cron 弹性** - 退避、卡住检测、日志
+- ✅ **日志持久化** - 文件持久化、按日期查看、自动清理
+
+**ACP 协议 (规划中)**
+- 📋 **ACP Server** - 被 IDE (Zed/JetBrains) 连接，作为 ACP Agent
+- 📋 **ACP Client** - 连接外部 Agent (Claude Code/Gemini CLI)
+- 📋 **ACP-MCP 桥接** - 通过 MCP 调用外部 ACP Agent 作为工具
 
 ## 技术栈
 
@@ -128,6 +134,7 @@ anyclaw/
 │   │       ├── messages.py    # 消息处理
 │   │       ├── skills.py      # 技能管理
 │   │       └── tasks.py       # 任务管理
+│   ├── acp/                   # ACP 协议 (规划中)
 │   ├── mcp/                   # MCP 客户端
 │   │   ├── client.py          # MCP 连接管理
 │   │   ├── wrapper.py         # MCPToolWrapper
@@ -288,6 +295,13 @@ poetry run python -m anyclaw sidecar --help
 poetry run python -m anyclaw agent list
 poetry run python -m anyclaw agent create <name>
 poetry run python -m anyclaw agent switch <name>
+
+# ACP 协议 (被 IDE 连接)
+poetry run python -m anyclaw acp serve              # 启动 ACP Server
+poetry run python -m anyclaw acp serve --cwd /path  # 指定工作目录
+poetry run python -m anyclaw acp list               # 列出 ACP Agent
+poetry run python -m anyclaw acp add <name>         # 添加 ACP Agent
+poetry run python -m anyclaw acp test <name>        # 测试 ACP Agent
 ```
 
 ### 桌面应用开发

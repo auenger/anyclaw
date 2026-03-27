@@ -2,11 +2,21 @@
 # 此文件由 workflow 自动维护
 
 meta:
-  last_updated: "2026-03-27T12:00:00"
-  version: 99
+  last_updated: "2026-03-27T16:00:00"
+  version: 100
 
 # 父需求（用于分组追踪)
 parents:
+  - id: feat-acp-integration
+    name: ACP 协议集成
+    description: 实现 Agent Client Protocol (ACP) 协议支持，使 AnyClaw 能被 IDE 连接 (Server)、连接外部 Agent (Client)、通过 MCP 桥接外部 Agent (Bridge)
+    priority: 80
+    size: L
+    status: pending
+    children:
+      - feat-acp-server
+      - feat-acp-client
+      - feat-acp-mcp-bridge
   - id: feat-mvp
     name: AnyClaw MVP
     description: MVP 实施方案 - 完整的 AI 智能体系统
@@ -76,6 +86,30 @@ active: []
 
 # 等待中的需求（按优先级排序）
 pending:
+
+  - id: feat-acp-server
+    name: ACP Server - 被 IDE 连接
+    description: 实现 ACP Server 端，使 AnyClaw 能作为 ACP Agent 被 IDE/编辑器（Zed、JetBrains、VS Code）通过 stdio NDJSON 连接
+    priority: 80
+    size: L
+    dependencies: []
+    parent: feat-acp-integration
+
+  - id: feat-acp-client
+    name: ACP Client - 连接外部 Agent
+    description: 实现 ACP Client 模块，使 AnyClaw 能连接 Claude Code、Gemini CLI 等外部 ACP Agent，用户可在 AnyClaw App 中直接与它们对话
+    priority: 75
+    size: L
+    dependencies: [feat-acp-server]
+    parent: feat-acp-integration
+
+  - id: feat-acp-mcp-bridge
+    name: ACP-MCP 桥接
+    description: 集成 acp-mcp 适配器，使 AnyClaw 通过 MCP Client 调用外部 ACP Agent 作为工具，零代码配置级集成
+    priority: 70
+    size: S
+    dependencies: []
+    parent: feat-acp-integration
 
   - id: feat-models-panel
     name: 模型配置页面完善

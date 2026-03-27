@@ -1,7 +1,7 @@
 ---
-last_updated: '2026-03-25'
-version: 12
-features_completed: 71
+last_updated: '2026-03-27'
+version: 13
+features_completed: 77
 tests_passing: 1094
 ---
 
@@ -308,6 +308,15 @@ credential_encryption: bool = True
 ## Recent Changes
 | Date | Feature | Impact |
 |------|---------|--------|
+| 2026-03-27 | feat-logs-page-refactor | Logs 页面重构：移除会话归档，日期选择器 |
+| 2026-03-27 | feat-log-persistence | 日志文件持久化（后台线程、JSONL、按日期分割） |
+| 2026-03-27 | feat-acp-server | ACP Server 规划（被 IDE 连接） |
+| 2026-03-27 | feat-acp-client | ACP Client 规划（连接外部 Agent） |
+| 2026-03-27 | feat-acp-mcp-bridge | ACP-MCP 桥接规划（配置级集成） |
+| 2026-03-26 | feat-agent-session-workspace | 非 Agent session 存储到对应 workspace |
+| 2026-03-26 | feat-chat-agent-selector | Chat Agent 切换功能 |
+| 2026-03-26 | feat-chat-history-bug | 对话历史持久化 Bug 修复 |
+| 2026-03-26 | feat-config-consistency | Python/Tauri 配置一致性修复 |
 | 2026-03-25 | feat-tasks-ui | Tasks 页面实现，用于 cron 任务管理 |
 | 2026-03-25 | feat-models-panel | Provider 配置 UI 与 API 集成 |
 | 2026-03-25 | feat-cron-api | Cron 管理的完整 REST API |
@@ -395,6 +404,9 @@ anyclaw agent switch <name>
 
 ## Update Log
 
+- 2026-03-27: Updated to 77 features, ACP protocol planned (server/client/bridge)
+- 2026-03-27: Completed feat-logs-page-refactor, feat-log-persistence
+- 2026-03-26: Completed feat-agent-session-workspace, feat-chat-agent-selector, feat-chat-history-bug, feat-config-consistency
 - 2026-03-25: Completed 71 features, 1094 tests passing
 - 2026-03-25: Added feat-tasks-ui - Tasks page for cron job management
 - 2026-03-25: Added feat-models-panel - Provider configuration UI with API integration

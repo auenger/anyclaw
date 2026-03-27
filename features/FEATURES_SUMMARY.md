@@ -4,11 +4,11 @@
 
 **整体进度**: ████████████████████████ **100%** MVP + 扩展特性完成
 
-**最后更新**: 2026-03-25
+**最后更新**: 2026-03-27
 
-**测试状态**: 1094 个测试通过 ✅
+**测试状态**: 1094+ 个测试通过 ✅
 
-**完成特性数**: 71
+**完成特性数**: 77
 
 ## 特性列表
 
@@ -51,6 +51,17 @@
 | feat-memory-pages | Memory 记忆页面 | ✅ completed | 95% | 70 |
 | feat-config-editor | 配置编辑器 | ✅ completed | 95% | 80 |
 | feat-app-bundle | 应用打包 | ✅ completed | 95% | 70 |
+| feat-chat-agent-selector | Chat Agent 选择器 | ✅ completed | 95% | 82 |
+| feat-logs-page-refactor | Logs 页面重构 | ✅ completed | 95% | 75 |
+
+### 基础设施与修复
+
+| 特性 ID | 名称 | 状态 | 完成度 | 优先级 |
+|---------|------|------|--------|--------|
+| feat-config-consistency | 配置系统一致性修复 | ✅ completed | 95% | 75 |
+| feat-chat-history-bug | 对话历史持久化 Bug 修复 | ✅ completed | 95% | 90 |
+| feat-agent-session-workspace | Agent Session 存储位置修复 | ✅ completed | 95% | 90 |
+| feat-log-persistence | 日志文件持久化 | ✅ completed | 95% | 70 |
 
 ### 安全特性
 
@@ -94,6 +105,14 @@
 | feat-streaming-output | 流式输出支持 | ✅ completed | 90% | 76 |
 | feat-config-and-memory | 配置与记忆集成 | ✅ completed | 95% | 80 |
 | feat-mcp-client | MCP 客户端 | ✅ completed | 95% | 75 |
+
+### ACP 协议 (规划中)
+
+| 特性 ID | 名称 | 状态 | 大小 | 优先级 |
+|---------|------|------|------|--------|
+| feat-acp-server | ACP Server - 被 IDE 连接 | pending | L | 80 |
+| feat-acp-client | ACP Client - 连接外部 Agent | pending | L | 75 |
+| feat-acp-mcp-bridge | ACP-MCP 桥接 | pending | S | 70 |
 
 ## 特性依赖关系
 
@@ -231,12 +250,26 @@ feat-mvp-init (初始化) ✅
 - ✅ Memory 记忆管理页面
 - ✅ 配置编辑器和服务控制
 - ✅ 应用打包支持
+- ✅ Chat Agent 选择器
+- ✅ Logs 页面重构
+
+### 基础设施
+- ✅ 配置系统一致性修复 (Python/Tauri)
+- ✅ 对话历史持久化 Bug 修复
+- ✅ Agent Session 存储位置修复
+- ✅ 日志文件持久化 (后台线程、JSONL、自动清理)
 
 ### 记忆系统
 - ✅ 长期记忆 (MEMORY.md)
 - ✅ 每日日志 (YYYY-MM-DD.md)
 - ✅ 记忆自动化（偏好、笔记、决策识别）
 - ✅ 记忆搜索和导出
+
+### ACP 协议 (规划中)
+- 📋 ACP Server — 被 IDE (Zed/JetBrains/VS Code) 连接
+- 📋 ACP Client — 连接 Claude Code、Gemini CLI 等外部 Agent
+- 📋 ACP-MCP 桥接 — 通过 MCP 调用外部 ACP Agent
+- 📋 详见 `docs/ACP_PROTOCOL_ANALYSIS.md`
 
 ### 人设系统
 - ✅ 多人设支持
@@ -323,26 +356,34 @@ anyclaw chat --no-stream
 ## 当前队列状态
 
 ```yaml
-pending: 2 个需求 (feat-context-shuttle, feat-remove-litellm)
+pending: 4 个需求 (feat-acp-server, feat-acp-client, feat-acp-mcp-bridge, feat-remove-litellm)
+deferred: 1 个需求 (feat-context-shuttle)
 active:  []   # 无活跃需求
-completed: 71 个特性
+completed: 77 个特性
 ```
 
 ## 统计
 
 | 指标 | 数值 |
 |------|------|
-| 完成特性数 | 71 |
+| 完成特性数 | 77 |
+| 规划中特性 | 3 (ACP Server/Client/Bridge) |
 | 内置技能数 | 17 |
-| 测试数量 | 1094 |
+| 测试数量 | 1094+ |
 | 配置项数量 | 40+ |
-| CLI 命令数 | 25+ |
+| CLI 命令数 | 30+ |
 | API 端点数 | 20+ |
 
 ## 最近完成
 
 | 日期 | 特性 | 价值点 |
 |------|------|--------|
+| 2026-03-27 | feat-logs-page-refactor | Logs 页面重构：移除会话归档，日期选择器 |
+| 2026-03-27 | feat-log-persistence | 日志文件持久化（后台线程、JSONL、21 个测试） |
+| 2026-03-26 | feat-agent-session-workspace | 非 Agent session 存储到对应 workspace |
+| 2026-03-26 | feat-chat-agent-selector | Chat Agent 切换功能 |
+| 2026-03-26 | feat-chat-history-bug | 对话历史持久化 Bug 修复 |
+| 2026-03-26 | feat-config-consistency | 配置系统一致性修复 |
 | 2026-03-25 | feat-tasks-ui | Tasks 页面实现，用于 cron 任务管理 |
 | 2026-03-25 | feat-models-panel | Provider 配置 UI 与 API 集成 |
 | 2026-03-25 | feat-cron-api | Cron 管理的完整 REST API |

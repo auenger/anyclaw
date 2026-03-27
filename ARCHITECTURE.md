@@ -9,6 +9,7 @@
 - [服务模式对比](#服务模式对比)
 - [通信机制](#通信机制)
 - [数据流](#数据流)
+- [ACP 协议 (规划中)](#acp-协议-规划中)
 - [目录结构](#目录结构)
 - [配置管理](#配置管理)
 - [启动流程](#启动流程)
@@ -43,6 +44,14 @@
 │  │        OpenAI │ Anthropic │ ZAI/GLM │ MCP                       │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────┘
+
+                              ┌─────────────────────────────────┐
+                              │      ACP 协议 (规划中)           │
+                              │                                  │
+                              │  IDE ◄─ACP──► AnyClaw (Server)   │
+                              │  AnyClaw ◄─ACP──► Claude Code    │
+                              │  AnyClaw ◄─MCP──► acp-mcp 桥接   │
+                              └─────────────────────────────────┘
 ```
 
 ---
@@ -445,6 +454,58 @@ class OutboundMessage:
 
 ---
 
+## ACP 协议 (规划中)
+
+### 概述
+
+ACP (Agent Client Protocol) 是由 Zed 和 Google 发起的开放标准，用于标准化 IDE/编辑器与 AI Agent 之间的通信。
+
+详细分析文档: `docs/ACP_PROTOCOL_ANALYSIS.md`
+
+### 双向集成架构
+
+```
+┌──────────┐   stdio/NDJSON   ┌──────────────────┐
+│  IDE 客户端 │ ◄────────────► │   ACP Server     │──► AgentLoop
+│ (Zed etc)  │                │  (Python 实现)    │
+└──────────┘                └──────────────────┘
+
+┌──────────────────┐   stdio/NDJSON   ┌──────────────┐
+│  ACP Client      │ ◄────────────► │ Claude Code   │
+│  (Python 实现)   │                │ Gemini CLI    │
+└──────────────────┘                └──────────────┘
+
+┌──────────────────┐   MCP            ┌──────────────┐
+│  AnyClaw Agent   │ ◄────────────► │ acp-mcp 适配器 │──► Claude Code
+└──────────────────┘                └──────────────┘
+```
+
+### 模块结构
+
+```
+anyclaw/anyclaw/acp/
+├── __init__.py              # 模块导出
+├── server.py                # ACP stdio 服务器 (被 IDE 连接)
+├── client.py                # ACP Client (连接外部 Agent)
+├── protocol.py              # 协议类型定义 (Pydantic)
+├── translator.py            # ACP ↔ AnyClaw 消息翻译
+├── session.py               # 会话管理
+├── event_mapper.py          # 事件映射
+├── agent_registry.py        # Agent 注册管理
+├── permissions.py           # 工具权限审批
+└── cli_cmd.py               # CLI 命令入口
+```
+
+### 实现路线
+
+| 特性 | ID | 大小 | 优先级 | 状态 |
+|------|----|----|--------|------|
+| ACP Server | feat-acp-server | L | 80 | pending |
+| ACP Client | feat-acp-client | L | 75 | pending |
+| ACP-MCP 桥接 | feat-acp-mcp-bridge | S | 70 | pending |
+
+---
+
 ## 目录结构
 
 ```
@@ -468,6 +529,11 @@ anyclaw/
 │   │       ├── skills.py         # 技能管理
 │   │       ├── tasks.py          # 任务管理
 │   │       └── config.py         # 配置管理
+│   │
+│   ├── acp/                      # ACP 协议 (规划中)
+│   │   ├── server.py             # ACP stdio 服务器
+│   │   ├── client.py             # ACP Client
+│   │   └── protocol.py           # 协议类型定义
 │   │
 │   ├── bus/                      # 消息总线
 │   │   ├── queue.py              # MessageBus (消息队列)
